@@ -29,7 +29,7 @@ export const authService = {
       id_pais:           null,
       id_ciudad:         null,
       id_distrito:       null,
-      es_profesor:       0,
+      es_profesor:       datos.es_profesor ? 1 : 0,
     });
     return data;
   },
