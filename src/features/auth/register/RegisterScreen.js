@@ -224,24 +224,21 @@ function Step1({ data, setData, onNext }) {
 function Step2({ data, setData, onNext, onBack }) {
   const deportes = [
     {
-      id: 'tenis',
-      label: 'Tenis',
+      id: 'fronton',
+      label: 'Frontón',
       uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&q=80',
     },
     {
-      id: 'squash',
-      label: 'Squash',
-      uri: 'https://images.unsplash.com/photo-1740813402046-08ec3e0ce5d2?w=400&q=80',
-    },
-    {
-      id: 'tenis_mesa',
-      label: 'Tenis de mesa',
-      uri: 'https://images.unsplash.com/photo-1611251135345-18c56206b863?w=400&q=80',
+      id: 'tenis',
+      label: 'Tenis',
+      uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&q=80',
+      proximamente: true,
     },
     {
       id: 'padel',
       label: 'Padel',
       uri: 'https://images.unsplash.com/photo-1646649853703-7645147474ba?w=400&q=80',
+      proximamente: true,
     },
   ];
 
@@ -254,9 +251,9 @@ function Step2({ data, setData, onNext, onBack }) {
         {deportes.map((d) => (
           <TouchableOpacity
             key={d.id}
-            style={[styles.sportCard, data.deporte === d.id && styles.sportCardSelected]}
-            onPress={() => setData({ ...data, deporte: d.id })}
-            activeOpacity={0.8}
+            style={[styles.sportCard, data.deporte === d.id && styles.sportCardSelected, d.proximamente && { opacity: 0.5 }]}
+            onPress={() => !d.proximamente && setData({ ...data, deporte: d.id })}
+            activeOpacity={d.proximamente ? 1 : 0.8}
           >
             <ImageBackground
               source={{ uri: d.uri }}
@@ -264,6 +261,11 @@ function Step2({ data, setData, onNext, onBack }) {
               imageStyle={{ borderRadius: 13 }}
             >
               <View style={styles.sportOverlay} />
+              {d.proximamente && (
+                <View style={styles.proximamenteBadge}>
+                  <Text style={styles.proximamenteText}>Próximamente</Text>
+                </View>
+              )}
               {data.deporte === d.id && (
                 <View style={styles.sportCheck}>
                   <Text style={{ color: colors.white, fontWeight: 'bold' }}>✓</Text>
@@ -305,7 +307,7 @@ function Step3({ data, setData, onNext, onBack }) {
 
       <RadioGroup
         question="¿Cuál es tu nivel del juego?"
-        options={['Principiante', 'Intermedio', 'Avanzado', 'Elite']}
+        options={['Principiante', 'Intermedio', 'Avanzado']}
         selected={data.nivel}
         onSelect={(v) => setData({ ...data, nivel: v })}
       />
@@ -757,6 +759,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.white,
+  },
+
+  proximamenteBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  proximamenteText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
   },
 
   logrosInput: {

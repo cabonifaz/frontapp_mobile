@@ -39,6 +39,13 @@ export const authService = {
     return data.disponible;
   },
 
+  async loginSocial(correo, idProveedor) {
+    const data = await api.post('/api/Auth/login-social', { correo, id_proveedor: idProveedor });
+    await SecureStore.setItemAsync('jwt_token', data.token);
+    await SecureStore.setItemAsync('id_usuario', String(data.idUsuario));
+    return data;
+  },
+
   async logout() {
     await SecureStore.deleteItemAsync('jwt_token');
     await SecureStore.deleteItemAsync('id_usuario');

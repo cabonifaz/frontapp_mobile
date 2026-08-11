@@ -1,7 +1,8 @@
 import api from './api';
+import { DEPORTE_DEFAULT } from '../constants/maestro';
 
 export const partidoService = {
-  async buscarRankeado({ idDeporte = 1, idCancha = null, fecha = null, hora = null, idTipoJuego = null } = {}) {
+  async buscarRankeado({ idDeporte = DEPORTE_DEFAULT, idCancha = null, fecha = null, hora = null, idTipoJuego = null } = {}) {
     const params = new URLSearchParams({ id_deporte: idDeporte });
     if (idCancha) params.append('id_cancha', idCancha);
     if (fecha) params.append('fecha', fecha);
@@ -10,7 +11,7 @@ export const partidoService = {
     return api.get(`/api/PartidoRankeado/buscar?${params}`);
   },
 
-  async buscarAmistoso({ idDeporte = 1, idCancha = null, fecha = null, hora = null, idTipoJuego = null } = {}) {
+  async buscarAmistoso({ idDeporte = DEPORTE_DEFAULT, idCancha = null, fecha = null, hora = null, idTipoJuego = null } = {}) {
     const params = new URLSearchParams({ id_deporte: idDeporte });
     if (idCancha) params.append('id_cancha', idCancha);
     if (fecha) params.append('fecha', fecha);
@@ -35,7 +36,7 @@ export const partidoService = {
     return api.post(`/api/Partido/${idPartido}/cancelar`);
   },
 
-  async listarMisPartidos(idDeporte = 1) {
+  async listarMisPartidos(idDeporte = DEPORTE_DEFAULT) {
     return api.get(`/api/GestionPartido?id_deporte=${idDeporte}`);
   },
 

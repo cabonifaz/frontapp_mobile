@@ -9,4 +9,8 @@ export const maestroService = {
   async deportes() {
     return api.get('/api/Maestro/deportes');
   },
+
+  async categoria(codigo) {
+    return api.get(`/api/Maestro/categoria?codigo=${encodeURIComponent(codigo)}`);
+  },
 };
