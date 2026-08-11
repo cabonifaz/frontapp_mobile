@@ -31,11 +31,19 @@ export const partidoService = {
     return api.post(`/api/Partido/postular/${idPartido}`);
   },
 
+  async cancelar(idPartido) {
+    return api.post(`/api/Partido/${idPartido}/cancelar`);
+  },
+
   async listarMisPartidos(idDeporte = 1) {
     return api.get(`/api/GestionPartido?id_deporte=${idDeporte}`);
   },
 
   async detalle(idPartido) {
     return api.get(`/api/GestionPartido/${idPartido}`);
+  },
+
+  async marcarLeido(idPartido) {
+    return api.post(`/api/GestionPartido/${idPartido}/marcar-leido`);
   },
 };
