@@ -7,6 +7,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../constants';
 import { PrimaryButton } from '../../../components/common';
 import { authService } from '../../../services/authService';
+import { usuarioService } from '../../../services/usuarioService';
+import { DEPORTES, GENEROS, NIVELES_JUEGO, DEPORTE_DEFAULT } from '../../../constants/maestro';
+
+const NIVEL_JUEGO_MAP = {
+  'Principiante': NIVELES_JUEGO.PRINCIPIANTE,
+  'Intermedio':   NIVELES_JUEGO.INTERMEDIO,
+  'Avanzado':     NIVELES_JUEGO.AVANZADO,
+};
+const GENERO_MAP   = { 'Masculino': GENEROS.MASCULINO, 'Femenino': GENEROS.FEMENINO };
+const DEPORTE_MAP  = { 'fronton': DEPORTES.FRONTON, 'tenis': DEPORTES.TENIS, 'padel': DEPORTES.PADEL };
+const PARTIDOS_MAP = { '0': 0, '1': 1, '2 o más': 2 };
 
 // --- Shared sub-components ---
 
@@ -140,7 +151,7 @@ function Step1({ data, setData, onNext }) {
           <DropdownField
             label="Género"
             value={data.genero}
-            options={['Hombre', 'Mujer', 'Otro']}
+            options={['Masculino', 'Femenino']}
             onSelect={(v) => setData({ ...data, genero: v })}
           />
         </View>
@@ -438,15 +449,47 @@ export function RegisterScreen({ navigation }) {
   async function handleFinish() {
     try {
       setLoading(true);
-      await authService.registrar({
-      ...data,
-      apellidos: data.apellido,
-      telefono: data.celular || null,
-    });
-      setNivelObtenido(12);
+
+      // 1. Crear cuenta
+      try {
+        await authService.registrar({
+          ...data,
+          apellidos: data.apellido,
+          telefono:  data.celular || null,
+        });
+      } catch (e) {
+        Alert.alert('Error al registrarse', e.message);
+        return;
+      }
+
+      // 2. Login automático para obtener el token JWT
+      try {
+        await authService.login(data.correo, data.contrasena);
+      } catch (e) {
+        Alert.alert('Error al iniciar sesión', e.message);
+        return;
+      }
+
+      // 3. Enviar cuestionario (no bloquea si falla)
+      let nivelCalculado = 1;
+      try {
+        const idDeporte = DEPORTE_MAP[data.deporte] ?? DEPORTE_DEFAULT;
+        const resultado = await usuarioService.cuestionario({
+          idDeporte,
+          nivelFisico:        data.nivel_fisico,
+          idNivelJuego:       NIVEL_JUEGO_MAP[data.nivel] ?? NIVELES_JUEGO.PRINCIPIANTE,
+          partidosSemanales:  PARTIDOS_MAP[data.partidos_semana] ?? 0,
+          leccionesSemanales: PARTIDOS_MAP[data.lecciones] ?? 0,
+          edad:               parseInt(data.edad) || null,
+          idGenero:           GENERO_MAP[data.genero] ?? null,
+        });
+        nivelCalculado = resultado.nivelCalculado ?? 1;
+      } catch {
+        // Si el cuestionario falla, el registro ya fue exitoso — continúa con nivel por defecto
+      }
+
+      setNivelObtenido(nivelCalculado);
       setStep(5);
-    } catch (error) {
-      Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
     }
