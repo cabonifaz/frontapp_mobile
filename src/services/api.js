@@ -1,12 +1,16 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-const BASE_URL = 'https://mumbling-unbounded-unbitten.ngrok-free.dev';
+// Lee dinámicamente desde el .env o usa la IP local como fallback
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.100.10:5000';
 
 const api = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
-  headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+  headers: { 
+    'Content-Type': 'application/json', 
+    'ngrok-skip-browser-warning': 'true' 
+  },
 });
 
 api.interceptors.request.use(async (config) => {
