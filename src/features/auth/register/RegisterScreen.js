@@ -7,6 +7,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../../constants';
 import { PrimaryButton } from '../../../components/common';
 import { authService } from '../../../services/authService';
+import { usuarioService } from '../../../services/usuarioService';
+import { DEPORTES, GENEROS, NIVELES_JUEGO } from '../../../constants/maestro';
+
+const NIVEL_JUEGO_MAP = {
+  'Principiante': NIVELES_JUEGO.PRINCIPIANTE,
+  'Intermedio':   NIVELES_JUEGO.INTERMEDIO,
+  'Avanzado':     NIVELES_JUEGO.AVANZADO,
+};
+const GENERO_MAP   = { 'Masculino': GENEROS.MASCULINO, 'Femenino': GENEROS.FEMENINO };
+const DEPORTE_MAP  = { 'fronton': DEPORTES.FRONTON, 'tenis': DEPORTES.TENIS, 'padel': DEPORTES.PADEL };
+const PARTIDOS_MAP = { '0': 0, '1': 1, '2 o más': 2 };
 
 // --- Shared sub-components ---
 
@@ -140,7 +151,7 @@ function Step1({ data, setData, onNext }) {
           <DropdownField
             label="Género"
             value={data.genero}
-            options={['Hombre', 'Mujer', 'Otro']}
+            options={['Masculino', 'Femenino']}
             onSelect={(v) => setData({ ...data, genero: v })}
           />
         </View>
@@ -213,24 +224,21 @@ function Step1({ data, setData, onNext }) {
 function Step2({ data, setData, onNext, onBack }) {
   const deportes = [
     {
-      id: 'tenis',
-      label: 'Tenis',
+      id: 'fronton',
+      label: 'Frontón',
       uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&q=80',
     },
     {
-      id: 'squash',
-      label: 'Squash',
-      uri: 'https://images.unsplash.com/photo-1740813402046-08ec3e0ce5d2?w=400&q=80',
-    },
-    {
-      id: 'tenis_mesa',
-      label: 'Tenis de mesa',
-      uri: 'https://images.unsplash.com/photo-1611251135345-18c56206b863?w=400&q=80',
+      id: 'tenis',
+      label: 'Tenis',
+      uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&q=80',
+      proximamente: true,
     },
     {
       id: 'padel',
       label: 'Padel',
       uri: 'https://images.unsplash.com/photo-1646649853703-7645147474ba?w=400&q=80',
+      proximamente: true,
     },
   ];
 
@@ -243,9 +251,9 @@ function Step2({ data, setData, onNext, onBack }) {
         {deportes.map((d) => (
           <TouchableOpacity
             key={d.id}
-            style={[styles.sportCard, data.deporte === d.id && styles.sportCardSelected]}
-            onPress={() => setData({ ...data, deporte: d.id })}
-            activeOpacity={0.8}
+            style={[styles.sportCard, data.deporte === d.id && styles.sportCardSelected, d.proximamente && { opacity: 0.5 }]}
+            onPress={() => !d.proximamente && setData({ ...data, deporte: d.id })}
+            activeOpacity={d.proximamente ? 1 : 0.8}
           >
             <ImageBackground
               source={{ uri: d.uri }}
@@ -253,6 +261,11 @@ function Step2({ data, setData, onNext, onBack }) {
               imageStyle={{ borderRadius: 13 }}
             >
               <View style={styles.sportOverlay} />
+              {d.proximamente && (
+                <View style={styles.proximamenteBadge}>
+                  <Text style={styles.proximamenteText}>Próximamente</Text>
+                </View>
+              )}
               {data.deporte === d.id && (
                 <View style={styles.sportCheck}>
                   <Text style={{ color: colors.white, fontWeight: 'bold' }}>✓</Text>
@@ -294,7 +307,7 @@ function Step3({ data, setData, onNext, onBack }) {
 
       <RadioGroup
         question="¿Cuál es tu nivel del juego?"
-        options={['Principiante', 'Intermedio', 'Avanzado', 'Elite']}
+        options={['Principiante', 'Intermedio', 'Avanzado']}
         selected={data.nivel}
         onSelect={(v) => setData({ ...data, nivel: v })}
       />
@@ -438,12 +451,30 @@ export function RegisterScreen({ navigation }) {
   async function handleFinish() {
     try {
       setLoading(true);
+
+      // 1. Crear cuenta
       await authService.registrar({
-      ...data,
-      apellidos: data.apellido,
-      telefono: data.celular || null,
-    });
-      setNivelObtenido(12);
+        ...data,
+        apellidos: data.apellido,
+        telefono:  data.celular || null,
+      });
+
+      // 2. Login automático para obtener el token JWT
+      await authService.login(data.correo, data.contrasena);
+
+      // 3. Enviar cuestionario al backend y obtener nivel real
+      const idDeporte = DEPORTE_MAP[data.deporte] ?? 1;
+      const resultado = await usuarioService.cuestionario({
+        idDeporte,
+        nivelFisico:        data.nivel_fisico,
+        idNivelJuego:       NIVEL_JUEGO_MAP[data.nivel] ?? 1,
+        partidosSemanales:  PARTIDOS_MAP[data.partidos_semana] ?? 0,
+        leccionesSemanales: PARTIDOS_MAP[data.lecciones] ?? 0,
+        edad:               parseInt(data.edad) || null,
+        idGenero:           GENERO_MAP[data.genero] ?? null,
+      });
+
+      setNivelObtenido(resultado.nivelCalculado ?? 1);
       setStep(5);
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -714,6 +745,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.white,
+  },
+
+  proximamenteBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  proximamenteText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
   },
 
   logrosInput: {
