@@ -75,18 +75,18 @@ function Field({ label, value, onChangeText, placeholder, secureTextEntry, keybo
 }
 
 export function LoginScreen({ navigation }) {
-  const [usuario, setUsuario] = useState('');
+  const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
-    if (!usuario || !contrasena) {
-      Alert.alert('Campos requeridos', 'Ingresa tu usuario y contraseña.');
+    if (!correo || !contrasena) {
+      Alert.alert('Campos requeridos', 'Ingresa tu correo y contraseña.');
       return;
     }
     try {
       setLoading(true);
-      await authService.login(usuario, contrasena);
+      await authService.login(correo, contrasena);
       navigation.replace('MainTabs');
     } catch (error) {
       Alert.alert('Error', error.message);
@@ -113,10 +113,11 @@ export function LoginScreen({ navigation }) {
 
         {/* Campos */}
         <Field
-          label="Usuario"
-          value={usuario}
-          onChangeText={setUsuario}
-          placeholder="Usuario"
+          label="Correo electrónico"
+          value={correo}
+          onChangeText={setCorreo}
+          placeholder="correo@ejemplo.com"
+          keyboardType="email-address"
         />
         <Field
           label="Contraseña"

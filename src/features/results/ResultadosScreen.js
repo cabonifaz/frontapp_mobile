@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { DATE_FILTERS, MATCHES_BY_FILTER } from '../../data/resultadosData';
+import { resultadoService } from '../../services/resultadoService';
 
 function ScoreChip({ value }) {
   return (
@@ -39,7 +41,17 @@ function MatchCard({ match }) {
 
 export function ResultadosScreen() {
   const [activeFilter, setActiveFilter] = useState('Hoy');
-  const data = MATCHES_BY_FILTER[activeFilter];
+  const [data, setData] = useState(MATCHES_BY_FILTER['Hoy']);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const filtroFecha = activeFilter.toUpperCase().replace(/ /g, '_');
+    setLoading(true);
+    setData(MATCHES_BY_FILTER[activeFilter]);
+    resultadoService.listar({ filtroFecha })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [activeFilter]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -73,9 +85,13 @@ export function ResultadosScreen() {
 
           <Text style={styles.dateLabel}>{data.label}</Text>
 
-          {data.matches.map((m) => (
-            <MatchCard key={m.id} match={m} />
-          ))}
+          {loading ? (
+            <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 20 }} />
+          ) : (
+            data.matches.map((m) => (
+              <MatchCard key={m.id} match={m} />
+            ))
+          )}
 
           <View style={{ height: 32 }} />
         </ScrollView>

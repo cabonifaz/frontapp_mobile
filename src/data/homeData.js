@@ -27,6 +27,6 @@ export const ACTION_CARDS = [
     title: 'Tomar clase',
     uri: 'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?w=400&q=80',
     height: 80,
-    route: 'Classes',
+    route: 'TomarClase',
   },
 ];

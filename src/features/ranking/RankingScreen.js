@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
-  TextInput, Image, Modal,
+  TextInput, Image, Modal, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { TEMPORADAS, FILTERS, PLAYER_DATA } from '../../data/rankingData';
+import { rankingService } from '../../services/rankingService';
 
 function Podium({ players }) {
   const top3 = players.slice(0, 3);
@@ -42,25 +43,36 @@ function Podium({ players }) {
   );
 }
 
-function PlayerRow({ player }) {
+function PlayerRow({ player, onPress }) {
   return (
-    <View style={styles.playerRow}>
+    <TouchableOpacity style={styles.playerRow} onPress={onPress} activeOpacity={0.75}>
       <Text style={styles.playerPos}>{player.pos}</Text>
       <Image source={{ uri: player.avatar }} style={styles.playerAvatar} />
       <View>
         <Text style={styles.playerName}>{player.name}</Text>
         <Text style={styles.playerPts}>{player.pts} pts</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
-export function RankingScreen() {
+export function RankingScreen({ navigation }) {
   const [filter, setFilter] = useState('General');
   const [temporada, setTemporada] = useState('Verano 2024');
   const [showModal, setShowModal] = useState(false);
   const [tempSelected, setTempSelected] = useState('Verano 2024');
-  const players = PLAYER_DATA[filter];
+  const [players, setPlayers] = useState(PLAYER_DATA[filter]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const filtroGenero = filter === 'Masculino' ? 'GENERO_MASCULINO'
+      : filter === 'Femenino' ? 'GENERO_FEMENINO' : null;
+    setLoading(true);
+    rankingService.listar({ filtroGenero })
+      .then(data => setPlayers(data.length ? data : PLAYER_DATA[filter]))
+      .catch(() => setPlayers(PLAYER_DATA[filter]))
+      .finally(() => setLoading(false));
+  }, [filter]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -98,11 +110,20 @@ export function RankingScreen() {
             ))}
           </View>
 
-          <Podium players={players} />
-
-          {players.slice(3).map((p) => (
-            <PlayerRow key={p.pos} player={p} />
-          ))}
+          {loading ? (
+            <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
+          ) : (
+            <>
+              <Podium players={players} />
+              {players.slice(3).map((p) => (
+                <PlayerRow
+                  key={p.pos}
+                  player={p}
+                  onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts, ranking: p.pos, avatar: p.avatar } })}
+                />
+              ))}
+            </>
+          )}
 
           <View style={{ height: 32 }} />
         </ScrollView>

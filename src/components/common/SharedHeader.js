@@ -10,7 +10,7 @@ export function SharedHeader() {
     <View style={styles.header}>
       <View style={styles.left}>
         <Image
-          source={{ uri: 'https://i.pravatar.cc/150?img=32' }}
+          source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxUzKngXZcLOT11hp0FMnpwDtCusZVoIm2kCLfXtUfDg&s=10' }}
           style={styles.avatar}
         />
         <View>

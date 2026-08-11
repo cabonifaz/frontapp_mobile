@@ -1,18 +1,14 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-// Cambia esta URL cuando el backend esté en servidor
-const BASE_URL = 'http://localhost:3000/api';
+const BASE_URL = 'https://mumbling-unbounded-unbitten.ngrok-free.dev';
 
 const api = axios.create({
   baseURL: BASE_URL,
   timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
 });
 
-// Adjunta el JWT en cada petición automáticamente
 api.interceptors.request.use(async (config) => {
   const token = await SecureStore.getItemAsync('jwt_token');
   if (token) {
@@ -21,12 +17,11 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// Maneja errores globales (ej. token expirado)
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    const message = error.response?.data?.message || 'Error de conexión';
-    return Promise.reject(new Error(message));
+    const mensaje = error.response?.data?.mensaje || 'Error de conexión con el servidor';
+    return Promise.reject(new Error(mensaje));
   }
 );
 

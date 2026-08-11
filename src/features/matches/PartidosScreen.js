@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { TABS, PARTIDOS_DATA, CLASES_DATA } from '../../data/partidosData';
+import { partidoService } from '../../services/partidoService';
 
-function AppointmentCard({ item }) {
+function AppointmentCard({ item, onPress }) {
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={onPress ? 0.75 : 1}>
       <Image source={{ uri: item.avatar }} style={styles.cardAvatar} />
       <View style={styles.cardInfo}>
         <View style={styles.cardNameRow}>
@@ -27,18 +29,18 @@ function AppointmentCard({ item }) {
         </View>
       </View>
       {item.live && <View style={styles.liveDot} />}
-    </View>
+    </TouchableOpacity>
   );
 }
 
-function Section({ data }) {
+function Section({ data, onPressItem }) {
   return (
     <>
       {data.map((section) => (
         <View key={section.section}>
           <Text style={styles.sectionLabel}>{section.section}</Text>
           {section.items.map((item) => (
-            <AppointmentCard key={item.id} item={item} />
+            <AppointmentCard key={item.id} item={item} onPress={onPressItem ? () => onPressItem(item) : null} />
           ))}
         </View>
       ))}
@@ -46,8 +48,19 @@ function Section({ data }) {
   );
 }
 
-export function PartidosScreen() {
+export function PartidosScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('Partidos');
+  const [partidos, setPartidos] = useState(PARTIDOS_DATA);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab !== 'Partidos') return;
+    setLoading(true);
+    partidoService.listarMisPartidos()
+      .then(res => setPartidos(res?.length ? res : PARTIDOS_DATA))
+      .catch(() => setPartidos(PARTIDOS_DATA))
+      .finally(() => setLoading(false));
+  }, [activeTab]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -69,7 +82,16 @@ export function PartidosScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 20 }}>
           <Text style={styles.pageTitle}>{activeTab}</Text>
-          <Section data={activeTab === 'Partidos' ? PARTIDOS_DATA : CLASES_DATA} />
+          {loading ? (
+            <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
+          ) : (
+            <Section
+              data={activeTab === 'Partidos' ? partidos : CLASES_DATA}
+              onPressItem={activeTab === 'Clases'
+                ? (item) => navigation.navigate('DetalleClase', { clase: item })
+                : (item) => navigation.navigate('DetallePartido', { partido: item })}
+            />
+          )}
           <View style={{ height: 32 }} />
         </ScrollView>
       </View>
@@ -149,7 +171,7 @@ const styles = StyleSheet.create({
   cardNameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
   cardName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
   cardRanking: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
-  cardClub: { fontSize: 13, color: colors.textSecondary, marginBottom: 5 },
+  cardClub: { fontSize: 13, color: colors.textSecondary, marginBottom: 5, fontStyle: 'italic' },
   cardDateRow: { flexDirection: 'row', alignItems: 'center' },
   cardMeta: { fontSize: 13, color: colors.textSecondary },
   liveDot: {

@@ -14,6 +14,18 @@ import { HomeScreen } from '../features/home/HomeScreen';
 import { RankingScreen } from '../features/ranking/RankingScreen';
 import { ResultadosScreen } from '../features/results/ResultadosScreen';
 import { PartidosScreen } from '../features/matches/PartidosScreen';
+import { BuscarPartidoScreen } from '../features/matches/BuscarPartidoScreen';
+import { CrearPartidoScreen } from '../features/matches/CrearPartidoScreen';
+import { RetarScreen } from '../features/matches/RetarScreen';
+import { MisSolicitudesScreen } from '../features/matches/MisSolicitudesScreen';
+import { DetallePartidoScreen } from '../features/matches/DetallePartidoScreen';
+import { ColocarResultadosScreen } from '../features/matches/ColocarResultadosScreen';
+import { TomarClaseScreen } from '../features/classes/TomarClaseScreen';
+import { ProfesoresDisponiblesScreen } from '../features/classes/ProfesoresDisponiblesScreen';
+import { DetalleClaseScreen } from '../features/classes/DetalleClaseScreen';
+import { ProfileScreen } from '../features/profile/ProfileScreen';
+import { EditProfileScreen } from '../features/profile/EditProfileScreen';
+import { PlayerProfileScreen } from '../features/profile/PlayerProfileScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -54,6 +66,9 @@ function MainTabs() {
           if (route.name === 'Partidos') {
             return <MaterialCommunityIcons name="tennis" size={s} color={color} />;
           }
+          if (route.name === 'Perfil') {
+            return <Ionicons name={focused ? 'person' : 'person-outline'} size={s} color={color} />;
+          }
         },
       })}
     >
@@ -61,6 +76,7 @@ function MainTabs() {
       <Tab.Screen name="Ranking" component={RankingScreen} options={{ title: 'Ranking' }} />
       <Tab.Screen name="Resultados" component={ResultadosScreen} options={{ title: 'Resultados' }} />
       <Tab.Screen name="Partidos" component={PartidosScreen} options={{ title: 'Partidos' }} />
+      <Tab.Screen name="Perfil" component={ProfileScreen} options={{ title: 'Perfil' }} />
     </Tab.Navigator>
   );
 }
@@ -73,6 +89,18 @@ export function AppNavigator() {
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="FriendlyMatch" component={BuscarPartidoScreen} initialParams={{ tab: 'Amistoso' }} />
+        <Stack.Screen name="RankedMatch" component={BuscarPartidoScreen} initialParams={{ tab: 'Rankeado' }} />
+        <Stack.Screen name="CrearPartido" component={CrearPartidoScreen} />
+        <Stack.Screen name="RetarJugador" component={RetarScreen} />
+        <Stack.Screen name="MisSolicitudes" component={MisSolicitudesScreen} />
+        <Stack.Screen name="DetallePartido" component={DetallePartidoScreen} />
+        <Stack.Screen name="ColocarResultados" component={ColocarResultadosScreen} />
+        <Stack.Screen name="TomarClase" component={TomarClaseScreen} />
+        <Stack.Screen name="ProfesoresDisponibles" component={ProfesoresDisponiblesScreen} />
+        <Stack.Screen name="DetalleClase" component={DetalleClaseScreen} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+        <Stack.Screen name="PlayerProfile" component={PlayerProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

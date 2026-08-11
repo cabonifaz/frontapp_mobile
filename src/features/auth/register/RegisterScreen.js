@@ -438,7 +438,11 @@ export function RegisterScreen({ navigation }) {
   async function handleFinish() {
     try {
       setLoading(true);
-      await authService.registro(data);
+      await authService.registrar({
+      ...data,
+      apellidos: data.apellido,
+      telefono: data.celular || null,
+    });
       setNivelObtenido(12);
       setStep(5);
     } catch (error) {
