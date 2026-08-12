@@ -7,7 +7,7 @@ import Svg, { Polyline, Circle, Text as SvgText } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { PROFILE_MOCK } from '../../data/profileData';
-import { rankingService } from '../../services/rankingService';
+import { usuarioService } from '../../services/usuarioService';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H = 220;
@@ -221,8 +221,27 @@ export function ProfileScreen({ navigation, route }) {
 
   useEffect(() => {
     setLoading(true);
-    rankingService.perfil(1)
-      .then(res => { if (res) setProfile(res); })
+    usuarioService.perfil()
+      .then(res => {
+        if (res) setProfile({
+          ...PROFILE_MOCK,
+          nombre:            res.nombre          ?? PROFILE_MOCK.nombre,
+          avatar:            res.foto_perfil_url  ?? PROFILE_MOCK.avatar,
+          ranking:           res.ranking          ?? PROFILE_MOCK.ranking,
+          pts:               res.puntos           ?? PROFILE_MOCK.pts,
+          nivel:             res.nivel            ?? PROFILE_MOCK.nivel,
+          progresoNivel:     res.porcentaje_nivel ?? PROFILE_MOCK.progresoNivel,
+          puntajeNivel:      res.puntos           ?? PROFILE_MOCK.puntajeNivel,
+          partidos:          res.partidos_totales     ?? PROFILE_MOCK.partidos,
+          partidosRankeados: res.partidos_rankeados   ?? PROFILE_MOCK.partidosRankeados,
+          victorias:         res.victorias_totales    ?? PROFILE_MOCK.victorias,
+          victoriasRankeadas:res.victorias_rankeadas  ?? PROFILE_MOCK.victoriasRankeadas,
+          deporte:           res.deporte_nombre    ?? PROFILE_MOCK.deporte,
+          sobreMi:           res.descripcion       ?? PROFILE_MOCK.sobreMi,
+          rankingHistory:    res.historial_ranking  ?? PROFILE_MOCK.rankingHistory,
+          resultados:        res.resultados         ?? PROFILE_MOCK.resultados,
+        });
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);

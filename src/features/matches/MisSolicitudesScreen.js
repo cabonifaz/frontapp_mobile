@@ -1,36 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Image,
+  SafeAreaView, Image, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
-import { PROFILE_MOCK } from '../../data/profileData';
-
-const PARTIDO_CREADO = {
-  cancha: 'Club Terrazas Miraflores',
-  uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80',
-  date: '15 Feb',
-  time: '15:00',
-};
-
-const FECHAS = ['15 Feb', '17 Feb', '19 Feb'];
-
-const RETADORES = [
-  { id: '1', name: 'R. Pino', fullName: 'Renato Pino', ranking: 33, club: 'Club Terrazas Miraflores', date: '12 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=17' },
-  { id: '2', name: 'A. Ortiz', fullName: 'Alonso Ortiz', ranking: 32, club: 'Club Terrazas Miraflores', date: '12 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=22' },
-  { id: '3', name: 'O. Bendezú', fullName: 'Osman Bendezú', ranking: 33, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=40' },
-];
+import { solicitudService } from '../../services/solicitudService';
+import { partidoService } from '../../services/partidoService';
 
 function SuccessScreen({ retador, onPress }) {
-  const firstName = retador.fullName.split(' ')[0];
+  const firstName = (retador.nombre ?? retador.fullName ?? 'el retador').split(' ')[0];
   return (
     <View style={styles.successContainer}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.vsCircle}>
-          <Image source={{ uri: PROFILE_MOCK.avatar }} style={styles.vsAvatar} />
-          <Text style={styles.vsText}>vs</Text>
-          <Image source={{ uri: retador.avatar }} style={styles.vsAvatar} />
+          <Image source={{ uri: retador.foto_perfil_url ?? retador.avatar ?? 'https://i.pravatar.cc/150?img=1' }} style={styles.vsAvatar} />
         </View>
         <Text style={styles.successTitle}>
           Has aceptado a{'\n'}{firstName} como retador
@@ -47,9 +31,71 @@ function SuccessScreen({ retador, onPress }) {
 }
 
 export function MisSolicitudesScreen({ navigation }) {
-  const [fechaActiva, setFechaActiva] = useState('15 Feb');
+  const [datos, setDatos] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [retadorAceptado, setRetadorAceptado] = useState(null);
-  const [cancelado, setCancelado] = useState(false);
+  const [accionLoading, setAccionLoading] = useState(null);
+
+  const cargar = useCallback(async () => {
+    try {
+      const res = await solicitudService.misSolicitudes();
+      setDatos(res);
+    } catch {
+      setDatos(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  const partido = datos?.partido ?? null;
+  const solicitudes = datos?.solicitudes ?? datos?.postulantes ?? [];
+  const fechas = solicitudes.length > 0
+    ? [...new Set(solicitudes.map(s => s.fecha ?? s.date).filter(Boolean))]
+    : [];
+  const [fechaActiva, setFechaActiva] = useState(null);
+
+  useEffect(() => {
+    if (fechas.length > 0 && !fechaActiva) setFechaActiva(fechas[0]);
+  }, [fechas.length]);
+
+  const solicitudesFiltradas = fechaActiva
+    ? solicitudes.filter(s => (s.fecha ?? s.date) === fechaActiva)
+    : solicitudes;
+
+  async function handleAceptar(solicitud) {
+    const idSolicitud = solicitud.id_solicitud ?? solicitud.id;
+    const idRetador   = solicitud.id_usuario   ?? solicitud.id_usuario_retador;
+    try {
+      setAccionLoading(idSolicitud);
+      await solicitudService.aceptar(idSolicitud, idRetador);
+      setRetadorAceptado(solicitud);
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'No se pudo aceptar al retador.');
+    } finally {
+      setAccionLoading(null);
+    }
+  }
+
+  async function handleCancelar() {
+    if (!partido) return;
+    const idPartido = partido.id_partido ?? partido.id;
+    Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar tu partido?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Sí, cancelar', style: 'destructive',
+        onPress: async () => {
+          try {
+            await partidoService.cancelar(idPartido);
+            setDatos(prev => ({ ...prev, partido: null }));
+          } catch (e) {
+            Alert.alert('Error', e.message ?? 'No se pudo cancelar el partido.');
+          }
+        },
+      },
+    ]);
+  }
 
   if (retadorAceptado) {
     return (
@@ -71,80 +117,109 @@ export function MisSolicitudesScreen({ navigation }) {
         <Text style={styles.headerTitle}>Mis solicitudes</Text>
       </View>
 
-      {/* Tabs de fecha */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.fechaTabRow}
-        style={styles.fechaTabScroll}
-      >
-        {FECHAS.map(f => (
-          <TouchableOpacity
-            key={f}
-            style={styles.fechaTab}
-            onPress={() => setFechaActiva(f)}
-          >
-            <Text style={[styles.fechaTabText, fechaActiva === f && styles.fechaTabTextActive]}>{f}</Text>
-            {fechaActiva === f && <View style={styles.fechaTabIndicator} />}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-
-        {/* Partido creado */}
-        {!cancelado ? (
-          <View style={styles.partidoCard}>
-            <Image source={{ uri: PARTIDO_CREADO.uri }} style={styles.partidoImg} />
-            <View style={styles.partidoInfo}>
-              <Text style={styles.partidoCancha}>{PARTIDO_CREADO.cancha}</Text>
-              <View style={styles.metaRow}>
-                <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                <Text style={styles.metaText}> {PARTIDO_CREADO.date}</Text>
-                <Text style={{ width: 10 }} />
-                <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                <Text style={styles.metaText}> {PARTIDO_CREADO.time}</Text>
-              </View>
-            </View>
-            <TouchableOpacity onPress={() => setCancelado(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
+      {fechas.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.fechaTabRow}
+          style={styles.fechaTabScroll}
+        >
+          {fechas.map(f => (
+            <TouchableOpacity key={f} style={styles.fechaTab} onPress={() => setFechaActiva(f)}>
+              <Text style={[styles.fechaTabText, fechaActiva === f && styles.fechaTabTextActive]}>{f}</Text>
+              {fechaActiva === f && <View style={styles.fechaTabIndicator} />}
             </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={[styles.partidoCard, { opacity: 0.4 }]}>
-            <View style={[styles.partidoImg, { backgroundColor: '#ccc' }]} />
-            <Text style={styles.partidoCancha}>Partido cancelado</Text>
-          </View>
-        )}
+          ))}
+        </ScrollView>
+      )}
 
-        {/* Jugadores retándote */}
-        <Text style={styles.sectionTitle}>Jugadores retándote</Text>
-        {RETADORES.map(r => (
-          <View key={r.id} style={styles.retadorCard}>
-            <Image source={{ uri: r.avatar }} style={styles.retadorAvatar} />
-            <View style={styles.retadorInfo}>
-              <View style={styles.nameRow}>
-                <Text style={styles.retadorName}>{r.name}</Text>
-                <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
-                <Text style={styles.retadorRanking}> {r.ranking}</Text>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+
+          {/* Partido creado */}
+          {partido ? (
+            <View style={styles.partidoCard}>
+              <Image
+                source={{ uri: partido.foto_cancha_url ?? partido.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
+                style={styles.partidoImg}
+              />
+              <View style={styles.partidoInfo}>
+                <Text style={styles.partidoCancha}>{partido.nombre_cancha ?? partido.cancha ?? 'Cancha'}</Text>
+                <View style={styles.metaRow}>
+                  <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                  <Text style={styles.metaText}> {partido.fecha ?? '--'}</Text>
+                  <Text style={{ width: 10 }} />
+                  <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                  <Text style={styles.metaText}> {partido.hora ?? '--'}</Text>
+                </View>
               </View>
-              <Text style={styles.retadorClub}>{r.club}</Text>
-              <View style={styles.metaRow}>
-                <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                <Text style={styles.metaText}> {r.date}</Text>
-                <Text style={{ width: 10 }} />
-                <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                <Text style={styles.metaText}> {r.time}</Text>
-              </View>
+              <TouchableOpacity onPress={handleCancelar} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.aceptarBtn} onPress={() => setRetadorAceptado(r)}>
-              <Text style={styles.aceptarText}>Aceptar</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
+          ) : (
+            !loading && (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No tienes partidos activos</Text>
+              </View>
+            )
+          )}
 
-        <View style={{ height: 32 }} />
-      </ScrollView>
+          {/* Jugadores retándote */}
+          {solicitudesFiltradas.length > 0 && (
+            <Text style={styles.sectionTitle}>Jugadores retándote</Text>
+          )}
+          {solicitudesFiltradas.map((s, i) => {
+            const idSolicitud = s.id_solicitud ?? s.id ?? String(i);
+            const cargando = accionLoading === idSolicitud;
+            return (
+              <View key={idSolicitud} style={styles.retadorCard}>
+                <Image
+                  source={{ uri: s.foto_perfil_url ?? s.avatar ?? 'https://i.pravatar.cc/150?img=1' }}
+                  style={styles.retadorAvatar}
+                />
+                <View style={styles.retadorInfo}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.retadorName}>{s.nombre ?? s.name ?? 'Jugador'}</Text>
+                    <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
+                    <Text style={styles.retadorRanking}> {s.ranking ?? '--'}</Text>
+                  </View>
+                  <Text style={styles.retadorClub}>{s.nombre_cancha ?? s.club ?? ''}</Text>
+                  <View style={styles.metaRow}>
+                    <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                    <Text style={styles.metaText}> {s.fecha ?? s.date ?? '--'}</Text>
+                    <Text style={{ width: 10 }} />
+                    <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                    <Text style={styles.metaText}> {s.hora ?? s.time ?? '--'}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.aceptarBtn, cargando && { opacity: 0.5 }]}
+                  onPress={() => handleAceptar(s)}
+                  disabled={cargando}
+                >
+                  {cargando
+                    ? <ActivityIndicator size="small" color={colors.textPrimary} />
+                    : <Text style={styles.aceptarText}>Aceptar</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+
+          {!loading && solicitudesFiltradas.length === 0 && (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No hay jugadores retándote aún</Text>
+            </View>
+          )}
+
+          <View style={{ height: 32 }} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -164,51 +239,38 @@ const styles = StyleSheet.create({
 
   fechaTabScroll: { borderBottomWidth: 1, borderBottomColor: colors.border },
   fechaTabRow: { paddingHorizontal: 20 },
-  fechaTab: {
-    paddingVertical: 14,
-    marginRight: 24,
-    position: 'relative',
-  },
+  fechaTab: { paddingVertical: 14, marginRight: 24, position: 'relative' },
   fechaTabText: { fontSize: 15, fontWeight: '500', color: colors.textSecondary },
   fechaTabTextActive: { color: colors.textPrimary, fontWeight: '600' },
   fechaTabIndicator: {
-    position: 'absolute',
-    bottom: 0, left: 0, right: 0,
-    height: 3,
-    backgroundColor: colors.accent,
-    borderRadius: 2,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    height: 3, backgroundColor: colors.accent, borderRadius: 2,
   },
 
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { paddingHorizontal: 20, paddingTop: 16 },
 
   partidoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    gap: 14,
-    marginBottom: 24,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderRadius: 16,
+    padding: 14, gap: 14, marginBottom: 24,
   },
   partidoImg: { width: 70, height: 70, borderRadius: 10, backgroundColor: '#ccc' },
   partidoInfo: { flex: 1 },
   partidoCancha: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
 
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 12,
+  emptyCard: {
+    backgroundColor: colors.surface, borderRadius: 16,
+    padding: 24, alignItems: 'center', marginBottom: 16,
   },
+  emptyText: { fontSize: 14, color: colors.textSecondary },
+
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
 
   retadorCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
-    marginBottom: 12,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderRadius: 16,
+    padding: 14, gap: 12, marginBottom: 12,
   },
   retadorAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#ccc' },
   retadorInfo: { flex: 1 },
@@ -220,49 +282,21 @@ const styles = StyleSheet.create({
   metaText: { fontSize: 12, color: colors.textSecondary },
 
   aceptarBtn: {
-    borderWidth: 1.5,
-    borderColor: colors.textPrimary,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    borderWidth: 1.5, borderColor: colors.textPrimary,
+    borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8,
+    minWidth: 72, alignItems: 'center',
   },
   aceptarText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
 
-  // Success
-  successContainer: {
-    flex: 1,
-    paddingHorizontal: 32,
-    paddingBottom: 40,
-    paddingTop: 20,
-  },
+  successContainer: { flex: 1, paddingHorizontal: 32, paddingBottom: 40, paddingTop: 20 },
   vsCircle: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: '#E8E8E8',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 32,
+    width: 160, height: 160, borderRadius: 80,
+    backgroundColor: '#E8E8E8', alignItems: 'center',
+    justifyContent: 'center', marginBottom: 32,
   },
-  vsAvatar: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: '#ccc',
-    borderWidth: 3, borderColor: '#FFFFFF',
-  },
-  vsText: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary },
-  successTitle: {
-    fontSize: 24, fontWeight: 'bold', color: colors.textPrimary,
-    textAlign: 'center', lineHeight: 32, marginBottom: 12,
-  },
-  successSubtitle: {
-    fontSize: 15, color: colors.textSecondary,
-    textAlign: 'center', lineHeight: 22,
-  },
-  accentBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 30, paddingVertical: 18, alignItems: 'center',
-  },
+  vsAvatar: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#ccc', borderWidth: 3, borderColor: '#FFFFFF' },
+  successTitle: { fontSize: 24, fontWeight: 'bold', color: colors.textPrimary, textAlign: 'center', lineHeight: 32, marginBottom: 12 },
+  successSubtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+  accentBtn: { backgroundColor: colors.accent, borderRadius: 30, paddingVertical: 18, alignItems: 'center' },
   accentBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
 });

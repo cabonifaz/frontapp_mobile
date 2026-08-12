@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  SafeAreaView, Image, ImageBackground, Dimensions, ScrollView,
+  SafeAreaView, Image, ImageBackground, Dimensions, ScrollView, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
-import { PROFILE_MOCK } from '../../data/profileData';
+import { partidoService } from '../../services/partidoService';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H = 200;
@@ -13,28 +13,50 @@ const AVATAR_SIZE = 90;
 
 export function DetallePartidoScreen({ navigation, route }) {
   const item = route?.params?.partido ?? {};
+  const [cancelando, setCancelando] = useState(false);
 
   const rival = {
-    name: item.name ?? 'Renato Pino',
-    ranking: item.ranking ?? 33,
-    pts: item.pts ?? 177,
-    avatar: item.avatar ?? 'https://i.pravatar.cc/150?img=17',
+    name:    item.name    ?? item.nombre_rival ?? 'Rival',
+    ranking: item.ranking ?? item.ranking_rival ?? '--',
+    pts:     item.pts     ?? item.puntos_rival  ?? 0,
+    avatar:  item.avatar  ?? item.foto_rival    ?? 'https://i.pravatar.cc/150?img=17',
   };
 
   const yo = {
-    name: PROFILE_MOCK.nombre,
-    ranking: PROFILE_MOCK.ranking,
-    pts: PROFILE_MOCK.pts,
-    avatar: PROFILE_MOCK.avatar,
+    name:    item.nombre_yo  ?? 'Tú',
+    ranking: item.ranking_yo ?? '--',
+    pts:     item.puntos_yo  ?? 0,
+    avatar:  item.avatar_yo  ?? 'https://i.pravatar.cc/150?img=1',
   };
 
   const partido = {
-    club: item.club ?? 'Club Terrazas Miraflores',
-    address: 'Malecón 28 de Julio 390',
-    date: item.date ?? '12 Feb 2024',
-    time: item.time ?? '15:00',
-    coverUri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80',
+    id:       item.id_partido ?? item.id ?? null,
+    club:     item.club ?? item.nombre_cancha ?? 'Cancha',
+    address:  item.address ?? item.direccion  ?? '',
+    date:     item.date ?? item.fecha ?? '--',
+    time:     item.time ?? item.hora  ?? '--',
+    coverUri: item.foto_cancha_url ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80',
   };
+
+  async function handleCancelar() {
+    Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar este partido?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Sí, cancelar', style: 'destructive',
+        onPress: async () => {
+          try {
+            setCancelando(true);
+            if (partido.id) await partidoService.cancelar(partido.id);
+            navigation.goBack();
+          } catch (e) {
+            Alert.alert('Error', e.message ?? 'No se pudo cancelar el partido.');
+          } finally {
+            setCancelando(false);
+          }
+        },
+      },
+    ]);
+  }
 
   return (
     <View style={styles.root}>
@@ -116,9 +138,9 @@ export function DetallePartidoScreen({ navigation, route }) {
         </Text>
 
         {/* Botones */}
-        <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
           <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
-          <Text style={styles.cancelBtnText}>Cancelar partido</Text>
+          <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar partido'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

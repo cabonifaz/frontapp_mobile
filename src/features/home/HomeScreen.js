@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, ImageBackground,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  SafeAreaView, ImageBackground, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { ACTION_CARDS } from '../../data/homeData';
+import { usuarioService } from '../../services/usuarioService';
 
-function NivelProgress({ percent = 77, size = 54 }) {
+function NivelProgress({ percent = 0, size = 54 }) {
   const strokeWidth = 5;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -58,70 +60,112 @@ function PhotoCard({ card, onPress }) {
 }
 
 export function HomeScreen({ navigation }) {
+  const [usuario, setUsuario] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
   const leftCards = [ACTION_CARDS[0], ACTION_CARDS[2]];
   const rightCards = [ACTION_CARDS[1], ACTION_CARDS[3]];
 
+  const cargarDatos = useCallback(async () => {
+    try {
+      const data = await usuarioService.menuPrincipal();
+      setUsuario(data);
+    } catch {
+      // Si falla, se queda con null y muestra '--'
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    cargarDatos();
+  }, [cargarDatos]);
+
+  const pctNivel = usuario?.porcentaje_nivel ?? 0;
+
   return (
     <SafeAreaView style={styles.safe}>
-      <SharedHeader />
+      <SharedHeader
+        nombre={usuario?.nombre}
+        deporte={usuario?.deporte}
+        ranking={usuario?.ranking}
+        calificacion={usuario?.calificacion}
+        nivel={usuario?.nivel}
+        puntos={usuario?.puntos}
+        fotoPerfil={usuario?.foto_perfil_url}
+      />
       <View style={styles.sheet}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.accent} />
+          </View>
+        ) : (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
+          >
+            <Text style={styles.sectionTitle}>Tus estadísticas</Text>
 
-          <Text style={styles.sectionTitle}>Tus estadísticas</Text>
-
-          <View style={styles.statsRow}>
-            {/* Ranking card */}
-            <View style={styles.statCard}>
-              <View style={styles.statTopRow}>
-                <Text style={styles.statNumber}>33</Text>
-                <Ionicons name="trophy" size={20} color={colors.textPrimary} style={{ marginLeft: 6, marginTop: 6 }} />
-                <Text style={styles.statArrow}>  ↑ 3</Text>
-              </View>
-              <Text style={styles.statLabel}>Ranking</Text>
-            </View>
-
-            {/* Nivel card */}
-            <View style={styles.statCard}>
-              <View style={styles.statTopRow}>
-                <View>
-                  <Text style={styles.statNumber}>17</Text>
-                  <Text style={styles.statLabel}>Nivel</Text>
+            <View style={styles.statsRow}>
+              {/* Ranking card */}
+              <View style={styles.statCard}>
+                <View style={styles.statTopRow}>
+                  <Text style={styles.statNumber}>{usuario?.ranking ?? '--'}</Text>
+                  <Ionicons name="trophy" size={20} color={colors.textPrimary} style={{ marginLeft: 6, marginTop: 6 }} />
                 </View>
-                <View style={{ alignItems: 'center', marginLeft: 'auto' }}>
-                  <View style={styles.progressWrapper}>
-                    <NivelProgress percent={77} />
-                    <Text style={styles.progressPct}>77%</Text>
+                <Text style={styles.statLabel}>Ranking</Text>
+              </View>
+
+              {/* Nivel card */}
+              <View style={styles.statCard}>
+                <View style={styles.statTopRow}>
+                  <View>
+                    <Text style={styles.statNumber}>{usuario?.nivel ?? '--'}</Text>
+                    <Text style={styles.statLabel}>Nivel</Text>
                   </View>
-                  <Text style={styles.nivelPts}>1050 pts</Text>
+                  <View style={{ alignItems: 'center', marginLeft: 'auto' }}>
+                    <View style={styles.progressWrapper}>
+                      <NivelProgress percent={pctNivel} />
+                      <Text style={styles.progressPct}>{pctNivel}%</Text>
+                    </View>
+                    <Text style={styles.nivelPts}>{usuario?.puntos != null ? `${usuario.puntos} pts` : '-- pts'}</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
 
-          <Text style={styles.sectionTitle}>¿Qué deseas hacer hoy?</Text>
+            <Text style={styles.sectionTitle}>¿Qué deseas hacer hoy?</Text>
 
-          <View style={styles.grid}>
-            <View style={styles.gridCol}>
-              {leftCards.map((c, i) => (
-                <PhotoCard
-                  key={c.id}
-                  card={c}
-                  onPress={() => c.route && navigation.navigate(c.route)}
-                />
-              ))}
+            <View style={styles.grid}>
+              <View style={styles.gridCol}>
+                {leftCards.map((c) => (
+                  <PhotoCard
+                    key={c.id}
+                    card={c}
+                    onPress={() => c.route && navigation.navigate(c.route)}
+                  />
+                ))}
+              </View>
+              <View style={styles.gridCol}>
+                {rightCards.map((c) => (
+                  <PhotoCard
+                    key={c.id}
+                    card={c}
+                    onPress={() => c.route && navigation.navigate(c.route)}
+                  />
+                ))}
+              </View>
             </View>
-            <View style={styles.gridCol}>
-              {rightCards.map((c) => (
-                <PhotoCard
-                  key={c.id}
-                  card={c}
-                  onPress={() => c.route && navigation.navigate(c.route)}
-                />
-              ))}
-            </View>
-          </View>
-
-        </ScrollView>
+          </ScrollView>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -138,6 +182,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -170,11 +219,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: colors.textPrimary,
-  },
-  statArrow: {
-    fontSize: 14,
-    color: colors.positive,
-    fontWeight: '700',
   },
   statLabel: {
     fontSize: 13,

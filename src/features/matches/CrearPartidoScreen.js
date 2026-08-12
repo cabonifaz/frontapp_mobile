@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Image, Modal, TextInput,
+  SafeAreaView, Image, Modal, TextInput, Alert,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { COURTS } from '../../data/buscarPartidoData';
+import { partidoService } from '../../services/partidoService';
+import { TIPOS_JUEGO, DEPORTE_DEFAULT } from '../../constants/maestro';
 
 const HORAS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
@@ -19,10 +21,18 @@ function getNextDays(n = 14) {
   for (let i = 0; i < n; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
-    days.push({ key: String(i), day: d.getDate(), month: MESES[d.getMonth()] });
+    const yyyy = d.getFullYear();
+    const mm   = String(d.getMonth() + 1).padStart(2, '0');
+    const dd   = String(d.getDate()).padStart(2, '0');
+    days.push({ key: String(i), day: d.getDate(), month: MESES[d.getMonth()], iso: `${yyyy}-${mm}-${dd}` });
   }
   return days;
 }
+
+const TIPO_JUEGO_MAP = {
+  '1 vs 1': TIPOS_JUEGO.UNO_VS_UNO,
+  '2 vs 2': TIPOS_JUEGO.DOBLES,
+};
 
 const DAYS = getNextDays(14);
 
@@ -97,6 +107,7 @@ export function CrearPartidoScreen({ navigation, route }) {
   const [tipoJuego, setTipoJuego] = useState('1 vs 1');
   const [showCanchaModal, setShowCanchaModal] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [creando, setCreando] = useState(false);
 
   const canConfirm = !!cancha && !!fecha && !!hora;
 
@@ -209,10 +220,31 @@ export function CrearPartidoScreen({ navigation, route }) {
         <TouchableOpacity
           style={[styles.confirmBtn, !canConfirm && styles.confirmBtnDisabled]}
           disabled={!canConfirm}
-          onPress={() => setSuccess(true)}
+          onPress={async () => {
+            try {
+              setCreando(true);
+              const datos = {
+                id_cancha:     cancha.id,
+                fecha:         fecha.iso,
+                hora,
+                id_tipo_juego: TIPO_JUEGO_MAP[tipoJuego] ?? TIPOS_JUEGO.UNO_VS_UNO,
+                id_deporte:    DEPORTE_DEFAULT,
+              };
+              if (tipo === 'Rankeado') {
+                await partidoService.crearRankeado(datos);
+              } else {
+                await partidoService.crearAmistoso(datos);
+              }
+              setSuccess(true);
+            } catch (e) {
+              Alert.alert('Error', e.message ?? 'No se pudo crear el partido.');
+            } finally {
+              setCreando(false);
+            }
+          }}
         >
           <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
-            Confirmar
+            {creando ? 'Creando...' : 'Confirmar'}
           </Text>
         </TouchableOpacity>
       </View>

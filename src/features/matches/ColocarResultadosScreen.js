@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Image, TextInput, KeyboardAvoidingView, Platform,
+  SafeAreaView, Image, TextInput, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
-import { PROFILE_MOCK } from '../../data/profileData';
+import { resultadoService } from '../../services/resultadoService';
 
 function ScoreRow({ index, myScore, rivalScore, onChangeMyScore, onChangeRivalScore }) {
   return (
@@ -54,7 +54,7 @@ function StarRating({ rating, onRate }) {
   );
 }
 
-function ConfirmationView({ scores, rivalName, onReview, onAgree }) {
+function ConfirmationView({ scores, rivalName, onReview, onAgree, loading }) {
   return (
     <View style={styles.confirmContainer}>
       <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -86,16 +86,18 @@ function ConfirmationView({ scores, rivalName, onReview, onAgree }) {
 
 export function ColocarResultadosScreen({ navigation, route }) {
   const partido = route?.params?.partido ?? {};
+  const idPartido = partido.id_partido ?? partido.id ?? null;
   const rival = {
-    name: partido.name ?? 'Renato Pino',
-    avatar: partido.avatar ?? 'https://i.pravatar.cc/150?img=17',
-    pts: partido.pts ?? 177,
-    ranking: partido.ranking ?? 33,
+    id:     partido.id_rival ?? partido.id_usuario_rival ?? null,
+    name:   partido.name    ?? partido.nombre_rival ?? 'Rival',
+    avatar: partido.avatar  ?? partido.foto_rival   ?? 'https://i.pravatar.cc/150?img=17',
+    pts:    partido.pts     ?? partido.puntos_rival  ?? 0,
+    ranking:partido.ranking ?? partido.ranking_rival ?? '--',
   };
   const yo = {
-    name: PROFILE_MOCK.nombre,
-    avatar: PROFILE_MOCK.avatar,
-    pts: PROFILE_MOCK.pts,
+    name:   partido.nombre_yo   ?? 'Tú',
+    avatar: partido.avatar_yo   ?? 'https://i.pravatar.cc/150?img=1',
+    pts:    partido.puntos_yo   ?? 0,
   };
 
   const [scores, setScores] = useState([
@@ -106,6 +108,8 @@ export function ColocarResultadosScreen({ navigation, route }) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [confirmed, setConfirmed] = useState(false);
+  const [publicando, setPublicando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
 
   const updateScore = (index, side, value) => {
     setScores(prev => prev.map((s, i) => i === index ? { ...s, [side]: value } : s));
@@ -113,14 +117,54 @@ export function ColocarResultadosScreen({ navigation, route }) {
 
   const canConfirm = scores.some(s => s.my !== '' || s.rival !== '');
 
+  async function handlePublicar() {
+    try {
+      setPublicando(true);
+      const sets = scores
+        .filter(s => s.my !== '' || s.rival !== '')
+        .map(s => ({ mi_puntaje: Number(s.my) || 0, puntaje_rival: Number(s.rival) || 0 }));
+      if (idPartido) {
+        await resultadoService.publicar(idPartido, {
+          idRival:          rival.id,
+          calificacionRival: rating,
+          comentario:       comment,
+          sets,
+        });
+      }
+      setConfirmed(true);
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'No se pudo publicar el resultado.');
+    } finally {
+      setPublicando(false);
+    }
+  }
+
+  async function handleConfirmar(estaDeAcuerdo) {
+    try {
+      setConfirmando(true);
+      const sets = scores
+        .filter(s => s.my !== '' || s.rival !== '')
+        .map(s => ({ mi_puntaje: Number(s.my) || 0, puntaje_rival: Number(s.rival) || 0 }));
+      if (idPartido) {
+        await resultadoService.confirmar(idPartido, { estaDeAcuerdo, idRival: rival.id, sets });
+      }
+      navigation.navigate('MainTabs', { screen: 'Partidos' });
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'No se pudo confirmar el resultado.');
+    } finally {
+      setConfirmando(false);
+    }
+  }
+
   if (confirmed) {
     return (
       <SafeAreaView style={styles.safe}>
         <ConfirmationView
           scores={scores}
           rivalName={rival.name.split(' ')[0]}
-          onReview={() => navigation.goBack()}
-          onAgree={() => navigation.navigate('MainTabs', { screen: 'Partidos' })}
+          onReview={() => handleConfirmar(false)}
+          onAgree={() => handleConfirmar(true)}
+          loading={confirmando}
         />
       </SafeAreaView>
     );
@@ -198,8 +242,8 @@ export function ColocarResultadosScreen({ navigation, route }) {
         <View style={styles.bottomBar}>
           <TouchableOpacity
             style={[styles.confirmBtn, !canConfirm && styles.confirmBtnDisabled]}
-            disabled={!canConfirm}
-            onPress={() => setConfirmed(true)}
+            disabled={!canConfirm || publicando}
+            onPress={handlePublicar}
           >
             <Ionicons
               name="scoreboard-outline"
@@ -207,7 +251,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
               color={canConfirm ? colors.primary : colors.textSecondary}
             />
             <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
-              Confirmar resultados
+              {publicando ? 'Publicando...' : 'Confirmar resultados'}
             </Text>
           </TouchableOpacity>
         </View>

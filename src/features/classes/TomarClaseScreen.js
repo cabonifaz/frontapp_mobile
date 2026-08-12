@@ -19,7 +19,10 @@ function getNextDays(n = 14) {
   for (let i = 0; i < n; i++) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
-    days.push({ key: String(i), day: d.getDate(), month: MESES[d.getMonth()] });
+    const yyyy = d.getFullYear();
+    const mm   = String(d.getMonth() + 1).padStart(2, '0');
+    const dd   = String(d.getDate()).padStart(2, '0');
+    days.push({ key: String(i), day: d.getDate(), month: MESES[d.getMonth()], iso: `${yyyy}-${mm}-${dd}` });
   }
   return days;
 }

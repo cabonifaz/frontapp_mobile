@@ -5,32 +5,36 @@ import { colors } from '../../constants';
 
 export const HEADER_BG = colors.dark;
 
-export function SharedHeader() {
+export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, puntos, fotoPerfil }) {
   return (
     <View style={styles.header}>
       <View style={styles.left}>
         <Image
-          source={{ uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxUzKngXZcLOT11hp0FMnpwDtCusZVoIm2kCLfXtUfDg&s=10' }}
+          source={
+            fotoPerfil
+              ? { uri: fotoPerfil }
+              : { uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxUzKngXZcLOT11hp0FMnpwDtCusZVoIm2kCLfXtUfDg&s=10' }
+          }
           style={styles.avatar}
         />
         <View>
-          <Text style={styles.sport}>Tenis</Text>
-          <Text style={styles.name}>Hola Javier</Text>
+          <Text style={styles.sport}>{deporte ?? 'Frontón'}</Text>
+          <Text style={styles.name}>Hola {nombre ?? '...'}</Text>
           <View style={styles.statsRow}>
             <Ionicons name="trophy" size={14} color="#DDDDDD" />
-            <Text style={styles.statText}> 33</Text>
+            <Text style={styles.statText}> {ranking ?? '--'}</Text>
             <Text style={{ width: 12 }} />
             <Ionicons name="star" size={14} color="#DDDDDD" />
-            <Text style={styles.statText}> 4.5</Text>
+            <Text style={styles.statText}> {calificacion ?? '--'}</Text>
           </View>
         </View>
       </View>
 
       <View style={styles.rightBadge}>
         <View style={styles.levelCircle}>
-          <Text style={styles.levelNum}>17</Text>
+          <Text style={styles.levelNum}>{nivel ?? '--'}</Text>
         </View>
-        <Text style={styles.ptsLabel}>1050 pts</Text>
+        <Text style={styles.ptsLabel}>{puntos != null ? `${puntos} pts` : '-- pts'}</Text>
       </View>
     </View>
   );

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  SafeAreaView, Image, ImageBackground, Dimensions,
+  SafeAreaView, Image, ImageBackground, Dimensions, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
+import { claseService } from '../../services/claseService';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H = 200;
@@ -34,18 +35,53 @@ function PuntosScreen({ onVolver }) {
 
 export function DetalleClaseScreen({ navigation, route }) {
   const clase = route?.params?.clase ?? {};
+  const idClase = clase.id_clase ?? clase.id ?? null;
   const [completada, setCompletada] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [completando, setCompletando] = useState(false);
 
   const profesor = {
-    name: clase.name ?? 'O. Bendezú',
-    ranking: clase.ranking ?? 33,
-    avatar: clase.avatar ?? 'https://i.pravatar.cc/150?img=40',
-    club: clase.club ?? 'Club Terrazas',
-    address: clase.address ?? 'Malecón 28 de Julio 390',
-    date: clase.date ?? '15 Feb',
-    time: clase.time ?? '15:00',
-    coverUri: 'https://images.unsplash.com/photo-1495555961986-b22e827a8f31?w=800&q=80',
+    name:     clase.nombre_profesor ?? clase.name    ?? 'Profesor',
+    ranking:  clase.ranking_profesor ?? clase.ranking ?? '--',
+    avatar:   clase.foto_profesor    ?? clase.avatar  ?? 'https://i.pravatar.cc/150?img=40',
+    club:     clase.nombre_cancha    ?? clase.club    ?? 'Cancha',
+    address:  clase.direccion        ?? clase.address ?? '',
+    date:     clase.fecha            ?? clase.date    ?? '--',
+    time:     clase.hora             ?? clase.time    ?? '--',
+    coverUri: clase.foto_cancha_url  ?? 'https://images.unsplash.com/photo-1495555961986-b22e827a8f31?w=800&q=80',
   };
+
+  async function handleCancelar() {
+    Alert.alert('Cancelar clase', '¿Seguro que quieres cancelar esta clase?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Sí, cancelar', style: 'destructive',
+        onPress: async () => {
+          try {
+            setCancelando(true);
+            if (idClase) await claseService.cancelar(idClase);
+            navigation.goBack();
+          } catch (e) {
+            Alert.alert('Error', e.message ?? 'No se pudo cancelar la clase.');
+          } finally {
+            setCancelando(false);
+          }
+        },
+      },
+    ]);
+  }
+
+  async function handleCompletar() {
+    try {
+      setCompletando(true);
+      if (idClase) await claseService.completar(idClase);
+      setCompletada(true);
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'No se pudo marcar la clase como completada.');
+    } finally {
+      setCompletando(false);
+    }
+  }
 
   if (completada) {
     return (
@@ -114,14 +150,14 @@ export function DetalleClaseScreen({ navigation, route }) {
         <View style={{ flex: 1 }} />
 
         {/* Botones */}
-        <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
           <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
-          <Text style={styles.cancelBtnText}>Cancelar clase</Text>
+          <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar clase'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.completadaBtn} onPress={() => setCompletada(true)}>
+        <TouchableOpacity style={styles.completadaBtn} onPress={handleCompletar} disabled={completando}>
           <Ionicons name="checkmark" size={20} color={colors.primary} />
-          <Text style={styles.completadaBtnText}>Clase completada</Text>
+          <Text style={styles.completadaBtnText}>{completando ? 'Guardando...' : 'Clase completada'}</Text>
         </TouchableOpacity>
       </View>
     </View>
