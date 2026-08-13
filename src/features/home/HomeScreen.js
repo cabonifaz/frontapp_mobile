@@ -69,9 +69,23 @@ export function HomeScreen({ navigation }) {
 
   const cargarDatos = useCallback(async () => {
     try {
-      const data = await usuarioService.menuPrincipal();
-      setUsuario(data);
-    } catch {
+      let raw = await usuarioService.menuPrincipal();
+      if (!raw || raw === '') {
+        try { raw = await usuarioService.perfil(); } catch { raw = null; }
+      }
+      if (raw) {
+        setUsuario({
+          nombre:           raw.nombre_usuario    ?? raw.nombre           ?? raw.nombre_completo?.split(' ')[0] ?? null,
+          foto_perfil_url:  raw.foto_perfil_url   ?? null,
+          deporte:          raw.deporte            ?? 'Frontón',
+          ranking:          raw.posicion_ranking   ?? raw.ranking          ?? null,
+          calificacion:     raw.calificacion_promedio ?? raw.calificacion  ?? null,
+          nivel:            raw.nivel_actual       ?? raw.nivel_calculado  ?? raw.nivel           ?? null,
+          puntos:           raw.puntos_totales     ?? raw.puntaje_total    ?? raw.puntos          ?? null,
+          porcentaje_nivel: raw.progreso_nivel_pct ?? raw.progreso_nivel_porcentaje ?? raw.porcentaje_nivel ?? 0,
+        });
+      }
+    } catch (e) {
       // Si falla, se queda con null y muestra '--'
     } finally {
       setLoading(false);
@@ -118,7 +132,7 @@ export function HomeScreen({ navigation }) {
               {/* Ranking card */}
               <View style={styles.statCard}>
                 <View style={styles.statTopRow}>
-                  <Text style={styles.statNumber}>{usuario?.ranking ?? '--'}</Text>
+                  <Text style={styles.statNumber}>{usuario?.ranking ?? 'N/R'}</Text>
                   <Ionicons name="trophy" size={20} color={colors.textPrimary} style={{ marginLeft: 6, marginTop: 6 }} />
                 </View>
                 <Text style={styles.statLabel}>Ranking</Text>

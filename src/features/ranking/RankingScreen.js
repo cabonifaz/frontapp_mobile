@@ -8,8 +8,10 @@ import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { TEMPORADAS, FILTERS, PLAYER_DATA } from '../../data/rankingData';
 import { rankingService } from '../../services/rankingService';
+import { useUsuario } from '../../hooks/useUsuario';
 
 function Podium({ players }) {
+  if (!players || players.length < 3) return null;
   const top3 = players.slice(0, 3);
   const order = [top3[1], top3[0], top3[2]];
   const stepHeights = [54, 80, 36];
@@ -57,6 +59,7 @@ function PlayerRow({ player, onPress }) {
 }
 
 export function RankingScreen({ navigation }) {
+  const usuario = useUsuario();
   const [filter, setFilter] = useState('General');
   const [temporada, setTemporada] = useState('Verano 2024');
   const [showModal, setShowModal] = useState(false);
@@ -69,14 +72,31 @@ export function RankingScreen({ navigation }) {
       : filter === 'Femenino' ? 'GENERO_FEMENINO' : null;
     setLoading(true);
     rankingService.listar({ filtroGenero })
-      .then(data => setPlayers(data.length ? data : PLAYER_DATA[filter]))
+      .then(data => {
+        const normalized = (Array.isArray(data) ? data : []).map(p => ({
+          name:       p.nombre_completo  ?? p.nombre_usuario ?? p.name ?? 'N/A',
+          avatar:     p.foto_perfil_url  ?? p.avatar ?? null,
+          pts:        p.puntos           ?? p.puntaje_total  ?? p.pts ?? 0,
+          pos:        p.posicion         ?? p.posicion_ranking ?? p.ranking ?? p.pos ?? 0,
+          id_usuario: p.id_usuario,
+        }));
+        setPlayers(normalized.length ? normalized : PLAYER_DATA[filter]);
+      })
       .catch(() => setPlayers(PLAYER_DATA[filter]))
       .finally(() => setLoading(false));
   }, [filter]);
 
   return (
     <SafeAreaView style={styles.safe}>
-      <SharedHeader />
+      <SharedHeader
+        nombre={usuario?.nombre}
+        deporte={usuario?.deporte}
+        ranking={usuario?.ranking}
+        calificacion={usuario?.calificacion}
+        nivel={usuario?.nivel}
+        puntos={usuario?.puntos}
+        fotoPerfil={usuario?.foto_perfil_url}
+      />
       <View style={styles.sheet}>
         <ScrollView showsVerticalScrollIndicator={false}>
 

@@ -15,9 +15,10 @@ const NIVEL_JUEGO_MAP = {
   'Intermedio':   NIVELES_JUEGO.INTERMEDIO,
   'Avanzado':     NIVELES_JUEGO.AVANZADO,
 };
-const GENERO_MAP   = { 'Masculino': GENEROS.MASCULINO, 'Femenino': GENEROS.FEMENINO };
-const DEPORTE_MAP  = { 'fronton': DEPORTES.FRONTON, 'tenis': DEPORTES.TENIS, 'padel': DEPORTES.PADEL };
-const PARTIDOS_MAP = { '0': 0, '1': 1, '2 o más': 2 };
+const GENERO_MAP      = { 'Masculino': GENEROS.MASCULINO, 'Femenino': GENEROS.FEMENINO };
+const DEPORTE_MAP     = { 'fronton': DEPORTES.FRONTON, 'tenis': DEPORTES.TENIS, 'padel': DEPORTES.PADEL };
+const PARTIDOS_MAP    = { '0': 0, '1': 1, '2 o más': 2 };
+const NIVEL_FISICO_MAP = { 'Malo': 1, 'Regular': 2, 'Bueno': 3 };
 
 // --- Shared sub-components ---
 
@@ -123,7 +124,7 @@ function CheckboxRow({ label, checked, onToggle }) {
 
 function Step1({ data, setData, onNext }) {
   const edades = Array.from({ length: 82 }, (_, i) => String(i + 13));
-  const canContinue = data.terminos && data.nombre && data.apellido && data.correo && data.contrasena;
+  const canContinue = data.terminos && data.nombre && data.apellido && data.correo && data.contrasena && data.genero && data.edad;
 
   return (
     <ScrollView
@@ -292,7 +293,7 @@ function Step2({ data, setData, onNext, onBack }) {
 // --- Step 3: Determina tu nivel ---
 
 function Step3({ data, setData, onNext, onBack }) {
-  const canContinue = data.nivel && data.partidos_semana && data.nivel_fisico;
+  const canContinue = data.nivel && data.partidos_semana && data.lecciones && data.nivel_fisico;
 
   return (
     <ScrollView
@@ -397,7 +398,7 @@ function Step4({ onFinish, onBack, loading }) {
 
 // --- Step 5: Nivel revelado ---
 
-function StepNivel({ nivel, onStart }) {
+function StepNivel({ nivel, puntaje, onStart }) {
   return (
     <View style={styles.nivelScreen}>
       <View style={styles.nivelCircle}>
@@ -409,7 +410,10 @@ function StepNivel({ nivel, onStart }) {
 
       <Text style={styles.nivelTitle}>¡Genial! Eres nivel {nivel}</Text>
       <Text style={styles.nivelSubtitle}>
-        Te hemos otorgado 100 pts.{'\n'}Juega partidas y gana más.
+        {puntaje != null
+          ? `Te hemos otorgado ${Number(puntaje).toFixed(1)} pts.`
+          : 'Ya tienes tus primeros puntos.'
+        }{'\n'}Juega partidas y gana más.
       </Text>
 
       <TouchableOpacity style={styles.nivelBtn} onPress={onStart} activeOpacity={0.85}>
@@ -427,6 +431,7 @@ export function RegisterScreen({ navigation }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [nivelObtenido, setNivelObtenido] = useState(null);
+  const [puntajeObtenido, setPuntajeObtenido] = useState(null);
   const [data, setData] = useState({
     nombre: '', apellido: '', genero: '', edad: '',
     correo: '', celular: '', contrasena: '',
@@ -478,16 +483,17 @@ export function RegisterScreen({ navigation }) {
         const idDeporte = DEPORTE_MAP[data.deporte] ?? DEPORTE_DEFAULT;
         const resultado = await usuarioService.cuestionario({
           idDeporte,
-          nivelFisico:        data.nivel_fisico,
+          nivelFisico:        NIVEL_FISICO_MAP[data.nivel_fisico] ?? 1,
           idNivelJuego:       NIVEL_JUEGO_MAP[data.nivel] ?? NIVELES_JUEGO.PRINCIPIANTE,
           partidosSemanales:  PARTIDOS_MAP[data.partidos_semana] ?? 0,
           leccionesSemanales: PARTIDOS_MAP[data.lecciones] ?? 0,
-          edad:               parseInt(data.edad) || null,
-          idGenero:           GENERO_MAP[data.genero] ?? null,
+          edad:               parseInt(data.edad),
+          idGenero:           GENERO_MAP[data.genero],
         });
         nivelCalculado = resultado.nivelCalculado ?? 1;
-      } catch {
-        // Si el cuestionario falla, el registro ya fue exitoso — continúa con nivel por defecto
+        setPuntajeObtenido(resultado.puntajeInicial ?? null);
+      } catch (e) {
+        Alert.alert('Error en cuestionario', e.message ?? 'No se pudo completar el cuestionario.');
       }
 
       setNivelObtenido(nivelCalculado);
@@ -501,7 +507,8 @@ export function RegisterScreen({ navigation }) {
   if (step === 5) {
     return (
       <StepNivel
-        nivel={nivelObtenido || 12}
+        nivel={nivelObtenido || 1}
+        puntaje={puntajeObtenido}
         onStart={() => navigation.replace('MainTabs')}
       />
     );

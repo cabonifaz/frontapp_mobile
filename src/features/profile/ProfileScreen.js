@@ -158,7 +158,7 @@ function EstadisticasTab({ p }) {
         {/* Ranking */}
         <View style={[styles.statCard, { flex: 1, marginRight: 8 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
-            <Text style={styles.bigNum}>{p.ranking}</Text>
+            <Text style={styles.bigNum}>{p.ranking ?? 'N/R'}</Text>
             <Ionicons name="trophy" size={18} color={colors.textPrimary} style={{ marginLeft: 6, marginTop: 8 }} />
           </View>
           <Text style={styles.statCardLabel}>Ranking</Text>
@@ -225,21 +225,21 @@ export function ProfileScreen({ navigation, route }) {
       .then(res => {
         if (res) setProfile({
           ...PROFILE_MOCK,
-          nombre:            res.nombre          ?? PROFILE_MOCK.nombre,
+          nombre:            res.nombre           ?? res.nombre_completo                  ?? PROFILE_MOCK.nombre,
           avatar:            res.foto_perfil_url  ?? PROFILE_MOCK.avatar,
-          ranking:           res.ranking          ?? PROFILE_MOCK.ranking,
-          pts:               res.puntos           ?? PROFILE_MOCK.pts,
-          nivel:             res.nivel            ?? PROFILE_MOCK.nivel,
-          progresoNivel:     res.porcentaje_nivel ?? PROFILE_MOCK.progresoNivel,
-          puntajeNivel:      res.puntos           ?? PROFILE_MOCK.puntajeNivel,
-          partidos:          res.partidos_totales     ?? PROFILE_MOCK.partidos,
-          partidosRankeados: res.partidos_rankeados   ?? PROFILE_MOCK.partidosRankeados,
-          victorias:         res.victorias_totales    ?? PROFILE_MOCK.victorias,
-          victoriasRankeadas:res.victorias_rankeadas  ?? PROFILE_MOCK.victoriasRankeadas,
-          deporte:           res.deporte_nombre    ?? PROFILE_MOCK.deporte,
-          sobreMi:           res.descripcion       ?? PROFILE_MOCK.sobreMi,
-          rankingHistory:    res.historial_ranking  ?? PROFILE_MOCK.rankingHistory,
-          resultados:        res.resultados         ?? PROFILE_MOCK.resultados,
+          ranking:           res.ranking          ?? res.posicion_ranking                 ?? PROFILE_MOCK.ranking,
+          pts:               res.puntos           ?? res.puntaje_total                    ?? PROFILE_MOCK.pts,
+          nivel:             res.nivel            ?? res.nivel_calculado                  ?? PROFILE_MOCK.nivel,
+          progresoNivel:     res.porcentaje_nivel ?? res.progreso_nivel_porcentaje         ?? PROFILE_MOCK.progresoNivel,
+          puntajeNivel:      res.puntos           ?? res.puntaje_total                    ?? PROFILE_MOCK.puntajeNivel,
+          partidos:          res.partidos_totales  ?? res.total_partidos                  ?? PROFILE_MOCK.partidos,
+          partidosRankeados: res.partidos_rankeados ?? PROFILE_MOCK.partidosRankeados,
+          victorias:         res.victorias         ?? res.victorias_totales             ?? PROFILE_MOCK.victorias,
+          victoriasRankeadas:res.victorias_rankeadas ?? PROFILE_MOCK.victoriasRankeadas,
+          deporte:           res.deporte_nombre   ?? res.deporte                          ?? PROFILE_MOCK.deporte,
+          sobreMi:           res.descripcion      ?? res.bio_profesor                     ?? PROFILE_MOCK.sobreMi,
+          rankingHistory:    res.historial_ranking ?? PROFILE_MOCK.rankingHistory,
+          resultados:        res.resultados        ?? PROFILE_MOCK.resultados,
         });
       })
       .catch(() => {})

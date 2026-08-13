@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  SafeAreaView, Image,
+  SafeAreaView, Image, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { PROFILE_MOCK } from '../../data/profileData';
+import { partidoService } from '../../services/partidoService';
 
 function SuccessScreen({ player, onVolver }) {
   const firstName = player.name?.split(' ')[0] ?? player.name;
@@ -33,6 +34,20 @@ export function RetarScreen({ navigation, route }) {
   const player = route?.params?.player ?? {};
   const firstName = player.name?.split(' ')[0] ?? 'este jugador';
   const [success, setSuccess] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+
+  async function handleConfirmar() {
+    try {
+      setConfirmando(true);
+      const idPartido = player.id ?? player.id_partido ?? null;
+      if (idPartido) await partidoService.postular(idPartido);
+      setSuccess(true);
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'No se pudo enviar el reto.');
+    } finally {
+      setConfirmando(false);
+    }
+  }
 
   if (success) {
     return (
@@ -57,7 +72,7 @@ export function RetarScreen({ navigation, route }) {
           style={styles.playerCard}
           activeOpacity={0.75}
           onPress={() => navigation.navigate('PlayerProfile', {
-            player: { nombre: player.name, pts: player.pts ?? 177, ranking: player.ranking, avatar: player.avatar }
+            player: { nombre: player.name ?? player.nombre_usuario, pts: player.pts ?? player.puntaje_total ?? 177, ranking: player.ranking ?? player.posicion_ranking, avatar: player.avatar ?? player.foto_perfil_url, id_usuario: player.id_usuario ?? player.id_jugador }
           })}
         >
           <Image source={{ uri: player.avatar }} style={styles.playerAvatar} />
@@ -105,8 +120,8 @@ export function RetarScreen({ navigation, route }) {
       </View>
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.confirmBtn} onPress={() => setSuccess(true)}>
-          <Text style={styles.confirmBtnText}>Confirmar reto</Text>
+        <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirmar} disabled={confirmando}>
+          <Text style={styles.confirmBtnText}>{confirmando ? 'Enviando...' : 'Confirmar reto'}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

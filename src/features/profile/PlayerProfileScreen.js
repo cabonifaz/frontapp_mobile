@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ImageBackground, Dimensions, SafeAreaView,
+  Image, ImageBackground, Dimensions, SafeAreaView, ActivityIndicator,
 } from 'react-native';
 import Svg, { Polyline, Circle, Text as SvgText } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { PLAYER_MOCK } from '../../data/profileData';
+import { rankingService } from '../../services/rankingService';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H  = 220;
@@ -176,10 +177,47 @@ function ResultadosTab({ p }) {
 
 export function PlayerProfileScreen({ navigation, route }) {
   const [activeTab, setActiveTab] = useState('Estadísticas');
-
-  // Merge datos básicos del param con el mock completo
   const basicData = route.params?.player ?? {};
-  const profile = { ...PLAYER_MOCK, ...basicData };
+  const [profile, setProfile] = useState({ ...PLAYER_MOCK, ...basicData });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const idUsuario = basicData.id_usuario ?? null;
+    if (!idUsuario) return;
+    setLoading(true);
+    rankingService.perfil(idUsuario)
+      .then(res => {
+        if (res) {
+          setProfile(prev => ({
+            ...prev,
+            nombre:             res.nombre_completo    ?? res.nombre            ?? prev.nombre,
+            ranking:            res.posicion_ranking   ?? res.ranking           ?? prev.ranking,
+            pts:                res.puntaje_total      ?? res.puntos            ?? prev.pts,
+            nivel:              res.nivel_calculado    ?? res.nivel             ?? prev.nivel,
+            progresoNivel:      res.progreso_nivel_porcentaje ?? res.porcentaje_nivel ?? prev.progresoNivel,
+            puntajeNivel:       res.puntaje_total      ?? res.puntos            ?? prev.puntajeNivel,
+            partidos:           res.total_partidos     ?? res.partidos_totales  ?? prev.partidos,
+            partidosRankeados:  res.partidos_rankeados ?? prev.partidosRankeados,
+            victoriasRankeadas: res.victorias_rankeadas ?? prev.victoriasRankeadas,
+            victorias:          res.victorias          ?? prev.victorias,
+            deporte:            res.deporte            ?? prev.deporte,
+            sobreMi:            res.descripcion        ?? res.sobre_mi          ?? prev.sobreMi,
+            avatar:             res.foto_perfil_url    ?? prev.avatar,
+            coverUri:           res.foto_cancha_url    ?? prev.coverUri,
+          }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>

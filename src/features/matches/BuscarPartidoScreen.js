@@ -234,7 +234,23 @@ export function BuscarPartidoScreen({ navigation, route }) {
       ? partidoService.buscarRankeado({ idDeporte: 1 })
       : partidoService.buscarAmistoso({ idDeporte: 1 });
     call
-      .then(res => { if (Array.isArray(res) && res.length) setBasePlayers(res); })
+      .then(res => {
+        if (Array.isArray(res) && res.length) {
+          const normalized = res.map(p => ({
+            id:         p.id_partido,
+            id_partido: p.id_partido,
+            id_usuario: p.id_usuario,
+            name:       p.nombre_completo ?? p.name ?? 'N/A',
+            avatar:     p.foto_perfil_url ?? p.avatar ?? null,
+            ranking:    p.posicion_ranking ?? p.ranking ?? null,
+            pts:        p.puntaje_total   ?? p.pts    ?? null,
+            club:       p.lugar           ?? p.club   ?? '',
+            date:       p.fecha_partido   ?? p.date   ?? '',
+            time:       p.hora_partido    ?? p.time   ?? '',
+          }));
+          setBasePlayers(normalized);
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [activeTab]);
@@ -318,7 +334,7 @@ export function BuscarPartidoScreen({ navigation, route }) {
             <PlayerCard
               key={p.id}
               player={p}
-              onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts ?? 177, ranking: p.ranking, avatar: p.avatar } })}
+              onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name ?? p.nombre_usuario, pts: p.pts ?? p.puntaje_total ?? 177, ranking: p.ranking ?? p.posicion_ranking, avatar: p.avatar ?? p.foto_perfil_url, id_usuario: p.id_usuario ?? p.id_jugador } })}
               onRetarPress={() => navigation.navigate('RetarJugador', { player: p })}
             />
           ))

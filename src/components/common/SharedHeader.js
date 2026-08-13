@@ -22,7 +22,7 @@ export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, pu
           <Text style={styles.name}>Hola {nombre ?? '...'}</Text>
           <View style={styles.statsRow}>
             <Ionicons name="trophy" size={14} color="#DDDDDD" />
-            <Text style={styles.statText}> {ranking ?? '--'}</Text>
+            <Text style={styles.statText}> {ranking ?? 'N/R'}</Text>
             <Text style={{ width: 12 }} />
             <Ionicons name="star" size={14} color="#DDDDDD" />
             <Text style={styles.statText}> {calificacion ?? '--'}</Text>

@@ -1,75 +1,98 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, TextInput, Image,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
-import { DATE_FILTERS, MATCHES_BY_FILTER } from '../../data/resultadosData';
+import { DATE_FILTERS } from '../../data/resultadosData';
 import { resultadoService } from '../../services/resultadoService';
+import { useUsuario } from '../../hooks/useUsuario';
 
-function ScoreChip({ value }) {
-  return (
-    <View style={styles.scoreChip}>
-      <Text style={styles.scoreText}>{value}</Text>
-    </View>
-  );
+function getDateParam(filter) {
+  const hoy = new Date();
+  if (filter === 'Hoy') return hoy.toISOString().split('T')[0];
+  if (filter === 'Ayer') {
+    const ayer = new Date(hoy);
+    ayer.setDate(ayer.getDate() - 1);
+    return ayer.toISOString().split('T')[0];
+  }
+  return null;
+}
+
+function formatDay(dateStr) {
+  if (!dateStr) return { day: '--', month: '---' };
+  const d = new Date(dateStr);
+  const months = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+  return { day: String(d.getDate()).padStart(2, '0'), month: months[d.getMonth()] };
 }
 
 function MatchCard({ match }) {
+  const { day, month } = formatDay(match.fecha_partido);
+  const sL = match.sets_local ?? 0;
+  const sV = match.sets_visitante ?? 0;
   return (
     <View style={styles.matchCard}>
       <View style={styles.dateBlock}>
-        <Text style={styles.dateDay}>{match.day}</Text>
-        <Text style={styles.dateMonth}>{match.month}</Text>
+        <Text style={styles.dateDay}>{day}</Text>
+        <Text style={styles.dateMonth}>{month}</Text>
       </View>
-      <View style={styles.matchPlayers}>
-        {match.players.map((p, i) => (
-          <View key={i} style={styles.playerRow}>
-            <Image source={{ uri: p.avatar }} style={styles.playerAvatar} />
-            <Text style={styles.playerName}>{p.name}</Text>
-            <View style={styles.scoresRow}>
-              {p.scores.map((s, j) => <ScoreChip key={j} value={s} />)}
+      <View style={styles.matchInfo}>
+        <View style={styles.vsRow}>
+          <Text style={styles.playerName} numberOfLines={1}>{match.jugador_local}</Text>
+          <Text style={styles.vsText}>vs</Text>
+          <Text style={styles.playerName} numberOfLines={1}>{match.jugador_visitante}</Text>
+        </View>
+        <View style={styles.bottomRow}>
+          <View style={styles.setsRow}>
+            <View style={[styles.setsBadge, sL > sV && styles.setsBadgeWin]}>
+              <Text style={[styles.setsNum, sL > sV && styles.setsNumWin]}>{sL}</Text>
+            </View>
+            <Text style={styles.setsSep}>-</Text>
+            <View style={[styles.setsBadge, sV > sL && styles.setsBadgeWin]}>
+              <Text style={[styles.setsNum, sV > sL && styles.setsNumWin]}>{sV}</Text>
             </View>
           </View>
-        ))}
+          {match.estado_resultado ? (
+            <Text style={styles.estadoText}>{match.estado_resultado}</Text>
+          ) : null}
+        </View>
       </View>
     </View>
   );
 }
 
-export function ResultadosScreen() {
+export function ResultadosScreen({ navigation }) {
+  const usuario = useUsuario();
   const [activeFilter, setActiveFilter] = useState('Hoy');
-  const [data, setData] = useState(MATCHES_BY_FILTER['Hoy']);
-  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const filtroFecha = activeFilter.toUpperCase().replace(/ /g, '_');
     setLoading(true);
-    setData(MATCHES_BY_FILTER[activeFilter]);
+    setData([]);
+    const filtroFecha = getDateParam(activeFilter);
     resultadoService.listar({ filtroFecha })
-      .catch(() => {})
+      .then(res => setData(Array.isArray(res) ? res : []))
+      .catch(() => setData([]))
       .finally(() => setLoading(false));
   }, [activeFilter]);
 
   return (
     <SafeAreaView style={styles.safe}>
-      <SharedHeader />
+      <SharedHeader
+        nombre={usuario?.nombre}
+        deporte={usuario?.deporte}
+        ranking={usuario?.ranking}
+        calificacion={usuario?.calificacion}
+        nivel={usuario?.nivel}
+        puntos={usuario?.puntos}
+        fotoPerfil={usuario?.foto_perfil_url}
+      />
       <View style={styles.sheet}>
         <ScrollView showsVerticalScrollIndicator={false}>
-
           <Text style={styles.pageTitle}>Resultados</Text>
-
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color="#0D1C27" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar jugador"
-              placeholderTextColor="#9E9E9E"
-              underlineColorAndroid="transparent"
-            />
-          </View>
 
           <View style={styles.filterRow}>
             {DATE_FILTERS.map((f) => (
@@ -83,14 +106,15 @@ export function ResultadosScreen() {
             ))}
           </View>
 
-          <Text style={styles.dateLabel}>{data.label}</Text>
-
           {loading ? (
-            <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 20 }} />
+            <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
+          ) : data.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="trophy-outline" size={48} color={colors.textSecondary} />
+              <Text style={styles.emptyText}>No hay resultados</Text>
+            </View>
           ) : (
-            data.matches.map((m) => (
-              <MatchCard key={m.id} match={m} />
-            ))
+            data.map((m) => <MatchCard key={m.id_resultado} match={m} />)
           )}
 
           <View style={{ height: 32 }} />
@@ -112,17 +136,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   pageTitle: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 16 },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 28,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 10,
-    marginBottom: 16,
-  },
-  searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
   filterRow: { flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
   filterBtn: {
     paddingHorizontal: 18,
@@ -135,12 +148,6 @@ const styles = StyleSheet.create({
   filterBtnActive: { backgroundColor: colors.dark, borderColor: colors.dark },
   filterText: { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
   filterTextActive: { color: '#FFFFFF' },
-  dateLabel: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 14,
-  },
   matchCard: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
@@ -159,12 +166,13 @@ const styles = StyleSheet.create({
   },
   dateDay: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary },
   dateMonth: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
-  matchPlayers: { flex: 1, gap: 8 },
-  playerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  playerAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#ccc' },
-  playerName: { flex: 1, fontSize: 13, fontWeight: '500', color: colors.textPrimary },
-  scoresRow: { flexDirection: 'row', gap: 4 },
-  scoreChip: {
+  matchInfo: { flex: 1, gap: 8 },
+  vsRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  playerName: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+  vsText: { fontSize: 12, color: colors.textSecondary, fontWeight: '500' },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  setsRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  setsBadge: {
     width: 28,
     height: 28,
     borderRadius: 6,
@@ -174,5 +182,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  scoreText: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
+  setsBadgeWin: { backgroundColor: colors.accent, borderColor: colors.accent },
+  setsNum: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+  setsNumWin: { color: colors.primary },
+  setsSep: { fontSize: 14, fontWeight: '700', color: colors.textSecondary },
+  estadoText: { fontSize: 12, color: colors.textSecondary },
+  emptyState: { alignItems: 'center', marginTop: 60, gap: 12 },
+  emptyText: { fontSize: 15, color: colors.textSecondary },
 });
