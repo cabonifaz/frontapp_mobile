@@ -27,6 +27,7 @@ import { DetalleClaseScreen } from '../features/classes/DetalleClaseScreen';
 import { ProfileScreen } from '../features/profile/ProfileScreen';
 import { EditProfileScreen } from '../features/profile/EditProfileScreen';
 import { PlayerProfileScreen } from '../features/profile/PlayerProfileScreen';
+import { SettingsScreen } from '../features/profile/SettingsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -102,6 +103,7 @@ export function AppNavigator() {
         <Stack.Screen name="ProfesoresDisponibles" component={ProfesoresDisponiblesScreen} />
         <Stack.Screen name="DetalleClase" component={DetalleClaseScreen} />
         <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="PlayerProfile" component={PlayerProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>

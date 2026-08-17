@@ -8,7 +8,6 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { usuarioService } from '../../services/usuarioService';
 import { resultadoService } from '../../services/resultadoService';
-import { authService } from '../../services/authService';
 
 const SCREEN_W   = Dimensions.get('window').width;
 const COVER_H    = 220;
@@ -160,11 +159,6 @@ export function ProfileScreen({ navigation }) {
   const [loading, setLoading]       = useState(true);
   const [loadingRes, setLoadingRes] = useState(false);
 
-  async function handleLogout() {
-    await authService.logout();
-    navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Login' }] });
-  }
-
   useEffect(() => {
     setLoading(true);
     usuarioService.perfil()
@@ -214,13 +208,21 @@ export function ProfileScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
 
         <ImageBackground source={{ uri: p.coverUri ?? COVER_DEFAULT }} style={styles.cover}>
-          <SafeAreaView>
+          <SafeAreaView style={styles.headerSafeArea}>
             <TouchableOpacity
-              style={styles.backBtn}
+              style={styles.circleBtn}
               onPress={() => navigation.goBack()}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.circleBtn}
+              onPress={() => navigation.navigate('Settings')}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="settings-outline" size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </SafeAreaView>
         </ImageBackground>
@@ -261,11 +263,6 @@ export function ProfileScreen({ navigation }) {
           {activeTab === 'Detalles'     && <DetallesTab     p={p} />}
           {activeTab === 'Resultados'   && <ResultadosTab   resultados={resultados} loading={loadingRes} />}
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-            <Ionicons name="log-out-outline" size={20} color="#E53935" />
-            <Text style={styles.logoutText}>Cerrar sesión</Text>
-          </TouchableOpacity>
-
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
@@ -277,8 +274,13 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
 
   cover: { width: SCREEN_W, height: COVER_H },
-  backBtn: {
-    marginTop: 8, marginLeft: 20,
+  headerSafeArea: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 8,
+  },
+  circleBtn: {
     width: 38, height: 38, borderRadius: 19,
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center', justifyContent: 'center',
@@ -388,12 +390,4 @@ const styles = StyleSheet.create({
 
   emptyState: { alignItems: 'center', marginTop: 48, gap: 12 },
   emptyText:  { fontSize: 15, color: colors.textSecondary },
-
-  logoutBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 10, marginTop: 32, width: '100%',
-    backgroundColor: '#FFF0F0',
-    borderRadius: 14, paddingVertical: 16,
-  },
-  logoutText: { fontSize: 15, fontWeight: '600', color: '#E53935' },
 });

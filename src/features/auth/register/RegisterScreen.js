@@ -122,9 +122,9 @@ function CheckboxRow({ label, checked, onToggle }) {
 }
 
 // --- Step 1: Información básica ---
-
 function Step1({ data, setData, onNext, loading }) {
-  const edades = Array.from({ length: 82 }, (_, i) => String(i + 13));
+  // CORRECCIÓN 1: Rango de edad dinámico de 13 a 80 años (68 elementos)
+  const edades = Array.from({ length: 68 }, (_, i) => String(i + 13));
   const canContinue = data.terminos && data.nombre && data.apellido && data.correo && data.contrasena && data.genero && data.edad;
 
   return (
@@ -464,7 +464,7 @@ export function RegisterScreen({ navigation }) {
     es_profesor: false, logros: '',
   });
 
-  async function handleNextStep1() {
+async function handleNextStep1() {
     if (!data.nombre || !data.apellido || !data.correo || !data.contrasena) {
       Alert.alert('Campos requeridos', 'Completa todos los campos obligatorios.');
       return;
@@ -473,16 +473,24 @@ export function RegisterScreen({ navigation }) {
       Alert.alert('Términos y condiciones', 'Debes aceptar los términos y condiciones para continuar.');
       return;
     }
+    
+    // CORRECCIÓN 2: Limpiamos espacios y pasamos a minúsculas para evitar duplicados "invisibles"
+    const correoLimpio = data.correo.trim().toLowerCase();
+    
     try {
       setLoading(true);
-      const disponible = await authService.verificarCorreo(data.correo);
+      const disponible = await authService.verificarCorreo(correoLimpio);
       if (!disponible) {
         Alert.alert('Correo en uso', 'Este correo ya está registrado. Intenta con otro o inicia sesión.');
         return;
       }
+      
+      // Actualizamos el estado con el correo limpio antes de avanzar
+      setData({ ...data, correo: correoLimpio });
       setStep(2);
-    } catch {
-      setStep(2);
+    } catch (e) {
+      // CORRECCIÓN 3: Quitamos el setStep(2) de aquí. Si hay error de red, NO DEBE AVANZAR.
+      Alert.alert('Error de conexión', 'No pudimos verificar el correo. Revisa tu internet e intenta de nuevo.');
     } finally {
       setLoading(false);
     }
