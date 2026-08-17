@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
@@ -98,9 +99,14 @@ export function LoginScreen({ navigation }) {
   return (
     <View style={styles.root}>
       <DiagonalBackground />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
       <ScrollView
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         {/* Marca */}
         <View style={styles.brand}>
@@ -183,6 +189,7 @@ export function LoginScreen({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -2,7 +2,6 @@ export const ACTION_CARDS = [
   {
     id: 'amistoso',
     title: 'Partido amistoso',
-    subtitle: '50 buscando partido',
     uri: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=400&q=80',
     height: 168,
     route: 'FriendlyMatch',
@@ -10,7 +9,6 @@ export const ACTION_CARDS = [
   {
     id: 'rankeado',
     title: 'Partido rankeado',
-    subtitle: '50 buscando partido',
     uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&q=80',
     height: 242,
     route: 'RankedMatch',

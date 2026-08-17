@@ -5,10 +5,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
-import {
-  RANKEADO_PLAYERS, AMISTOSO_PLAYERS, COURTS, DATES, HOURS, MATCH_TYPES,
-} from '../../data/buscarPartidoData';
+import { COURTS, DATES, HOURS, MATCH_TYPES } from '../../data/buscarPartidoData';
 import { partidoService } from '../../services/partidoService';
+import { DEPORTE_DEFAULT } from '../../constants/maestro';
 
 const TABS = ['Rankeado', 'Amistoso'];
 const FILTER_KEYS = ['cancha', 'fecha', 'hora', 'partido'];
@@ -218,21 +217,18 @@ export function BuscarPartidoScreen({ navigation, route }) {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [filters, setFilters] = useState({ cancha: null, fecha: null, hora: null, partido: null });
   const [openModal, setOpenModal] = useState(null);
-  const [basePlayers, setBasePlayers] = useState(
-    initialTab === 'Rankeado' ? RANKEADO_PLAYERS : AMISTOSO_PLAYERS
-  );
+  const [basePlayers, setBasePlayers] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const players = getFilteredPlayers(filters, basePlayers);
   const hasFilters = Object.values(filters).some(Boolean);
 
   useEffect(() => {
-    const mockBase = activeTab === 'Rankeado' ? RANKEADO_PLAYERS : AMISTOSO_PLAYERS;
-    setBasePlayers(mockBase);
+    setBasePlayers([]);
     setLoading(true);
     const call = activeTab === 'Rankeado'
-      ? partidoService.buscarRankeado({ idDeporte: 1 })
-      : partidoService.buscarAmistoso({ idDeporte: 1 });
+      ? partidoService.buscarRankeado({ idDeporte: DEPORTE_DEFAULT })
+      : partidoService.buscarAmistoso({ idDeporte: DEPORTE_DEFAULT });
     call
       .then(res => {
         if (Array.isArray(res) && res.length) {
@@ -303,7 +299,9 @@ export function BuscarPartidoScreen({ navigation, route }) {
         <View style={styles.countRow}>
           <View style={styles.greenDot} />
           <Text style={styles.countText}>
-            {activeTab === 'Rankeado' ? '4 jugadores de tu nivel' : '50 buscando partido'}
+            {players.length > 0
+              ? `${players.length} ${activeTab === 'Rankeado' ? 'jugadores de tu nivel' : 'buscando partido'}`
+              : 'Sin partidos disponibles'}
           </Text>
         </View>
 
@@ -329,12 +327,17 @@ export function BuscarPartidoScreen({ navigation, route }) {
 
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
+        ) : players.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Ionicons name="tennisball-outline" size={40} color={colors.textSecondary} />
+            <Text style={styles.emptyText}>No hay partidos disponibles</Text>
+          </View>
         ) : (
           players.map(p => (
             <PlayerCard
               key={p.id}
               player={p}
-              onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name ?? p.nombre_usuario, pts: p.pts ?? p.puntaje_total ?? 177, ranking: p.ranking ?? p.posicion_ranking, avatar: p.avatar ?? p.foto_perfil_url, id_usuario: p.id_usuario ?? p.id_jugador } })}
+              onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name ?? p.nombre_usuario, pts: p.pts ?? p.puntaje_total, ranking: p.ranking ?? p.posicion_ranking, avatar: p.avatar ?? p.foto_perfil_url, id_usuario: p.id_usuario ?? p.id_jugador } })}
               onRetarPress={() => navigation.navigate('RetarJugador', { player: p })}
             />
           ))
@@ -457,6 +460,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   retarText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+
+  emptyState: { alignItems: 'center', marginTop: 48, gap: 12 },
+  emptyText: { fontSize: 15, color: colors.textSecondary },
 
   bottomBar: { paddingHorizontal: 20, paddingVertical: 16 },
   bottomBtn: {

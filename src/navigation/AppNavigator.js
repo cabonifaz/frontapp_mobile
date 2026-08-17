@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../constants';
 
+import { SplashScreen } from '../features/auth/splash/SplashScreen';
 import { LoginScreen } from '../features/auth/login/LoginScreen';
 import { RegisterScreen } from '../features/auth/register/RegisterScreen';
 import { ForgotPasswordScreen } from '../features/auth/forgot_password/ForgotPasswordScreen';
@@ -84,7 +85,8 @@ function MainTabs() {
 export function AppNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
+      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
+        <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />

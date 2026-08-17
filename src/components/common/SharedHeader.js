@@ -25,7 +25,7 @@ export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, pu
             <Text style={styles.statText}> {ranking ?? 'N/R'}</Text>
             <Text style={{ width: 12 }} />
             <Ionicons name="star" size={14} color="#DDDDDD" />
-            <Text style={styles.statText}> {calificacion ?? '--'}</Text>
+            <Text style={styles.statText}> {calificacion != null ? Number(calificacion).toFixed(1) : '0.0'}</Text>
           </View>
         </View>
       </View>

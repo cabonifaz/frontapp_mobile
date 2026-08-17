@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
-  Modal, KeyboardAvoidingView, Platform, ImageBackground,
+  ImageBackground, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../../../constants';
 import { PrimaryButton } from '../../../components/common';
 import { authService } from '../../../services/authService';
@@ -122,7 +123,7 @@ function CheckboxRow({ label, checked, onToggle }) {
 
 // --- Step 1: Información básica ---
 
-function Step1({ data, setData, onNext }) {
+function Step1({ data, setData, onNext, loading }) {
   const edades = Array.from({ length: 82 }, (_, i) => String(i + 13));
   const canContinue = data.terminos && data.nombre && data.apellido && data.correo && data.contrasena && data.genero && data.edad;
 
@@ -213,7 +214,7 @@ function Step1({ data, setData, onNext }) {
       />
 
       <View style={{ marginTop: 28 }}>
-        <PrimaryButton title="Siguiente" onPress={onNext} disabled={!canContinue} />
+        <PrimaryButton title="Siguiente" onPress={onNext} disabled={!canContinue || loading} loading={loading} />
       </View>
       <View style={{ height: 40 }} />
     </ScrollView>
@@ -367,7 +368,24 @@ function Step3({ data, setData, onNext, onBack }) {
 
 // --- Step 4: Foto de perfil ---
 
-function Step4({ onFinish, onBack, loading }) {
+function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri }) {
+  async function pickImage() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para subir una foto.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setFotoUri(result.assets[0].uri);
+    }
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <Text style={styles.stepTitle}>Elige una foto de perfil</Text>
@@ -375,13 +393,17 @@ function Step4({ onFinish, onBack, loading }) {
       <Text style={[styles.stepSubtitle, { color: colors.accent, marginBottom: 0 }]}>Opcional*</Text>
 
       <View style={styles.avatarWrapper}>
-        <TouchableOpacity style={styles.avatarCircle} activeOpacity={0.8}>
-          <Text style={styles.avatarIcon}>👤</Text>
+        <TouchableOpacity style={styles.avatarCircle} onPress={pickImage} activeOpacity={0.8}>
+          {fotoUri ? (
+            <Image source={{ uri: fotoUri }} style={styles.avatarImage} />
+          ) : (
+            <Ionicons name="person-outline" size={64} color={colors.textSecondary} />
+          )}
           <View style={styles.avatarPlusBadge}>
-            <Text style={styles.avatarPlusText}>+</Text>
+            <Ionicons name={fotoUri ? 'pencil' : 'add'} size={18} color="#FFFFFF" />
           </View>
         </TouchableOpacity>
-        <Text style={styles.avatarHint}>Toca para subir</Text>
+        <Text style={styles.avatarHint}>{fotoUri ? 'Toca para cambiar' : 'Toca para subir'}</Text>
       </View>
 
       <View style={styles.navRow}>
@@ -432,6 +454,7 @@ export function RegisterScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [nivelObtenido, setNivelObtenido] = useState(null);
   const [puntajeObtenido, setPuntajeObtenido] = useState(null);
+  const [fotoUri, setFotoUri] = useState(null);
   const [data, setData] = useState({
     nombre: '', apellido: '', genero: '', edad: '',
     correo: '', celular: '', contrasena: '',
@@ -441,16 +464,28 @@ export function RegisterScreen({ navigation }) {
     es_profesor: false, logros: '',
   });
 
-  function validateStep1() {
+  async function handleNextStep1() {
     if (!data.nombre || !data.apellido || !data.correo || !data.contrasena) {
       Alert.alert('Campos requeridos', 'Completa todos los campos obligatorios.');
-      return false;
+      return;
     }
     if (!data.terminos) {
       Alert.alert('Términos y condiciones', 'Debes aceptar los términos y condiciones para continuar.');
-      return false;
+      return;
     }
-    return true;
+    try {
+      setLoading(true);
+      const disponible = await authService.verificarCorreo(data.correo);
+      if (!disponible) {
+        Alert.alert('Correo en uso', 'Este correo ya está registrado. Intenta con otro o inicia sesión.');
+        return;
+      }
+      setStep(2);
+    } catch {
+      setStep(2);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleFinish() {
@@ -477,7 +512,7 @@ export function RegisterScreen({ navigation }) {
         return;
       }
 
-      // 3. Enviar cuestionario (no bloquea si falla)
+      // 3. Enviar cuestionario
       let nivelCalculado = 1;
       try {
         const idDeporte = DEPORTE_MAP[data.deporte] ?? DEPORTE_DEFAULT;
@@ -494,6 +529,17 @@ export function RegisterScreen({ navigation }) {
         setPuntajeObtenido(resultado.puntajeInicial ?? null);
       } catch (e) {
         Alert.alert('Error en cuestionario', e.message ?? 'No se pudo completar el cuestionario.');
+      }
+
+      // 4. Crear perfil de profesor si aplica
+      if (data.es_profesor) {
+        try {
+          await usuarioService.crearPerfilProfesor({
+            aniosExperiencia:   0,
+            descripcion:        data.logros || '',
+            tarifaReferencial:  0,
+          });
+        } catch (_) {}
       }
 
       setNivelObtenido(nivelCalculado);
@@ -535,7 +581,8 @@ export function RegisterScreen({ navigation }) {
             <Step1
               data={data}
               setData={setData}
-              onNext={() => validateStep1() && setStep(2)}
+              onNext={handleNextStep1}
+              loading={loading}
             />
           )}
           {step === 2 && (
@@ -559,6 +606,8 @@ export function RegisterScreen({ navigation }) {
               onFinish={handleFinish}
               onBack={() => setStep(3)}
               loading={loading}
+              fotoUri={fotoUri}
+              setFotoUri={setFotoUri}
             />
           )}
         </View>
@@ -854,9 +903,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  avatarIcon: {
-    fontSize: 64,
+  avatarImage: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
   },
   avatarPlusBadge: {
     position: 'absolute',

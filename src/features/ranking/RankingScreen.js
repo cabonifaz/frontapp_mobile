@@ -10,7 +10,7 @@ import { TEMPORADAS, FILTERS, PLAYER_DATA } from '../../data/rankingData';
 import { rankingService } from '../../services/rankingService';
 import { useUsuario } from '../../hooks/useUsuario';
 
-function Podium({ players }) {
+function Podium({ players, onPress }) {
   if (!players || players.length < 3) return null;
   const top3 = players.slice(0, 3);
   const order = [top3[1], top3[0], top3[2]];
@@ -22,7 +22,7 @@ function Podium({ players }) {
     <View style={styles.podiumCard}>
       <View style={styles.podiumStepsRow}>
         {order.map((p, i) => (
-          <View key={p.name} style={styles.podiumCol}>
+          <TouchableOpacity key={p.name} style={styles.podiumCol} onPress={() => onPress(p)} activeOpacity={0.75}>
             <View style={styles.podiumAvatarWrap}>
               <Image source={{ uri: p.avatar }} style={[styles.podiumAvatar, { width: avatarSizes[i], height: avatarSizes[i], borderRadius: avatarSizes[i] / 2 }]} />
               <View style={[styles.posBadge, { backgroundColor: badgeColors[i] }]}>
@@ -30,15 +30,15 @@ function Podium({ players }) {
               </View>
             </View>
             <View style={[styles.podiumStep, { height: stepHeights[i] }]} />
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
       <View style={styles.podiumNamesRow}>
         {order.map((p) => (
-          <View key={p.name + '_name'} style={styles.podiumNameCol}>
+          <TouchableOpacity key={p.name + '_name'} style={styles.podiumNameCol} onPress={() => onPress(p)} activeOpacity={0.75}>
             <Text style={styles.podiumName} numberOfLines={1}>{p.name}</Text>
             <Text style={styles.podiumPts}>{p.pts} pts</Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
     </View>
@@ -64,14 +64,16 @@ export function RankingScreen({ navigation }) {
   const [temporada, setTemporada] = useState('Verano 2024');
   const [showModal, setShowModal] = useState(false);
   const [tempSelected, setTempSelected] = useState('Verano 2024');
-  const [players, setPlayers] = useState(PLAYER_DATA[filter]);
+  const [allPlayers, setAllPlayers] = useState(PLAYER_DATA[filter]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const filtroGenero = filter === 'Masculino' ? 'GENERO_MASCULINO'
       : filter === 'Femenino' ? 'GENERO_FEMENINO' : null;
     setLoading(true);
-    rankingService.listar({ filtroGenero })
+    setSearch('');
+    rankingService.listar({ filtroGenero, tamanoPagina: 10 })
       .then(data => {
         const normalized = (Array.isArray(data) ? data : []).map(p => ({
           name:       p.nombre_completo  ?? p.nombre_usuario ?? p.name ?? 'N/A',
@@ -80,11 +82,16 @@ export function RankingScreen({ navigation }) {
           pos:        p.posicion         ?? p.posicion_ranking ?? p.ranking ?? p.pos ?? 0,
           id_usuario: p.id_usuario,
         }));
-        setPlayers(normalized.length ? normalized : PLAYER_DATA[filter]);
+        setAllPlayers(normalized.length ? normalized : PLAYER_DATA[filter]);
       })
-      .catch(() => setPlayers(PLAYER_DATA[filter]))
+      .catch(() => setAllPlayers(PLAYER_DATA[filter]))
       .finally(() => setLoading(false));
   }, [filter]);
+
+  const term = search.trim().toLowerCase();
+  const players = term
+    ? allPlayers.filter(p => p.name.toLowerCase().includes(term))
+    : allPlayers;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -115,7 +122,15 @@ export function RankingScreen({ navigation }) {
               placeholder="Buscar jugador"
               placeholderTextColor="#9E9E9E"
               underlineColorAndroid="transparent"
+              value={search}
+              onChangeText={setSearch}
+              autoCapitalize="none"
             />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close-circle" size={18} color="#9E9E9E" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.filterRow}>
@@ -132,14 +147,21 @@ export function RankingScreen({ navigation }) {
 
           {loading ? (
             <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
+          ) : players.length === 0 ? (
+            <Text style={styles.emptyText}>Sin resultados para "{search}"</Text>
           ) : (
             <>
-              <Podium players={players} />
-              {players.slice(3).map((p) => (
+              {!term && (
+                <Podium
+                  players={players}
+                  onPress={(p) => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts, ranking: p.pos, avatar: p.avatar, id_usuario: p.id_usuario } })}
+                />
+              )}
+              {(term ? players : players.slice(3)).map((p) => (
                 <PlayerRow
                   key={p.pos}
                   player={p}
-                  onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts, ranking: p.pos, avatar: p.avatar } })}
+                  onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts, ranking: p.pos, avatar: p.avatar, id_usuario: p.id_usuario } })}
                 />
               ))}
             </>
@@ -277,6 +299,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     gap: 14,
   },
+  emptyText: { textAlign: 'center', color: colors.textSecondary, marginTop: 40, fontSize: 15 },
   playerPos: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary, width: 22 },
   playerAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#ccc' },
   playerName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },

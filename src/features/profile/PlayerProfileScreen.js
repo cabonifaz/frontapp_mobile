@@ -3,22 +3,24 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Image, ImageBackground, Dimensions, SafeAreaView, ActivityIndicator,
 } from 'react-native';
-import Svg, { Polyline, Circle, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
-import { PLAYER_MOCK } from '../../data/profileData';
 import { rankingService } from '../../services/rankingService';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H  = 220;
 const AVATAR_SIZE = 126;
-const TABS = ['Estadísticas', 'Detalles', 'Resultados'];
+const TABS = ['Estadísticas', 'Detalles'];
+
+const COVER_DEFAULT = 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80';
+const AVATAR_DEFAULT = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxUzKngXZcLOT11hp0FMnpwDtCusZVoIm2kCLfXtUfDg&s=10';
 
 function NivelRing({ percent, size = 72 }) {
   const sw = 7;
   const r = (size - sw) / 2;
   const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - percent / 100);
+  const offset = circ * (1 - (percent || 0) / 100);
   const c = size / 2;
   return (
     <View style={{ width: size, height: size }}>
@@ -29,45 +31,10 @@ function NivelRing({ percent, size = 72 }) {
       </Svg>
       <View style={StyleSheet.absoluteFill}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.textPrimary }}>{percent}%</Text>
+          <Text style={{ fontSize: 12, fontWeight: 'bold', color: colors.textPrimary }}>
+            {percent ?? 0}%
+          </Text>
         </View>
-      </View>
-    </View>
-  );
-}
-
-function RankingChart({ data }) {
-  const CARD_PAD = 32;
-  const W = SCREEN_W - 40 - CARD_PAD;
-  const H = 70; const PT = 22; const PX = 8;
-  const svgW = W - PX * 2;
-  const svgH = H + PT + 6;
-  const positions = data.map(d => d.pos);
-  const minP = Math.min(...positions);
-  const maxP = Math.max(...positions);
-  const range = maxP - minP || 1;
-  const xStep = svgW / (data.length - 1);
-  const pts = data.map((d, i) => ({
-    x: PX + i * xStep,
-    y: PT + ((d.pos - minP) / range) * H,
-    pos: d.pos,
-  }));
-  const polyStr = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-  return (
-    <View>
-      <Svg width={W} height={svgH}>
-        <Polyline points={polyStr} fill="none" stroke={colors.accent}
-          strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
-        {pts.map((p, i) => (
-          <React.Fragment key={i}>
-            <Circle cx={p.x} cy={p.y} r={5} fill={colors.accent} />
-            <SvgText x={p.x} y={p.y - 9} textAnchor="middle" fontSize={10}
-              fill={colors.textSecondary} fontWeight="600">{p.pos}</SvgText>
-          </React.Fragment>
-        ))}
-      </Svg>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: PX }}>
-        {data.map(d => <Text key={d.mes} style={styles.chartLabel}>{d.mes}</Text>)}
       </View>
     </View>
   );
@@ -82,40 +49,7 @@ function StatRow({ icon, mci, label, value }) {
           : <Ionicons name={icon} size={20} color={colors.textPrimary} />}
         <Text style={styles.statRowLabel}>{label}</Text>
       </View>
-      <Text style={styles.statRowValue}>{value}</Text>
-    </View>
-  );
-}
-
-function ScoreChip({ value, highlight }) {
-  return (
-    <View style={[styles.chip, highlight && styles.chipHL]}>
-      <Text style={[styles.chipText, highlight && styles.chipTextHL]}>{value}</Text>
-    </View>
-  );
-}
-
-function MatchCard({ match }) {
-  return (
-    <View style={styles.matchCard}>
-      <View style={styles.matchDate}>
-        <Text style={styles.matchDay}>{match.day}</Text>
-        <Text style={styles.matchMonth}>{match.month}</Text>
-      </View>
-      <View style={{ flex: 1, gap: 6 }}>
-        {match.players.map((p, i) => (
-          <View key={i} style={styles.matchPlayerRow}>
-            <Image source={{ uri: p.avatar }} style={styles.matchAvatar} />
-            <Text style={styles.matchName}>{p.name}</Text>
-            <View style={{ flexDirection: 'row', gap: 4 }}>
-              {p.scores.map((s, j) => {
-                const max = Math.max(...match.players.map(pl => pl.scores[j]));
-                return <ScoreChip key={j} value={s} highlight={s === max} />;
-              })}
-            </View>
-          </View>
-        ))}
-      </View>
+      <Text style={styles.statRowValue}>{value ?? 0}</Text>
     </View>
   );
 }
@@ -126,26 +60,21 @@ function EstadisticasTab({ p }) {
       <View style={styles.statCardsRow}>
         <View style={[styles.statCard, { flex: 1, marginRight: 8 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
-            <Text style={styles.bigNum}>{p.ranking}</Text>
+            <Text style={styles.bigNum}>{p.ranking ?? 'N/R'}</Text>
             <Ionicons name="trophy" size={18} color={colors.textPrimary} style={{ marginLeft: 6, marginTop: 8 }} />
           </View>
           <Text style={styles.statCardLabel}>Ranking</Text>
         </View>
         <View style={[styles.statCard, { flex: 1, marginLeft: 8 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-            <Text style={styles.bigNum}>{p.nivel}</Text>
+            <Text style={styles.bigNum}>{p.nivel ?? '--'}</Text>
             <View style={{ marginLeft: 12, alignItems: 'center' }}>
               <NivelRing percent={p.progresoNivel} />
-              <Text style={styles.nivelPts}>{p.puntajeNivel} pts</Text>
+              <Text style={styles.nivelPts}>{Number(p.pts ?? 0).toFixed(1)} pts</Text>
             </View>
           </View>
           <Text style={styles.statCardLabel}>Nivel</Text>
         </View>
-      </View>
-      <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>Ranking</Text>
-        <Text style={styles.chartYear}>2024</Text>
-        <RankingChart data={p.rankingHistory} />
       </View>
       <StatRow mci icon="tennis"         label="Partidos"            value={p.partidos} />
       <StatRow     icon="trophy-outline" label="Partidos rankeados"  value={p.partidosRankeados} />
@@ -158,56 +87,71 @@ function EstadisticasTab({ p }) {
 function DetallesTab({ p }) {
   return (
     <View style={styles.tabContent}>
-      <StatRow mci icon="tennis" label="Deporte Favorito" value={p.deporte} />
-      <View style={styles.sobreMiCard}>
-        <Text style={styles.sobreMiTitle}>Sobre mi</Text>
-        <Text style={styles.sobreMiText}>{p.sobreMi}</Text>
-      </View>
+      <StatRow mci icon="tennis" label="Deporte Favorito" value={p.deporte ?? 'Frontón'} />
+      {p.sobreMi ? (
+        <View style={styles.sobreMiCard}>
+          <Text style={styles.sobreMiTitle}>Sobre mí</Text>
+          <Text style={styles.sobreMiText}>{p.sobreMi}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
 
-function ResultadosTab({ p }) {
-  return (
-    <View style={styles.tabContent}>
-      {p.resultados.map(m => <MatchCard key={m.id} match={m} />)}
-    </View>
-  );
+function buildBasicProfile(basicData) {
+  return {
+    nombre:             basicData.nombre   ?? 'Jugador',
+    avatar:             basicData.avatar   ?? null,
+    coverUri:           COVER_DEFAULT,
+    ranking:            basicData.ranking  ?? null,
+    pts:                basicData.pts      ?? 0,
+    nivel:              null,
+    progresoNivel:      0,
+    partidos:           0,
+    partidosRankeados:  0,
+    victorias:          0,
+    victoriasRankeadas: 0,
+    deporte:            'Frontón',
+    sobreMi:            null,
+  };
 }
 
 export function PlayerProfileScreen({ navigation, route }) {
   const [activeTab, setActiveTab] = useState('Estadísticas');
   const basicData = route.params?.player ?? {};
-  const [profile, setProfile] = useState({ ...PLAYER_MOCK, ...basicData });
-  const [loading, setLoading] = useState(false);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const idUsuario = basicData.id_usuario ?? null;
-    if (!idUsuario) return;
-    setLoading(true);
+    if (!idUsuario) {
+      setProfile(buildBasicProfile(basicData));
+      setLoading(false);
+      return;
+    }
     rankingService.perfil(idUsuario)
       .then(res => {
-        if (res) {
-          setProfile(prev => ({
-            ...prev,
-            nombre:             res.nombre_completo    ?? res.nombre            ?? prev.nombre,
-            ranking:            res.posicion_ranking   ?? res.ranking           ?? prev.ranking,
-            pts:                res.puntaje_total      ?? res.puntos            ?? prev.pts,
-            nivel:              res.nivel_calculado    ?? res.nivel             ?? prev.nivel,
-            progresoNivel:      res.progreso_nivel_porcentaje ?? res.porcentaje_nivel ?? prev.progresoNivel,
-            puntajeNivel:       res.puntaje_total      ?? res.puntos            ?? prev.puntajeNivel,
-            partidos:           res.total_partidos     ?? res.partidos_totales  ?? prev.partidos,
-            partidosRankeados:  res.partidos_rankeados ?? prev.partidosRankeados,
-            victoriasRankeadas: res.victorias_rankeadas ?? prev.victoriasRankeadas,
-            victorias:          res.victorias          ?? prev.victorias,
-            deporte:            res.deporte            ?? prev.deporte,
-            sobreMi:            res.descripcion        ?? res.sobre_mi          ?? prev.sobreMi,
-            avatar:             res.foto_perfil_url    ?? prev.avatar,
-            coverUri:           res.foto_cancha_url    ?? prev.coverUri,
-          }));
+        if (!res) {
+          setProfile(buildBasicProfile(basicData));
+          return;
         }
+        setProfile({
+          nombre:             res.nombre_completo          ?? basicData.nombre  ?? 'Jugador',
+          avatar:             res.foto_perfil_url          ?? basicData.avatar  ?? null,
+          coverUri:           COVER_DEFAULT,
+          ranking:            res.posicion_ranking         ?? basicData.ranking ?? null,
+          pts:                res.puntaje_total            ?? basicData.pts     ?? 0,
+          nivel:              res.nivel_calculado          ?? null,
+          progresoNivel:      res.progreso_nivel_porcentaje ?? 0,
+          partidos:           res.total_partidos           ?? 0,
+          partidosRankeados:  res.partidos_rankeados       ?? 0,
+          victorias:          res.victorias_totales        ?? res.victorias     ?? 0,
+          victoriasRankeadas: res.victorias_rankeadas      ?? 0,
+          deporte:            res.deporte_nombre           ?? res.deporte       ?? 'Frontón',
+          sobreMi:            res.bio_profesor             ?? res.descripcion   ?? null,
+        });
       })
-      .catch(() => {})
+      .catch(() => setProfile(buildBasicProfile(basicData)))
       .finally(() => setLoading(false));
   }, []);
 
@@ -219,11 +163,13 @@ export function PlayerProfileScreen({ navigation, route }) {
     );
   }
 
+  const p = profile ?? {};
+
   return (
     <View style={styles.root}>
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
 
-        <ImageBackground source={{ uri: profile.coverUri ?? PLAYER_MOCK.coverUri }} style={styles.cover}>
+        <ImageBackground source={{ uri: p.coverUri ?? COVER_DEFAULT }} style={styles.cover}>
           <SafeAreaView>
             <TouchableOpacity
               style={styles.backBtn}
@@ -237,18 +183,20 @@ export function PlayerProfileScreen({ navigation, route }) {
 
         <View style={styles.sheet}>
 
-          {/* Avatar — sin botón de editar */}
           <View style={styles.avatarWrap}>
-            <Image source={{ uri: profile.avatar }} style={styles.avatar} />
+            <Image
+              source={p.avatar ? { uri: p.avatar } : { uri: AVATAR_DEFAULT }}
+              style={styles.avatar}
+            />
           </View>
 
           <View style={styles.rankBadge}>
             <Ionicons name="trophy" size={14} color={colors.primary} />
-            <Text style={styles.rankBadgeText}>{profile.ranking}</Text>
+            <Text style={styles.rankBadgeText}>{p.ranking ?? 'N/R'}</Text>
           </View>
 
-          <Text style={styles.name}>{profile.nombre}</Text>
-          <Text style={styles.ptsText}>{profile.pts} pts</Text>
+          <Text style={styles.name}>{p.nombre ?? 'Jugador'}</Text>
+          <Text style={styles.ptsText}>{Number(p.pts ?? 0).toFixed(1)} pts</Text>
 
           <View style={styles.tabBar}>
             {TABS.map(tab => (
@@ -259,9 +207,8 @@ export function PlayerProfileScreen({ navigation, route }) {
             ))}
           </View>
 
-          {activeTab === 'Estadísticas' && <EstadisticasTab p={profile} />}
-          {activeTab === 'Detalles'     && <DetallesTab     p={profile} />}
-          {activeTab === 'Resultados'   && <ResultadosTab   p={profile} />}
+          {activeTab === 'Estadísticas' && <EstadisticasTab p={p} />}
+          {activeTab === 'Detalles'     && <DetallesTab     p={p} />}
 
           <View style={{ height: 40 }} />
         </View>
@@ -325,13 +272,6 @@ const styles = StyleSheet.create({
   bigNum: { fontSize: 36, fontWeight: 'bold', color: colors.textPrimary },
   statCardLabel: { fontSize: 14, color: colors.textSecondary },
   nivelPts: { fontSize: 11, color: colors.textSecondary, marginTop: 4 },
-  chartCard: {
-    backgroundColor: colors.surface, borderRadius: 16, padding: 16,
-    marginBottom: 12, width: '100%',
-  },
-  chartTitle: { fontSize: 15, fontWeight: 'bold', color: colors.textPrimary },
-  chartYear: { fontSize: 12, color: colors.textSecondary, marginBottom: 12 },
-  chartLabel: { fontSize: 10, color: colors.textSecondary },
   statRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: colors.surface, borderRadius: 14, padding: 16,
@@ -346,24 +286,4 @@ const styles = StyleSheet.create({
   },
   sobreMiTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
   sobreMiText: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 },
-  matchCard: {
-    flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14,
-    padding: 14, marginBottom: 10, gap: 12, width: '100%',
-  },
-  matchDate: {
-    width: 52, height: 52, backgroundColor: '#E4E4E4',
-    borderRadius: 10, alignItems: 'center', justifyContent: 'center',
-  },
-  matchDay: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary, lineHeight: 22 },
-  matchMonth: { fontSize: 10, color: colors.textSecondary, fontWeight: '600' },
-  matchPlayerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  matchAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#ccc' },
-  matchName: { flex: 1, fontSize: 13, fontWeight: '500', color: colors.textPrimary },
-  chip: {
-    width: 26, height: 26, borderRadius: 6,
-    backgroundColor: '#E4E4E4', alignItems: 'center', justifyContent: 'center',
-  },
-  chipHL: { backgroundColor: colors.accent },
-  chipText: { fontSize: 12, fontWeight: '600', color: colors.textPrimary },
-  chipTextHL: { fontWeight: 'bold' },
 });
