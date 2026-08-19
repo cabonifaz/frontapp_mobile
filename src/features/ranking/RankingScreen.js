@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
-import { TEMPORADAS, FILTERS, PLAYER_DATA } from '../../data/rankingData';
+import { TEMPORADAS, FILTERS } from '../../data/rankingData';
 import { rankingService } from '../../services/rankingService';
 import { useUsuario } from '../../hooks/useUsuario';
 
@@ -64,7 +64,7 @@ export function RankingScreen({ navigation }) {
   const [temporada, setTemporada] = useState('Verano 2024');
   const [showModal, setShowModal] = useState(false);
   const [tempSelected, setTempSelected] = useState('Verano 2024');
-  const [allPlayers, setAllPlayers] = useState(PLAYER_DATA[filter]);
+const [allPlayers, setAllPlayers] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -76,15 +76,19 @@ export function RankingScreen({ navigation }) {
     rankingService.listar({ filtroGenero, tamanoPagina: 10 })
       .then(data => {
         const normalized = (Array.isArray(data) ? data : []).map(p => ({
-          name:       p.nombre_completo  ?? p.nombre_usuario ?? p.name ?? 'N/A',
-          avatar:     p.foto_perfil_url  ?? p.avatar ?? null,
-          pts:        p.puntos           ?? p.puntaje_total  ?? p.pts ?? 0,
-          pos:        p.posicion         ?? p.posicion_ranking ?? p.ranking ?? p.pos ?? 0,
+          name:       p.nombre_completo  ?? p.nombre_usuario ?? 'N/A',
+          avatar:     p.foto_perfil_url  ?? null,
+          pts:        p.puntos           ?? p.puntaje_total  ?? 0,
+          pos:        p.posicion         ?? p.posicion_ranking ?? 0,
           id_usuario: p.id_usuario,
         }));
-        setAllPlayers(normalized.length ? normalized : PLAYER_DATA[filter]);
+        // Colocamos directamente lo que viene de la BD
+        setAllPlayers(normalized);
       })
-      .catch(() => setAllPlayers(PLAYER_DATA[filter]))
+      .catch((error) => {
+        console.error("Error obteniendo el ranking:", error);
+        setAllPlayers([]);
+      })
       .finally(() => setLoading(false));
   }, [filter]);
 
