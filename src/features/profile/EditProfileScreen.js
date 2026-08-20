@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Image, SafeAreaView, KeyboardAvoidingView,
-  Platform, Alert, ImageBackground,
+  Platform, Alert, ImageBackground, ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { PROFILE_MOCK } from '../../data/profileData';
 import { PrimaryButton } from '../../components/common';
+import { usuarioService } from '../../services/usuarioService';
+import { uploadImage } from '../../services/cloudinaryService';
 
 const DEPORTES = [
   { id: 'tenis',      label: 'Tenis',         uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&q=80' },
@@ -128,10 +131,43 @@ export function EditProfileScreen({ navigation, route }) {
   const [mes,  setMes]  = useState('');
   const [año,  setAño]  = useState('');
 
-  function handleGuardar() {
-    Alert.alert('Perfil actualizado', 'Tus cambios han sido guardados.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
-    ]);
+  const [avatarUri, setAvatarUri] = useState(initial.avatar ?? null);
+  const [saving,    setSaving]    = useState(false);
+
+  async function pickImage() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar la foto.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled) {
+      setAvatarUri(result.assets[0].uri);
+    }
+  }
+
+  async function handleGuardar() {
+    setSaving(true);
+    try {
+      const isNewPhoto = avatarUri && !avatarUri.startsWith('http');
+      if (isNewPhoto) {
+        const url = await uploadImage(avatarUri);
+        await usuarioService.actualizarFoto(url);
+        setAvatarUri(url);
+      }
+      Alert.alert('Perfil actualizado', 'Tus cambios han sido guardados.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar la foto. Intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -159,8 +195,8 @@ export function EditProfileScreen({ navigation, route }) {
           {/* Avatar */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarWrap}>
-              <Image source={{ uri: initial.avatar }} style={styles.avatar} />
-              <TouchableOpacity style={styles.cameraBtn}>
+              <Image source={avatarUri ? { uri: avatarUri } : undefined} style={styles.avatar} />
+              <TouchableOpacity style={styles.cameraBtn} onPress={pickImage}>
                 <Ionicons name="camera" size={18} color={colors.primary} />
               </TouchableOpacity>
             </View>
@@ -220,7 +256,7 @@ export function EditProfileScreen({ navigation, route }) {
           />
 
           <View style={{ marginTop: 12 }}>
-            <PrimaryButton title="Guardar cambios" onPress={handleGuardar} />
+            <PrimaryButton title="Guardar cambios" onPress={handleGuardar} disabled={saving} loading={saving} />
           </View>
 
           <View style={{ height: 40 }} />
