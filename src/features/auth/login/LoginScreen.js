@@ -8,6 +8,9 @@ import Svg, { Path } from 'react-native-svg';
 import { colors } from '../../../constants';
 import { authService } from '../../../services/authService';
 
+// NUEVO: Importaciones del SDK de Facebook
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+
 function GoogleIcon({ size = 28 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -80,6 +83,7 @@ export function LoginScreen({ navigation }) {
   const [contrasena, setContrasena] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Login normal (Correo / Contraseña)
   async function handleLogin() {
     if (!correo || !contrasena) {
       Alert.alert('Campos requeridos', 'Ingresa tu correo y contraseña.');
@@ -91,6 +95,39 @@ export function LoginScreen({ navigation }) {
       navigation.replace('MainTabs');
     } catch (error) {
       Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // NUEVO: Login Social con Facebook
+  async function handleFacebookLogin() {
+    try {
+      setLoading(true);
+      
+      // 1. Abrir modal nativo de Facebook
+      const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+      
+      if (result.isCancelled) {
+        setLoading(false);
+        return; // El usuario cerró la ventana de login
+      }
+
+      // 2. Extraer el token si fue exitoso
+      const data = await AccessToken.getCurrentAccessToken();
+      if (!data) {
+        throw new Error('No se pudo obtener el token de acceso de Facebook.');
+      }
+
+      // 3. Enviar token al Backend (.NET)
+      await authService.loginFacebook(data.accessToken);
+      
+      // 4. Redirigir al inicio si todo salió bien
+      navigation.replace('MainTabs');
+
+    } catch (error) {
+      Alert.alert('Error de Facebook', error.message || 'No se pudo iniciar sesión.');
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -108,7 +145,6 @@ export function LoginScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Marca */}
         <View style={styles.brand}>
           <MaterialCommunityIcons name="tennis" size={52} color="#FFFFFF" style={{ marginBottom: 12 }} />
           <Text style={styles.brandName}>Avosports</Text>
@@ -117,7 +153,6 @@ export function LoginScreen({ navigation }) {
           </Text>
         </View>
 
-        {/* Campos */}
         <Field
           label="Correo electrónico"
           value={correo}
@@ -133,7 +168,6 @@ export function LoginScreen({ navigation }) {
           secureTextEntry
         />
 
-        {/* Botones */}
         <TouchableOpacity
           style={[styles.btnPrimary, loading && { opacity: 0.7 }]}
           onPress={handleLogin}
@@ -161,7 +195,6 @@ export function LoginScreen({ navigation }) {
           <Text style={styles.btnDemoText}>Acceder como demo →</Text>
         </TouchableOpacity>
 
-        {/* Social */}
         <Text style={styles.socialLabel}>O continúa con</Text>
         <View style={styles.socialRow}>
           <TouchableOpacity
@@ -180,10 +213,12 @@ export function LoginScreen({ navigation }) {
             <Ionicons name="logo-apple" size={32} color="#FFFFFF" />
           </TouchableOpacity>
 
+          {/* BOTÓN DE FACEBOOK ACTUALIZADO */}
           <TouchableOpacity
-            style={[styles.socialBox, { backgroundColor: '#1877F2' }]}
+            style={[styles.socialBox, { backgroundColor: '#1877F2' }, loading && { opacity: 0.5 }]}
             activeOpacity={0.8}
-            onPress={() => {}}
+            onPress={handleFacebookLogin}
+            disabled={loading}
           >
             <FontAwesome5 name="facebook-f" size={28} color="#FFFFFF" />
           </TouchableOpacity>
@@ -195,148 +230,26 @@ export function LoginScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: BG,
-  },
-
-  // Bandas diagonales del fondo
-  band1: {
-    position: 'absolute',
-    width: 350,
-    height: 1600,
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    transform: [{ rotate: '32deg' }],
-    top: -500,
-    left: -80,
-  },
-  band2: {
-    position: 'absolute',
-    width: 350,
-    height: 1600,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    transform: [{ rotate: '32deg' }],
-    top: -300,
-    left: 230,
-  },
-  band3: {
-    position: 'absolute',
-    width: 350,
-    height: 1600,
-    backgroundColor: 'rgba(255,255,255,0.025)',
-    transform: [{ rotate: '32deg' }],
-    top: -100,
-    left: 540,
-  },
-  band4: {
-    position: 'absolute',
-    width: 200,
-    height: 1600,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    transform: [{ rotate: '32deg' }],
-    top: 100,
-    left: 780,
-  },
-
-  container: {
-    flexGrow: 1,
-    paddingHorizontal: 28,
-    paddingTop: 80,
-    paddingBottom: 48,
-  },
-
-  // Marca
-  brand: {
-    marginBottom: 44,
-  },
-  brandName: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 12,
-  },
-  brandTagline: {
-    fontSize: 15,
-    color: '#FFFFFF',
-    lineHeight: 23,
-  },
-
-  // Campos
-  fieldGroup: {
-    marginBottom: 28,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    color: '#FFFFFF',
-    marginBottom: 10,
-  },
-  fieldRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#FFFFFF',
-    paddingBottom: 10,
-  },
-  fieldInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#FFFFFF',
-    paddingVertical: 0,
-  },
-
-  // Botones
-  btnPrimary: {
-    backgroundColor: colors.accent,
-    borderRadius: 30,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 14,
-  },
-  btnPrimaryText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  btnOutline: {
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    borderRadius: 30,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginBottom: 36,
-  },
-  btnOutlineText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-
-  btnDemo: {
-    alignItems: 'center',
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-  btnDemoText: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.45)',
-  },
-
-  // Social
-  socialLabel: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    marginBottom: 18,
-  },
-  socialRow: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  socialBox: {
-    width: 76,
-    height: 76,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  root: { flex: 1, backgroundColor: BG },
+  band1: { position: 'absolute', width: 350, height: 1600, backgroundColor: 'rgba(255,255,255,0.045)', transform: [{ rotate: '32deg' }], top: -500, left: -80 },
+  band2: { position: 'absolute', width: 350, height: 1600, backgroundColor: 'rgba(255,255,255,0.03)', transform: [{ rotate: '32deg' }], top: -300, left: 230 },
+  band3: { position: 'absolute', width: 350, height: 1600, backgroundColor: 'rgba(255,255,255,0.025)', transform: [{ rotate: '32deg' }], top: -100, left: 540 },
+  band4: { position: 'absolute', width: 200, height: 1600, backgroundColor: 'rgba(255,255,255,0.02)', transform: [{ rotate: '32deg' }], top: 100, left: 780 },
+  container: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 80, paddingBottom: 48 },
+  brand: { marginBottom: 44 },
+  brandName: { fontSize: 36, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 12 },
+  brandTagline: { fontSize: 15, color: '#FFFFFF', lineHeight: 23 },
+  fieldGroup: { marginBottom: 28 },
+  fieldLabel: { fontSize: 13, color: '#FFFFFF', marginBottom: 10 },
+  fieldRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#FFFFFF', paddingBottom: 10 },
+  fieldInput: { flex: 1, fontSize: 16, color: '#FFFFFF', paddingVertical: 0 },
+  btnPrimary: { backgroundColor: colors.accent, borderRadius: 30, paddingVertical: 18, alignItems: 'center', marginTop: 10, marginBottom: 14 },
+  btnPrimaryText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  btnOutline: { borderWidth: 1.5, borderColor: '#FFFFFF', borderRadius: 30, paddingVertical: 18, alignItems: 'center', marginBottom: 36 },
+  btnOutlineText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
+  btnDemo: { alignItems: 'center', paddingVertical: 12, marginBottom: 16 },
+  btnDemoText: { fontSize: 13, color: 'rgba(255,255,255,0.45)' },
+  socialLabel: { fontSize: 14, color: '#FFFFFF', marginBottom: 18 },
+  socialRow: { flexDirection: 'row', gap: 14 },
+  socialBox: { width: 76, height: 76, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
 });

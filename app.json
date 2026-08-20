@@ -7,7 +7,17 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "SKAdNetworkItems": [
+          {
+            "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork"
+          },
+          {
+            "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork"
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -15,14 +25,33 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "android.permission.INTERNET"
+      ],
+      "package": "com.chris_13.avosports"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-secure-store",
-      "expo-asset"
-    ]
+      "expo-asset",
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "902257072548724",
+          "clientToken": "c53f61d4e31311f60a7ac8ca12b37d27",
+          "displayName": "AvoSports",
+          "scheme": "fb902257072548724"
+        }
+      ],
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "d0285ebc-d602-44dc-9243-1789c64a3d01"
+      }
+    }
   }
 }
