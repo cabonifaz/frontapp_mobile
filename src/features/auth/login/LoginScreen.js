@@ -7,9 +7,8 @@ import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-ico
 import Svg, { Path } from 'react-native-svg';
 import { colors } from '../../../constants';
 import { authService } from '../../../services/authService';
-
-// NUEVO: Importaciones del SDK de Facebook
 import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+
 
 function GoogleIcon({ size = 28 }) {
   return (
@@ -100,34 +99,17 @@ export function LoginScreen({ navigation }) {
     }
   }
 
-  // NUEVO: Login Social con Facebook
   async function handleFacebookLogin() {
     try {
       setLoading(true);
-      
-      // 1. Abrir modal nativo de Facebook
       const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
-      
-      if (result.isCancelled) {
-        setLoading(false);
-        return; // El usuario cerró la ventana de login
-      }
-
-      // 2. Extraer el token si fue exitoso
+      if (result.isCancelled) { setLoading(false); return; }
       const data = await AccessToken.getCurrentAccessToken();
-      if (!data) {
-        throw new Error('No se pudo obtener el token de acceso de Facebook.');
-      }
-
-      // 3. Enviar token al Backend (.NET)
+      if (!data) throw new Error('No se pudo obtener el token de acceso de Facebook.');
       await authService.loginFacebook(data.accessToken);
-      
-      // 4. Redirigir al inicio si todo salió bien
       navigation.replace('MainTabs');
-
     } catch (error) {
       Alert.alert('Error de Facebook', error.message || 'No se pudo iniciar sesión.');
-      console.error(error);
     } finally {
       setLoading(false);
     }
