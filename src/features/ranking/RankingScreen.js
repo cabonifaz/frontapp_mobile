@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
-import { TEMPORADAS, FILTERS } from '../../data/rankingData';
+import { TEMPORADAS, FILTERS, PLAYER_DATA } from '../../data/rankingData';
 import { rankingService } from '../../services/rankingService';
 import { useUsuario } from '../../hooks/useUsuario';
 
@@ -64,31 +64,27 @@ export function RankingScreen({ navigation }) {
   const [temporada, setTemporada] = useState('Verano 2024');
   const [showModal, setShowModal] = useState(false);
   const [tempSelected, setTempSelected] = useState('Verano 2024');
-const [allPlayers, setAllPlayers] = useState([]);
+  const [allPlayers, setAllPlayers] = useState(PLAYER_DATA[filter]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const filtroGenero = filter === 'Masculino' ? 'GENERO_MASCULINO'
-      : filter === 'Femenino' ? 'GENERO_FEMENINO' : null;
+    const filtroGenero = filter === 'Masculino' ? 'Masculino'
+      : filter === 'Femenino' ? 'Femenino' : null;
     setLoading(true);
     setSearch('');
     rankingService.listar({ filtroGenero, tamanoPagina: 10 })
       .then(data => {
         const normalized = (Array.isArray(data) ? data : []).map(p => ({
-          name:       p.nombre_completo  ?? p.nombre_usuario ?? 'N/A',
-          avatar:     p.foto_perfil_url  ?? null,
-          pts:        p.puntos           ?? p.puntaje_total  ?? 0,
-          pos:        p.posicion         ?? p.posicion_ranking ?? 0,
+          name:       p.nombre_completo  ?? p.nombre_usuario ?? p.name ?? 'N/A',
+          avatar:     p.foto_perfil_url  ?? p.avatar ?? null,
+          pts:        p.puntos           ?? p.puntaje_total  ?? p.pts ?? 0,
+          pos:        p.posicion         ?? p.posicion_ranking ?? p.ranking ?? p.pos ?? 0,
           id_usuario: p.id_usuario,
         }));
-        // Colocamos directamente lo que viene de la BD
-        setAllPlayers(normalized);
+        setAllPlayers(normalized.length ? normalized : PLAYER_DATA[filter]);
       })
-      .catch((error) => {
-        console.error("Error obteniendo el ranking:", error);
-        setAllPlayers([]);
-      })
+      .catch(() => setAllPlayers(PLAYER_DATA[filter]))
       .finally(() => setLoading(false));
   }, [filter]);
 
@@ -152,18 +148,18 @@ const [allPlayers, setAllPlayers] = useState([]);
           {loading ? (
             <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
           ) : players.length === 0 ? (
-            <Text style={styles.emptyText}>Sin resultados para "{search}"</Text>
+            <Text style={styles.emptyText}>{term ? `Sin resultados para "${search}"` : 'No hay jugadores en el ranking aún'}</Text>
           ) : (
             <>
-              {!term && (
+              {!term && players.length >= 3 && (
                 <Podium
                   players={players}
                   onPress={(p) => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts, ranking: p.pos, avatar: p.avatar, id_usuario: p.id_usuario } })}
                 />
               )}
-              {(term ? players : players.slice(3)).map((p) => (
+              {(term ? players : players.length >= 3 ? players.slice(3) : players).map((p) => (
                 <PlayerRow
-                  key={p.pos}
+                  key={p.id_usuario ?? p.pos}
                   player={p}
                   onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts, ranking: p.pos, avatar: p.avatar, id_usuario: p.id_usuario } })}
                 />
