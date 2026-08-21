@@ -39,7 +39,7 @@ export const authService = {
     return data.disponible;
   },
 
-  // Método original (puedes conservarlo si lo usabas para otra cosa)
+  // Método original
   async loginSocial(correo, idProveedor) {
     const data = await api.post('/api/Auth/login-social', { correo, id_proveedor: idProveedor });
     await SecureStore.setItemAsync('jwt_token', data.token);
@@ -47,15 +47,24 @@ export const authService = {
     return data;
   },
 
-  // NUEVO: Método específico para procesar el token de Facebook con el Backend
+  // Método para procesar el token de Facebook con el Backend
   async loginFacebook(accessToken) {
     const data = await api.post('/api/Auth/facebook', { accessToken });
     await SecureStore.setItemAsync('jwt_token', data.token);
-    // Asumimos que tu backend también devolverá el idUsuario como en el login normal
     if (data.idUsuario) {
-        await SecureStore.setItemAsync('id_usuario', String(data.idUsuario));
+      await SecureStore.setItemAsync('id_usuario', String(data.idUsuario));
     }
-    return data; // Retornará { token, idUsuario, isNewUser }
+    return data;
+  },
+
+  // NUEVO: Método específico para procesar el token de Google con el Backend
+  async loginGoogle(idToken) {
+    const data = await api.post('/api/Auth/google', { idToken });
+    await SecureStore.setItemAsync('jwt_token', data.token);
+    if (data.idUsuario) {
+      await SecureStore.setItemAsync('id_usuario', String(data.idUsuario));
+    }
+    return data;
   },
 
   async logout() {

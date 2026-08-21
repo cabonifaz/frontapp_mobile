@@ -6,10 +6,15 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "avosports",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.chris_13.avosports"
+      "bundleIdentifier": "com.chris_13.avosports",
+      "infoPlist": {
+        "SKAdNetworkItems": [
+          { "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork" },
+          { "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork" }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,22 +23,34 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": [
-        "android.permission.INTERNET"
-      ],
-      "package": "com.chris_13.avosports"
+      "permissions": ["android.permission.INTERNET"],
+      "package": "com.chris_13.avosports",
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-  "expo-secure-store",
-  "expo-asset",
-  "expo-font",
-  "expo-web-browser"
-],
+      "expo-secure-store",
+      "expo-asset",
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "902257072548724",
+          "clientToken": "c53f61d4e31311f60a7ac8ca12b37d27",
+          "displayName": "AvoSports",
+          "scheme": "fb902257072548724"
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.397110100401-cos2kapjkj4bt7mtn3c963hfcdtpt20i"
+        }
+      ],
+      "expo-font"
+    ],
     "extra": {
-      "facebookAppId": "902257072548724",
       "eas": {
         "projectId": "d0285ebc-d602-44dc-9243-1789c64a3d01"
       }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert,
   KeyboardAvoidingView, Platform,
@@ -7,13 +7,15 @@ import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-ico
 import Svg, { Path } from 'react-native-svg';
 import { colors } from '../../../constants';
 import { authService } from '../../../services/authService';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import Constants from 'expo-constants';
+import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
-WebBrowser.maybeCompleteAuthSession();
-
-const FB_APP_ID = Constants.expoConfig?.extra?.facebookAppId ?? '902257072548724';
+// Configurar Google Sign-In con tus credenciales
+GoogleSignin.configure({
+  webClientId: '397110100401-uc2v8vi8tprl26e5po0fpe987hhtqpj9.apps.googleusercontent.com',
+  iosClientId: '397110100401-cos2kapjkj4bt7mtn3c963hfcdtpt20i.apps.googleusercontent.com',
+  offlineAccess: false,
+});
 
 function GoogleIcon({ size = 28 }) {
   return (
@@ -71,44 +73,6 @@ export function LoginScreen({ navigation }) {
   const [contrasena, setContrasena] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const redirectUri = AuthSession.makeRedirectUri({ useProxy: true });
-
-  const [request, response, promptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: FB_APP_ID,
-      scopes: ['public_profile', 'email'],
-      redirectUri,
-      responseType: AuthSession.ResponseType.Token,
-    },
-    {
-      authorizationEndpoint: 'https://www.facebook.com/v18.0/dialog/oauth',
-    }
-  );
-
-  useEffect(() => {
-    if (!response) return;
-    if (response.type === 'success') {
-      const { access_token } = response.params;
-      handleFacebookToken(access_token);
-    } else if (response.type === 'error') {
-      Alert.alert('Error de Facebook', response.error?.message ?? 'No se pudo autenticar con Facebook.');
-      setLoading(false);
-    } else if (response.type === 'dismiss' || response.type === 'cancel') {
-      setLoading(false);
-    }
-  }, [response]);
-
-  async function handleFacebookToken(accessToken) {
-    try {
-      await authService.loginFacebook(accessToken);
-      navigation.replace('MainTabs');
-    } catch (error) {
-      Alert.alert('Error', error.message || 'No se pudo completar el inicio de sesión con Facebook.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function handleLogin() {
     if (!correo || !contrasena) {
       Alert.alert('Campos requeridos', 'Ingresa tu correo y contraseña.');
@@ -126,8 +90,43 @@ export function LoginScreen({ navigation }) {
   }
 
   async function handleFacebookLogin() {
-    setLoading(true);
-    await promptAsync();
+    try {
+      setLoading(true);
+      const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
+      if (result.isCancelled) { setLoading(false); return; }
+      const data = await AccessToken.getCurrentAccessToken();
+      if (!data) throw new Error('No se pudo obtener el token de acceso de Facebook.');
+      await authService.loginFacebook(data.accessToken);
+      navigation.replace('MainTabs');
+    } catch (error) {
+      Alert.alert('Error de Facebook', error.message || 'No se pudo iniciar sesión.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogleLogin() {
+    try {
+      setLoading(true);
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const idToken = userInfo.data?.idToken ?? userInfo.idToken;
+      if (!idToken) throw new Error('No se pudo obtener el token de Google.');
+      await authService.loginGoogle(idToken);
+      navigation.replace('MainTabs');
+    } catch (error) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // Usuario canceló, no hacemos nada
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        Alert.alert('En progreso', 'El inicio de sesión ya está en curso.');
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert('Error', 'Google Play Services no disponible.');
+      } else {
+        Alert.alert('Error de Google', error.message || 'No se pudo iniciar sesión.');
+      }
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -160,18 +159,18 @@ export function LoginScreen({ navigation }) {
 
           <Text style={styles.socialLabel}>O continúa con</Text>
           <View style={styles.socialRow}>
-            <TouchableOpacity style={[styles.socialBox, { backgroundColor: '#FFFFFF' }]} activeOpacity={0.8} onPress={() => {}}>
+            <TouchableOpacity 
+              style={[styles.socialBox, { backgroundColor: '#FFFFFF' }, loading && { opacity: 0.5 }]} 
+              activeOpacity={0.8} 
+              onPress={handleGoogleLogin} 
+              disabled={loading}
+            >
               <GoogleIcon size={30} />
             </TouchableOpacity>
             <TouchableOpacity style={[styles.socialBox, { backgroundColor: '#000000' }]} activeOpacity={0.8} onPress={() => {}}>
               <Ionicons name="logo-apple" size={32} color="#FFFFFF" />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.socialBox, { backgroundColor: '#1877F2' }, (loading || !request) && { opacity: 0.5 }]}
-              activeOpacity={0.8}
-              onPress={handleFacebookLogin}
-              disabled={loading || !request}
-            >
+            <TouchableOpacity style={[styles.socialBox, { backgroundColor: '#1877F2' }, loading && { opacity: 0.5 }]} activeOpacity={0.8} onPress={handleFacebookLogin} disabled={loading}>
               <FontAwesome5 name="facebook-f" size={28} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
