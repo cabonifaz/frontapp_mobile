@@ -6,26 +6,37 @@ import { authService } from '../../services/authService';
 
 export function SettingsScreen({ navigation }) {
 
+  // Cierre de sesión normal (Un solo clic para volver a entrar)
   async function handleLogout() {
     Alert.alert(
       "Cerrar sesión",
-      "¿Estás seguro que deseas salir de tu cuenta?",
+      "¿Deseas salir? Al volver podrás ingresar de inmediato con un solo clic.",
       [
         { text: "Cancelar", style: "cancel" },
         { 
           text: "Salir", 
+          onPress: async () => {
+            await authService.logout();
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+          } 
+        }
+      ]
+    );
+  }
+
+  // Cambio de cuenta (Obliga a elegir otra cuenta de Google o Facebook)
+  async function handleSwitchAccount() {
+    Alert.alert(
+      "Cambiar de cuenta",
+      "Se cerrará la sesión de Google/Facebook en este dispositivo para que puedas elegir otra cuenta.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        { 
+          text: "Cambiar cuenta", 
           style: "destructive",
           onPress: async () => {
-            try {
-              await authService.logout();
-            } catch (error) {
-              console.log('Error al cerrar sesión:', error);
-            }
-            // Al estar en el Stack principal, se usa directamente navigation.reset
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
+            await authService.logoutAndSwitch();
+            navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           } 
         }
       ]
@@ -34,7 +45,6 @@ export function SettingsScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.root}>
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -43,7 +53,6 @@ export function SettingsScreen({ navigation }) {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* CONTENIDO */}
       <View style={styles.content}>
         <TouchableOpacity style={styles.optionRow} onPress={() => {}}>
           <View style={styles.optionLeft}>
@@ -63,10 +72,16 @@ export function SettingsScreen({ navigation }) {
 
         <View style={styles.divider} />
 
-        {/* BOTÓN CERRAR SESIÓN */}
+        {/* 1. BOTÓN CERRAR SESIÓN (Mantiene credenciales de redes) */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={20} color="#E53935" />
+          <Ionicons name="log-out-outline" size={20} color={colors.textPrimary} />
           <Text style={styles.logoutText}>Cerrar sesión</Text>
+        </TouchableOpacity>
+
+        {/* 2. BOTÓN CAMBIAR DE CUENTA (Limpia credenciales de redes) */}
+        <TouchableOpacity style={styles.switchBtn} onPress={handleSwitchAccount} activeOpacity={0.8}>
+          <Ionicons name="swap-horizontal-outline" size={20} color="#E53935" />
+          <Text style={styles.switchText}>Cambiar de cuenta</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -76,35 +91,32 @@ export function SettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 15,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary },
   content: { padding: 20 },
-  optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-  },
+  optionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16 },
   optionLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   optionText: { fontSize: 16, color: colors.textPrimary },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: 16,
-  },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 16 },
+
   logoutBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 10, marginTop: 10, width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: 14, paddingVertical: 16,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  logoutText: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
+
+  switchBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, marginTop: 12, width: '100%',
     backgroundColor: '#FFF0F0',
     borderRadius: 14, paddingVertical: 16,
   },
-  logoutText: { fontSize: 15, fontWeight: '600', color: '#E53935' },
+  switchText: { fontSize: 15, fontWeight: '600', color: '#E53935' },
 });

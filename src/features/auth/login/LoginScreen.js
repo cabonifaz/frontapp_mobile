@@ -7,7 +7,6 @@ import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-ico
 import Svg, { Path } from 'react-native-svg';
 import { colors } from '../../../constants';
 import { authService } from '../../../services/authService';
-import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 // Configurar Google Sign-In con tus credenciales
@@ -92,12 +91,11 @@ export function LoginScreen({ navigation }) {
   async function handleFacebookLogin() {
     try {
       setLoading(true);
-      const result = await LoginManager.logInWithPermissions(['public_profile', 'email']);
-      if (result.isCancelled) { setLoading(false); return; }
-      const data = await AccessToken.getCurrentAccessToken();
-      if (!data) throw new Error('No se pudo obtener el token de acceso de Facebook.');
-      await authService.loginFacebook(data.accessToken);
-      navigation.replace('MainTabs');
+      // Llama a la función centralizada que limpia credenciales y fuerza inicio web
+      const data = await authService.iniciarSesionFacebook();
+      if (data) {
+        navigation.replace('MainTabs');
+      }
     } catch (error) {
       Alert.alert('Error de Facebook', error.message || 'No se pudo iniciar sesión.');
     } finally {

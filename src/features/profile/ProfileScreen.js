@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Image, ImageBackground, Dimensions, ActivityIndicator, SafeAreaView,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
@@ -14,7 +15,9 @@ const COVER_H    = 220;
 const AVATAR_SIZE = 126;
 const TABS = ['Estadísticas', 'Detalles', 'Resultados'];
 
+// URLs por defecto (A futuro, es mejor usar require('../../assets/mi-imagen.png'))
 const COVER_DEFAULT = 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80';
+const AVATAR_DEFAULT = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxUzKngXZcLOT11hp0FMnpwDtCusZVoIm2kCLfXtUfDg&s=10';
 
 function NivelRing({ percent, size = 72 }) {
   const sw = 7;
@@ -159,39 +162,63 @@ export function ProfileScreen({ navigation }) {
   const [loading, setLoading]       = useState(true);
   const [loadingRes, setLoadingRes] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
-    usuarioService.perfil()
-      .then(res => {
-        if (!res) return;
-        setProfile({
-          nombre:             res.nombre_completo      ?? res.nombre             ?? 'Mi perfil',
-          avatar:             res.foto_perfil_url      ?? null,
-          coverUri:           COVER_DEFAULT,
-          ranking:            res.posicion_ranking     ?? res.ranking            ?? null,
-          pts:                res.puntaje_total        ?? res.puntos             ?? 0,
-          nivel:              res.nivel_calculado      ?? res.nivel              ?? null,
-          progresoNivel:      res.progreso_nivel_porcentaje ?? res.porcentaje_nivel ?? 0,
-          partidos:           res.total_partidos       ?? res.partidos_totales   ?? 0,
-          partidosRankeados:  res.partidos_rankeados   ?? 0,
-          victorias:          res.victorias_totales    ?? res.victorias          ?? 0,
-          victoriasRankeadas: res.victorias_rankeadas  ?? 0,
-          deporte:            res.deporte_nombre       ?? res.deporte            ?? 'Frontón',
-          sobreMi:            res.bio_profesor         ?? res.descripcion        ?? null,
-          calificacion:       res.calificacion_promedio != null
-                                ? Number(res.calificacion_promedio).toFixed(1)
-                                : null,
-        });
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  // CAMBIO 1: useFocusEffect en vez de useEffect, para recargar cada vez que la pantalla recibe foco
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true; // Previene "Memory Leaks" si el usuario sale rápido
 
-    setLoadingRes(true);
-    resultadoService.listar()
-      .then(data => setResultados(Array.isArray(data) ? data : []))
-      .catch(() => setResultados([]))
-      .finally(() => setLoadingRes(false));
-  }, []);
+      const cargarDatos = async () => {
+        setLoading(true);
+        setLoadingRes(true);
+
+        try {
+          // Promise.all ejecuta ambas consultas al mismo tiempo
+          const [resPerfil, resResultados] = await Promise.all([
+            usuarioService.perfil().catch(() => null),
+            resultadoService.listar().catch(() => [])
+          ]);
+
+          if (isMounted) {
+            if (resPerfil) {
+              setProfile({
+                nombre:             resPerfil.nombre_completo      ?? resPerfil.nombre             ?? 'Mi perfil',
+                avatar:             resPerfil.foto_perfil_url      ?? null,
+                coverUri:           null,
+                ranking:            resPerfil.posicion_ranking     ?? resPerfil.ranking            ?? null,
+                pts:                resPerfil.puntaje_total        ?? resPerfil.puntos             ?? 0,
+                nivel:              resPerfil.nivel_calculado      ?? resPerfil.nivel              ?? null,
+                progresoNivel:      resPerfil.progreso_nivel_porcentaje ?? resPerfil.porcentaje_nivel ?? 0,
+                partidos:           resPerfil.total_partidos       ?? resPerfil.partidos_totales   ?? 0,
+                partidosRankeados:  resPerfil.partidos_rankeados   ?? 0,
+                victorias:          resPerfil.victorias_totales    ?? resPerfil.victorias          ?? 0,
+                victoriasRankeadas: resPerfil.victorias_rankeadas  ?? 0,
+                deporte:            resPerfil.deporte_nombre       ?? resPerfil.deporte            ?? 'Frontón',
+                sobreMi:            resPerfil.bio_profesor         ?? resPerfil.descripcion        ?? null,
+                calificacion:       resPerfil.calificacion_promedio != null
+                                      ? Number(resPerfil.calificacion_promedio).toFixed(1)
+                                      : null,
+              });
+            }
+
+            setResultados(Array.isArray(resResultados) ? resResultados : []);
+          }
+        } catch (error) {
+          console.error("Error cargando perfil:", error);
+        } finally {
+          if (isMounted) {
+            setLoading(false);
+            setLoadingRes(false);
+          }
+        }
+      };
+
+      cargarDatos();
+
+      return () => {
+        isMounted = false; // Se ejecuta al perder el foco / desmontar
+      };
+    }, [])
+  );
 
   if (loading) {
     return (
@@ -207,6 +234,7 @@ export function ProfileScreen({ navigation }) {
     <View style={styles.root}>
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
 
+        {/* CAMBIO 2: Uso de constante para la imagen por defecto */}
         <ImageBackground source={{ uri: p.coverUri ?? COVER_DEFAULT }} style={styles.cover}>
           <SafeAreaView style={styles.headerSafeArea}>
             <TouchableOpacity
@@ -230,8 +258,9 @@ export function ProfileScreen({ navigation }) {
         <View style={styles.sheet}>
 
           <View style={styles.avatarWrap}>
+            {/* CAMBIO 2: Uso de constante para el avatar por defecto */}
             <Image
-              source={p.avatar ? { uri: p.avatar } : { uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxUzKngXZcLOT11hp0FMnpwDtCusZVoIm2kCLfXtUfDg&s=10' }}
+              source={{ uri: p.avatar ?? AVATAR_DEFAULT }}
               style={styles.avatar}
             />
             <TouchableOpacity

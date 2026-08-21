@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   SafeAreaView, ImageBackground, ActivityIndicator, RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
@@ -67,7 +68,7 @@ export function HomeScreen({ navigation }) {
   const leftCards = [ACTION_CARDS[0], ACTION_CARDS[2]];
   const rightCards = [ACTION_CARDS[1], ACTION_CARDS[3]];
 
-  const cargarDatos = useCallback(async () => {
+  const cargarDatos = useCallback(async (isRefresh = false) => {
     try {
       let raw = await usuarioService.menuPrincipal();
       if (!raw || raw === '') {
@@ -93,9 +94,13 @@ export function HomeScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => {
-    cargarDatos();
-  }, [cargarDatos]);
+  // CAMBIO: useFocusEffect en vez de useEffect, para recargar cada vez que Home recibe foco
+  // (por ejemplo, al volver de EditProfile tras cambiar la foto)
+  useFocusEffect(
+    useCallback(() => {
+      cargarDatos();
+    }, [cargarDatos])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
