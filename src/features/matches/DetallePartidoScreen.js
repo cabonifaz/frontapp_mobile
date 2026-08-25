@@ -168,15 +168,6 @@ export function DetallePartidoScreen({ navigation, route }) {
           <Text style={styles.chatBtnText}>Abrir Chat del Partido</Text>
         </TouchableOpacity>
 
-        {/* Botones */}
-        <TouchableOpacity
-          style={styles.chatBtn}
-          onPress={() => navigation.navigate('Chat', { idPartido: partido.id, rival })}
-        >
-          <Ionicons name="chatbubbles-outline" size={20} color={colors.primary} />
-          <Text style={styles.chatBtnText}>Chat con rival</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
           <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
           <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar partido'}</Text>
