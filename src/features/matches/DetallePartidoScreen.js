@@ -16,6 +16,7 @@ export function DetallePartidoScreen({ navigation, route }) {
   const [cancelando, setCancelando] = useState(false);
 
   const rival = {
+    id:      item.id_usuario_rival ?? item.id_rival ?? null,
     name:    item.name    ?? item.nombre_rival ?? 'Rival',
     ranking: item.ranking ?? item.ranking_rival ?? '--',
     pts:     item.pts     ?? item.puntos_rival  ?? 0,
@@ -138,6 +139,14 @@ export function DetallePartidoScreen({ navigation, route }) {
         </Text>
 
         {/* Botones */}
+        <TouchableOpacity
+          style={styles.chatBtn}
+          onPress={() => navigation.navigate('Chat', { idPartido: partido.id, rival })}
+        >
+          <Ionicons name="chatbubbles-outline" size={20} color={colors.primary} />
+          <Text style={styles.chatBtnText}>Chat con rival</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
           <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
           <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar partido'}</Text>
@@ -242,6 +251,15 @@ const styles = StyleSheet.create({
     lineHeight: 19, marginBottom: 24,
     alignSelf: 'flex-start',
   },
+
+  chatBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.accentLight,
+    borderRadius: 30, paddingVertical: 16,
+    width: '100%', marginBottom: 12,
+  },
+  chatBtnText: { fontSize: 16, fontWeight: '600', color: colors.primary },
 
   cancelBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
