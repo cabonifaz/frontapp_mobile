@@ -21,6 +21,7 @@ import { RetarScreen } from '../features/matches/RetarScreen';
 import { MisSolicitudesScreen } from '../features/matches/MisSolicitudesScreen';
 import { DetallePartidoScreen } from '../features/matches/DetallePartidoScreen';
 import { ColocarResultadosScreen } from '../features/matches/ColocarResultadosScreen';
+import { MatchChatScreen } from '../features/matches/MatchChatScreen'; // <--- Importación añadida
 import { TomarClaseScreen } from '../features/classes/TomarClaseScreen';
 import { ProfesoresDisponiblesScreen } from '../features/classes/ProfesoresDisponiblesScreen';
 import { DetalleClaseScreen } from '../features/classes/DetalleClaseScreen';
@@ -99,6 +100,7 @@ export function AppNavigator() {
         <Stack.Screen name="MisSolicitudes" component={MisSolicitudesScreen} />
         <Stack.Screen name="DetallePartido" component={DetallePartidoScreen} />
         <Stack.Screen name="ColocarResultados" component={ColocarResultadosScreen} />
+        <Stack.Screen name="MatchChat" component={MatchChatScreen} />
         <Stack.Screen name="TomarClase" component={TomarClaseScreen} />
         <Stack.Screen name="ProfesoresDisponibles" component={ProfesoresDisponiblesScreen} />
         <Stack.Screen name="DetalleClase" component={DetalleClaseScreen} />

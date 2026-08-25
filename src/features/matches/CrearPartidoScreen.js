@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Image, Modal, TextInput, Alert,
+  SafeAreaView, Image, Modal, TextInput, Alert, ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
-import { COURTS } from '../../data/buscarPartidoData';
+import { maestroService } from '../../services/maestroService';
 import { partidoService } from '../../services/partidoService';
 import { TIPOS_JUEGO, DEPORTE_DEFAULT } from '../../constants/maestro';
 
@@ -22,8 +22,8 @@ function getNextDays(n = 14) {
     const d = new Date(now);
     d.setDate(now.getDate() + i);
     const yyyy = d.getFullYear();
-    const mm   = String(d.getMonth() + 1).padStart(2, '0');
-    const dd   = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
     days.push({ key: String(i), day: d.getDate(), month: MESES[d.getMonth()], iso: `${yyyy}-${mm}-${dd}` });
   }
   return days;
@@ -36,11 +36,14 @@ const TIPO_JUEGO_MAP = {
 
 const DAYS = getNextDays(14);
 
-function CanchaModal({ visible, onClose, onSelect }) {
+function CanchaModal({ visible, onClose, onSelect, courts, loadingCanchas }) {
   const [search, setSearch] = useState('');
-  const filtered = COURTS.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase())
-  );
+  
+  const filtered = courts.filter(c => {
+    const nombreCancha = c.name ?? c.nombre ?? '';
+    return nombreCancha.toLowerCase().includes(search.toLowerCase());
+  });
+
   return (
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>
@@ -50,31 +53,52 @@ function CanchaModal({ visible, onClose, onSelect }) {
             <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
+
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color={colors.dark} />
+          <Ionicons name="search" size={18} color={colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
             placeholder="Buscar cancha"
-            placeholderTextColor="#9E9E9E"
+            placeholderTextColor={colors.textSecondary}
             value={search}
             onChangeText={setSearch}
             underlineColorAndroid="transparent"
           />
         </View>
-        <ScrollView>
-          {filtered.map(c => (
-            <TouchableOpacity key={c.id} style={styles.courtCard} onPress={() => onSelect(c)}>
-              <Image source={{ uri: c.uri }} style={styles.courtImg} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.courtName}>{c.name}</Text>
-                <View style={styles.addressRow}>
-                  <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                  <Text style={styles.courtAddress}> {c.address}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+
+        {loadingCanchas ? (
+          <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
+        ) : (
+          <ScrollView contentContainerStyle={styles.modalListContent}>
+            {filtered.map(c => {
+              const idCancha = c.id_maestro ?? c.id;
+              const nombreCancha = c.name ?? c.nombre ?? 'Cancha';
+              const uriCancha = c.uri ?? c.foto_url;
+              const direccionCancha = c.address ?? c.descripcion;
+
+              return (
+                <TouchableOpacity key={idCancha} style={styles.courtCard} onPress={() => onSelect(c)}>
+                  {uriCancha ? (
+                    <Image source={{ uri: uriCancha }} style={styles.courtImg} />
+                  ) : (
+                    <View style={[styles.courtImg, styles.canchaImgPlaceholder]}>
+                      <Ionicons name="image-outline" size={28} color={colors.textSecondary} />
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.courtName}>{nombreCancha}</Text>
+                    {direccionCancha ? (
+                      <View style={styles.addressRow}>
+                        <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                        <Text style={styles.courtAddress}> {direccionCancha}</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -109,7 +133,51 @@ export function CrearPartidoScreen({ navigation, route }) {
   const [success, setSuccess] = useState(false);
   const [creando, setCreando] = useState(false);
 
-  const canConfirm = !!cancha && !!fecha && !!hora;
+  // --- CANCHAS REALES DESDE LA API ---
+  const [canchas, setCanchas] = useState([]);
+  const [loadingCanchas, setLoadingCanchas] = useState(true);
+
+  useEffect(() => {
+    async function fetchCanchas() {
+      try {
+        const res = await maestroService.canchas();
+        setCanchas(res ?? []);
+      } catch (e) {
+        console.error('Error al cargar canchas:', e);
+      } finally {
+        setLoadingCanchas(false);
+      }
+    }
+    fetchCanchas();
+  }, []);
+  // ------------------------------------
+
+  const canConfirm = !!cancha && !!fecha && !!hora && !creando;
+
+  const handleCrear = async () => {
+    if (!canConfirm) return;
+    try {
+      setCreando(true);
+      const datos = {
+        id_cancha: cancha.id_maestro ?? cancha.id,   // ID real de la cancha
+        fecha: fecha.iso,
+        hora,
+        id_tipo_juego: TIPO_JUEGO_MAP[tipoJuego] ?? TIPOS_JUEGO.UNO_VS_UNO,
+        id_deporte: DEPORTE_DEFAULT,
+      };
+
+      if (tipo === 'Rankeado') {
+        await partidoService.crearRankeado(datos);
+      } else {
+        await partidoService.crearAmistoso(datos);
+      }
+      setSuccess(true);
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'No se pudo crear el partido.');
+    } finally {
+      setCreando(false);
+    }
+  };
 
   if (success) {
     return (
@@ -121,6 +189,7 @@ export function CrearPartidoScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -129,8 +198,7 @@ export function CrearPartidoScreen({ navigation, route }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-
-        {/* Cancha */}
+        {/* Selector de Cancha */}
         <TouchableOpacity style={styles.canchaCard} onPress={() => setShowCanchaModal(true)} activeOpacity={0.8}>
           {cancha ? (
             <Image source={{ uri: cancha.uri }} style={styles.canchaImg} />
@@ -153,7 +221,7 @@ export function CrearPartidoScreen({ navigation, route }) {
           Es mandatorio para el anfitrión del partido separar la cancha elegida por un medio independiente.
         </Text>
 
-        {/* Fecha */}
+        {/* Selección de Fecha */}
         <Text style={styles.sectionTitle}>Selecciona una fecha cercana</Text>
         <ScrollView
           horizontal
@@ -176,7 +244,7 @@ export function CrearPartidoScreen({ navigation, route }) {
           })}
         </ScrollView>
 
-        {/* Hora */}
+        {/* Selección de Hora */}
         <Text style={styles.sectionTitle}>Selecciona horas disponibles</Text>
         <ScrollView
           horizontal
@@ -212,7 +280,7 @@ export function CrearPartidoScreen({ navigation, route }) {
           ))}
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Botón confirmar */}
@@ -220,32 +288,15 @@ export function CrearPartidoScreen({ navigation, route }) {
         <TouchableOpacity
           style={[styles.confirmBtn, !canConfirm && styles.confirmBtnDisabled]}
           disabled={!canConfirm}
-          onPress={async () => {
-            try {
-              setCreando(true);
-              const datos = {
-                id_cancha:     cancha.id,
-                fecha:         fecha.iso,
-                hora,
-                id_tipo_juego: TIPO_JUEGO_MAP[tipoJuego] ?? TIPOS_JUEGO.UNO_VS_UNO,
-                id_deporte:    DEPORTE_DEFAULT,
-              };
-              if (tipo === 'Rankeado') {
-                await partidoService.crearRankeado(datos);
-              } else {
-                await partidoService.crearAmistoso(datos);
-              }
-              setSuccess(true);
-            } catch (e) {
-              Alert.alert('Error', e.message ?? 'No se pudo crear el partido.');
-            } finally {
-              setCreando(false);
-            }
-          }}
+          onPress={handleCrear}
         >
-          <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
-            {creando ? 'Creando...' : 'Confirmar'}
-          </Text>
+          {creando ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
+              Confirmar
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -253,6 +304,8 @@ export function CrearPartidoScreen({ navigation, route }) {
         visible={showCanchaModal}
         onClose={() => setShowCanchaModal(false)}
         onSelect={c => { setCancha(c); setShowCanchaModal(false); }}
+        courts={canchas}
+        loadingCanchas={loadingCanchas}
       />
     </SafeAreaView>
   );
@@ -282,9 +335,9 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: 14,
   },
-  canchaImg: { width: 70, height: 70, borderRadius: 10, backgroundColor: '#ccc' },
+  canchaImg: { width: 70, height: 70, borderRadius: 10, backgroundColor: colors.surface },
   canchaImgPlaceholder: {
-    backgroundColor: '#E0E0E0',
+    backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -316,11 +369,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dateChipActive: { backgroundColor: colors.dark },
+  dateChipActive: { backgroundColor: colors.accent },
   dateChipNum: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary },
-  dateChipNumActive: { color: '#FFFFFF' },
+  dateChipNumActive: { color: colors.primary },
   dateChipMonth: { fontSize: 12, color: colors.textSecondary, fontWeight: '500' },
-  dateChipMonthActive: { color: '#FFFFFF' },
+  dateChipMonthActive: { color: colors.primary },
 
   horaChip: {
     paddingHorizontal: 18,
@@ -330,9 +383,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  horaChipActive: { backgroundColor: colors.dark },
+  horaChipActive: { backgroundColor: colors.accent },
   horaChipText: { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
-  horaChipTextActive: { color: '#FFFFFF', fontWeight: '600' },
+  horaChipTextActive: { color: colors.primary, fontWeight: '700' },
 
   toggle: {
     flexDirection: 'row',
@@ -347,9 +400,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 28,
   },
-  toggleBtnActive: { backgroundColor: colors.dark },
+  toggleBtnActive: { backgroundColor: colors.accent },
   toggleText: { fontSize: 15, fontWeight: '600', color: colors.textSecondary },
-  toggleTextActive: { color: '#FFFFFF' },
+  toggleTextActive: { color: colors.primary, fontWeight: '700' },
 
   bottomBar: { paddingHorizontal: 20, paddingVertical: 16 },
   confirmBtn: {
@@ -357,6 +410,8 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     paddingVertical: 18,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
   },
   confirmBtnDisabled: { backgroundColor: colors.surface },
   confirmBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
@@ -385,6 +440,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
+  modalListContent: { paddingBottom: 20 },
   courtCard: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
@@ -395,7 +451,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
   },
-  courtImg: { width: 80, height: 80, borderRadius: 10, backgroundColor: '#ccc' },
+  courtImg: { width: 80, height: 80, borderRadius: 10, backgroundColor: colors.background },
   courtName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },
   addressRow: { flexDirection: 'row', alignItems: 'center' },
   courtAddress: { fontSize: 13, color: colors.textSecondary },
@@ -411,7 +467,7 @@ const styles = StyleSheet.create({
     width: 160,
     height: 160,
     borderRadius: 80,
-    backgroundColor: '#E8E8E8',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 32,

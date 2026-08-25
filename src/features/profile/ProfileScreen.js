@@ -15,9 +15,38 @@ const COVER_H    = 220;
 const AVATAR_SIZE = 126;
 const TABS = ['Estadísticas', 'Detalles', 'Resultados'];
 
-// URLs por defecto (A futuro, es mejor usar require('../../assets/mi-imagen.png'))
+// Cover por defecto (esta sí es una imagen remota real, se queda igual)
 const COVER_DEFAULT = 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80';
-const AVATAR_DEFAULT = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxUzKngXZcLOT11hp0FMnpwDtCusZVoIm2kCLfXtUfDg&s=10';
+
+// NUEVO: mismo mapeo de avatares locales que usa SharedHeader.js.
+// Los nombres deben coincidir EXACTO con lo que graba sp_auth_registrar.
+const AVATARES = {
+  'avatar_femenino_1.png': require('../../../assets/avatar_femenino_1.png'),
+  'avatar_femenino_2.png': require('../../../assets/avatar_femenino_2.png'),
+  'avatar_femenino_3.png': require('../../../assets/avatar_femenino_3.png'),
+  'avatar_masculino_1.png': require('../../../assets/avatar_masculino_1.png'),
+  'avatar_masculino_2.png': require('../../../assets/avatar_masculino_2.png'),
+  'avatar_masculino_3.png': require('../../../assets/avatar_masculino_3.png'),
+  'avatar_general.png': require('../../../assets/avatar_general.png'),
+};
+
+const AVATAR_DEFAULT = require('../../../assets/avatar_general.png');
+
+// NUEVO: resuelve el source correcto para <Image>, sea URL remota, avatar local o fallback
+function resolverFoto(fotoPerfil) {
+  // 1. Foto real subida por el usuario (Cloudinary, Facebook, Google, etc.)
+  if (fotoPerfil && /^https?:\/\//i.test(fotoPerfil)) {
+    return { uri: fotoPerfil };
+  }
+
+  // 2. Avatar por defecto asignado por el backend al crear la cuenta
+  if (fotoPerfil && AVATARES[fotoPerfil]) {
+    return AVATARES[fotoPerfil];
+  }
+
+  // 3. Fallback de seguridad
+  return AVATAR_DEFAULT;
+}
 
 function NivelRing({ percent, size = 72 }) {
   const sw = 7;
@@ -234,7 +263,6 @@ export function ProfileScreen({ navigation }) {
     <View style={styles.root}>
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
 
-        {/* CAMBIO 2: Uso de constante para la imagen por defecto */}
         <ImageBackground source={{ uri: p.coverUri ?? COVER_DEFAULT }} style={styles.cover}>
           <SafeAreaView style={styles.headerSafeArea}>
             <TouchableOpacity
@@ -258,9 +286,9 @@ export function ProfileScreen({ navigation }) {
         <View style={styles.sheet}>
 
           <View style={styles.avatarWrap}>
-            {/* CAMBIO 2: Uso de constante para el avatar por defecto */}
+            {/* CORREGIDO: ahora usa resolverFoto() en vez de tratar todo como URL remota */}
             <Image
-              source={{ uri: p.avatar ?? AVATAR_DEFAULT }}
+              source={resolverFoto(p.avatar)}
               style={styles.avatar}
             />
             <TouchableOpacity

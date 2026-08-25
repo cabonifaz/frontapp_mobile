@@ -33,6 +33,7 @@ export const authService = {
       id_ciudad:         null,
       id_distrito:       null,
       es_profesor:       datos.es_profesor ? 1 : 0,
+      id_genero:         datos.id_genero ?? null, // NUEVO: antes se perdía aquí, nunca llegaba al backend
     });
     return data;
   },

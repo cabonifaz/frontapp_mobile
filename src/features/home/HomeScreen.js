@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { ACTION_CARDS } from '../../data/homeData';
@@ -40,11 +40,7 @@ function PhotoCard({ card, onPress }) {
       onPress={onPress}
       activeOpacity={0.88}
     >
-      <ImageBackground
-        source={{ uri: card.uri }}
-        style={StyleSheet.absoluteFill}
-        imageStyle={{ borderRadius: 16 }}
-      >
+      <ImageBackground source={{ uri: card.uri }} style={StyleSheet.absoluteFillObject} imageStyle={{ borderRadius: 16 }}>
         <View style={styles.cardOverlay} />
         <View style={styles.cardContent}>
           <Text style={styles.cardTitle}>{card.title}</Text>
@@ -76,49 +72,35 @@ export function HomeScreen({ navigation }) {
       }
       if (raw) {
         setUsuario({
-          nombre:           raw.nombre_usuario    ?? raw.nombre           ?? raw.nombre_completo?.split(' ')[0] ?? null,
-          foto_perfil_url:  raw.foto_perfil_url   ?? null,
-          deporte:          raw.deporte            ?? 'Frontón',
-          ranking:          raw.posicion_ranking   ?? raw.ranking          ?? null,
-          calificacion:     raw.calificacion_promedio ?? raw.calificacion  ?? null,
-          nivel:            raw.nivel_actual       ?? raw.nivel_calculado  ?? raw.nivel           ?? null,
-          puntos:           raw.puntos_totales     ?? raw.puntaje_total    ?? raw.puntos          ?? null,
+          nombre:           raw.nombre_usuario ?? raw.nombre ?? raw.nombre_completo?.split(' ')[0] ?? null,
+          foto_perfil_url:  raw.foto_perfil_url ?? null,
+          genero:           raw.genero ?? raw.sexo ?? null,
+          deporte:          raw.deporte ?? 'Frontón',
+          ranking:          raw.posicion_ranking ?? raw.ranking ?? null,
+          calificacion:     raw.calificacion_promedio ?? raw.calificacion ?? null,
+          nivel:            raw.nivel_actual ?? raw.nivel_calculado ?? raw.nivel ?? null,
+          puntos:           raw.puntos_totales ?? raw.puntaje_total ?? raw.puntos ?? null,
           porcentaje_nivel: raw.progreso_nivel_pct ?? raw.progreso_nivel_porcentaje ?? raw.porcentaje_nivel ?? 0,
         });
       }
     } catch (e) {
-      // Si falla, se queda con null y muestra '--'
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  // CAMBIO: useFocusEffect en vez de useEffect, para recargar cada vez que Home recibe foco
-  // (por ejemplo, al volver de EditProfile tras cambiar la foto)
-  useFocusEffect(
-    useCallback(() => {
-      cargarDatos();
-    }, [cargarDatos])
-  );
-
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    cargarDatos();
-  }, [cargarDatos]);
+  useFocusEffect(useCallback(() => { cargarDatos(); }, [cargarDatos]));
+  const onRefresh = useCallback(() => { setRefreshing(true); cargarDatos(); }, [cargarDatos]);
 
   const pctNivel = usuario?.porcentaje_nivel ?? 0;
 
   return (
     <SafeAreaView style={styles.safe}>
       <SharedHeader
-        nombre={usuario?.nombre}
-        deporte={usuario?.deporte}
-        ranking={usuario?.ranking}
-        calificacion={usuario?.calificacion}
-        nivel={usuario?.nivel}
-        puntos={usuario?.puntos}
-        fotoPerfil={usuario?.foto_perfil_url}
+        nombre={usuario?.nombre} deporte={usuario?.deporte} ranking={usuario?.ranking}
+        calificacion={usuario?.calificacion} nivel={usuario?.nivel} puntos={usuario?.puntos}
+        fotoPerfil={usuario?.foto_perfil_url} genero={usuario?.genero}
       />
       <View style={styles.sheet}>
         {loading ? (
@@ -132,9 +114,7 @@ export function HomeScreen({ navigation }) {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
           >
             <Text style={styles.sectionTitle}>Tus estadísticas</Text>
-
             <View style={styles.statsRow}>
-              {/* Ranking card */}
               <View style={styles.statCard}>
                 <View style={styles.statTopRow}>
                   <Text style={styles.statNumber}>{usuario?.ranking ?? 'N/R'}</Text>
@@ -143,7 +123,6 @@ export function HomeScreen({ navigation }) {
                 <Text style={styles.statLabel}>Ranking</Text>
               </View>
 
-              {/* Nivel card */}
               <View style={styles.statCard}>
                 <View style={styles.statTopRow}>
                   <View>
@@ -162,28 +141,33 @@ export function HomeScreen({ navigation }) {
             </View>
 
             <Text style={styles.sectionTitle}>¿Qué deseas hacer hoy?</Text>
-
             <View style={styles.grid}>
               <View style={styles.gridCol}>
                 {leftCards.map((c) => (
-                  <PhotoCard
-                    key={c.id}
-                    card={c}
-                    onPress={() => c.route && navigation.navigate(c.route)}
-                  />
+                  <PhotoCard key={c.id} card={c} onPress={() => c.route && navigation.navigate(c.route)} />
                 ))}
               </View>
               <View style={styles.gridCol}>
                 {rightCards.map((c) => (
-                  <PhotoCard
-                    key={c.id}
-                    card={c}
-                    onPress={() => c.route && navigation.navigate(c.route)}
-                  />
+                  <PhotoCard key={c.id} card={c} onPress={() => c.route && navigation.navigate(c.route)} />
                 ))}
               </View>
             </View>
           </ScrollView>
+        )}
+
+        {/* Botón flotante para Mis Solicitudes */}
+        {!loading && (
+          <TouchableOpacity 
+            style={styles.fabContainer} 
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('MisSolicitudes')}
+          >
+            <View style={styles.fabBadge}>
+              <Text style={styles.fabBadgeText}>3</Text>
+            </View>
+            <MaterialCommunityIcons name="tennis" size={32} color={colors.dark} style={{ transform: [{ rotate: '45deg' }] }} />
+          </TouchableOpacity>
         )}
       </View>
     </SafeAreaView>
@@ -191,119 +175,63 @@ export function HomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: HEADER_BG,
-  },
-  sheet: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    overflow: 'hidden',
-  },
-  loadingContainer: {
-    flex: 1,
+  safe: { flex: 1, backgroundColor: HEADER_BG },
+  sheet: { flex: 1, backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 88 }, // Aumenté el paddingBottom para que el botón no tape contenido
+  sectionTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 16 },
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 28 },
+  statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16 },
+  statTopRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  statNumber: { fontSize: 32, fontWeight: 'bold', color: colors.textPrimary },
+  statLabel: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  progressWrapper: { width: 54, height: 54, alignItems: 'center', justifyContent: 'center' },
+  progressPct: { position: 'absolute', fontSize: 11, fontWeight: '700', color: colors.textPrimary },
+  nivelPts: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
+  grid: { flexDirection: 'row', gap: 12 },
+  gridCol: { flex: 1, gap: 12 },
+  photoCard: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#333' },
+  cardOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.36)', borderRadius: 16 },
+  cardContent: { position: 'absolute', bottom: 12, left: 12, right: 12 },
+  cardTitle: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  cardSubRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  greenDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.positive },
+  cardSub: { fontSize: 12, color: '#FFFFFF' },
+  
+  /* Estilos del Botón Flotante */
+  fabContainer: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 8,
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 8,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 16,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 28,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-  },
-  statTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  statNumber: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
-  statLabel: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  progressWrapper: {
-    width: 54,
-    height: 54,
+  fabBadge: {
+    position: 'absolute',
+    top: -2,
+    left: -2,
+    backgroundColor: '#E53935', // Rojo alerta
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 10,
+    borderWidth: 2,
+    borderColor: colors.background,
   },
-  progressPct: {
-    position: 'absolute',
-    fontSize: 11,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  nivelPts: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  grid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  gridCol: {
-    flex: 1,
-    gap: 12,
-  },
-  photoCard: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#333',
-  },
-  cardOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.36)',
-    borderRadius: 16,
-  },
-  cardContent: {
-    position: 'absolute',
-    bottom: 12,
-    left: 12,
-    right: 12,
-  },
-  cardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  cardSubRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 4,
-  },
-  greenDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.positive,
-  },
-  cardSub: {
+  fabBadgeText: {
+    color: '#FFF',
     fontSize: 12,
-    color: '#FFFFFF',
-  },
+    fontWeight: 'bold',
+  }
 });

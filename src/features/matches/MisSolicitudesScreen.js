@@ -1,12 +1,34 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   SafeAreaView, Image, ActivityIndicator, Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { solicitudService } from '../../services/solicitudService';
 import { partidoService } from '../../services/partidoService';
+
+const DIAS  = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+function formatFecha(isoString) {
+  if (!isoString) return '--';
+  const cleanIso = isoString.split('T')[0];
+  const parts = cleanIso.split('-');
+  if (parts.length === 3) {
+    const year  = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day   = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    if (!isNaN(d)) {
+      return `${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}, ${d.getFullYear()}`;
+    }
+  }
+  const d = new Date(isoString);
+  if (isNaN(d)) return isoString;
+  return `${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}, ${d.getFullYear()}`;
+}
 
 function SuccessScreen({ retador, onPress }) {
   const firstName = (retador.nombre ?? retador.fullName ?? 'el retador').split(' ')[0];
@@ -47,16 +69,23 @@ export function MisSolicitudesScreen({ navigation }) {
     }
   }, []);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      cargar();
+    }, [cargar])
+  );
 
-  const partido = datos?.partido ?? null;
+  // Soportar lista de partidos (partidos) o un único partido por retrocompatibilidad
+  const partidos = datos?.partidos ?? (datos?.partido ? [datos.partido] : []);
   const solicitudes = datos?.solicitudes ?? datos?.postulantes ?? [];
+
   const fechas = solicitudes.length > 0
     ? [...new Set(solicitudes.map(s => s.fecha ?? s.date).filter(Boolean))]
     : [];
   const [fechaActiva, setFechaActiva] = useState(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (fechas.length > 0 && !fechaActiva) setFechaActiva(fechas[0]);
   }, [fechas.length]);
 
@@ -78,17 +107,20 @@ export function MisSolicitudesScreen({ navigation }) {
     }
   }
 
-  async function handleCancelar() {
-    if (!partido) return;
-    const idPartido = partido.id_partido ?? partido.id;
-    Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar tu partido?', [
+  async function handleCancelarPartido(partidoItem) {
+    const idPartido = partidoItem.id_partido ?? partidoItem.id;
+    Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar este partido?', [
       { text: 'No', style: 'cancel' },
       {
         text: 'Sí, cancelar', style: 'destructive',
         onPress: async () => {
           try {
             await partidoService.cancelar(idPartido);
-            setDatos(prev => ({ ...prev, partido: null }));
+            setDatos(prev => ({
+              ...prev,
+              partidos: (prev?.partidos ?? []).filter(p => (p.id_partido ?? p.id) !== idPartido),
+              partido: null,
+            }));
           } catch (e) {
             Alert.alert('Error', e.message ?? 'No se pudo cancelar el partido.');
           }
@@ -126,7 +158,9 @@ export function MisSolicitudesScreen({ navigation }) {
         >
           {fechas.map(f => (
             <TouchableOpacity key={f} style={styles.fechaTab} onPress={() => setFechaActiva(f)}>
-              <Text style={[styles.fechaTabText, fechaActiva === f && styles.fechaTabTextActive]}>{f}</Text>
+              <Text style={[styles.fechaTabText, fechaActiva === f && styles.fechaTabTextActive]}>
+                {formatFecha(f)}
+              </Text>
               {fechaActiva === f && <View style={styles.fechaTabIndicator} />}
             </TouchableOpacity>
           ))}
@@ -140,33 +174,36 @@ export function MisSolicitudesScreen({ navigation }) {
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-          {/* Partido creado */}
-          {partido ? (
-            <View style={styles.partidoCard}>
-              <Image
-                source={{ uri: partido.foto_cancha_url ?? partido.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
-                style={styles.partidoImg}
-              />
-              <View style={styles.partidoInfo}>
-                <Text style={styles.partidoCancha}>{partido.nombre_cancha ?? partido.cancha ?? 'Cancha'}</Text>
-                <View style={styles.metaRow}>
-                  <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                  <Text style={styles.metaText}> {partido.fecha ?? '--'}</Text>
-                  <Text style={{ width: 10 }} />
-                  <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                  <Text style={styles.metaText}> {partido.hora ?? '--'}</Text>
+          {/* Listado de Partidos Creados (Buscando Oponente) */}
+          {partidos.length > 0 ? (
+            partidos.map((p, idx) => {
+              const pId = p.id_partido ?? p.id ?? idx;
+              return (
+                <View key={pId} style={styles.partidoCard}>
+                  <Image
+                    source={{ uri: p.foto_cancha_url ?? p.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
+                    style={styles.partidoImg}
+                  />
+                  <View style={styles.partidoInfo}>
+                    <Text style={styles.partidoCancha}>{p.nombre_cancha ?? p.cancha ?? 'Cancha'}</Text>
+                    <View style={styles.metaRow}>
+                      <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                      <Text style={styles.metaText}> {formatFecha(p.fecha ?? p.fecha_partido)}</Text>
+                      <Text style={{ width: 10 }} />
+                      <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                      <Text style={styles.metaText}> {p.hora ?? p.hora_partido ?? '--'}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={() => handleCancelarPartido(p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
+                  </TouchableOpacity>
                 </View>
-              </View>
-              <TouchableOpacity onPress={handleCancelar} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
+              );
+            })
           ) : (
-            !loading && (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>No tienes partidos activos</Text>
-              </View>
-            )
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>No tienes partidos activos buscando oponente</Text>
+            </View>
           )}
 
           {/* Jugadores retándote */}
@@ -191,7 +228,7 @@ export function MisSolicitudesScreen({ navigation }) {
                   <Text style={styles.retadorClub}>{s.nombre_cancha ?? s.club ?? ''}</Text>
                   <View style={styles.metaRow}>
                     <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                    <Text style={styles.metaText}> {s.fecha ?? s.date ?? '--'}</Text>
+                    <Text style={styles.metaText}> {formatFecha(s.fecha ?? s.date)}</Text>
                     <Text style={{ width: 10 }} />
                     <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
                     <Text style={styles.metaText}> {s.hora ?? s.time ?? '--'}</Text>
@@ -253,7 +290,7 @@ const styles = StyleSheet.create({
   partidoCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: colors.surface, borderRadius: 16,
-    padding: 14, gap: 14, marginBottom: 24,
+    padding: 14, gap: 14, marginBottom: 12,
   },
   partidoImg: { width: 70, height: 70, borderRadius: 10, backgroundColor: '#ccc' },
   partidoInfo: { flex: 1 },
@@ -265,7 +302,7 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 14, color: colors.textSecondary },
 
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 12, marginTop: 12 },
 
   retadorCard: {
     flexDirection: 'row', alignItems: 'center',

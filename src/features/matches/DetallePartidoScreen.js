@@ -13,29 +13,49 @@ const AVATAR_SIZE = 90;
 
 export function DetallePartidoScreen({ navigation, route }) {
   const item = route?.params?.partido ?? {};
+
+  console.log('DATOS DEL PARTIDO RECIBIDOS:', item);
+
   const [cancelando, setCancelando] = useState(false);
 
+  // Formateo seguro de fecha
+  const limpiarFecha = (fechaStr) => {
+    if (!fechaStr) return '--';
+    const str = String(fechaStr);
+    if (str.includes('T')) return str.split('T')[0];
+    if (str.includes(' ')) return str.split(' ')[0];
+    return str;
+  };
+
+  // Formateo seguro de hora
+  const limpiarHora = (horaStr) => {
+    if (!horaStr) return '--';
+    const str = String(horaStr).trim();
+    if (str.includes('T')) return str.split('T')[1].substring(0, 5);
+    return str.length > 5 ? str.substring(0, 5) : str;
+  };
+
   const rival = {
-    name:    item.name    ?? item.nombre_rival ?? 'Rival',
-    ranking: item.ranking ?? item.ranking_rival ?? '--',
-    pts:     item.pts     ?? item.puntos_rival  ?? 0,
-    avatar:  item.avatar  ?? item.foto_rival    ?? 'https://i.pravatar.cc/150?img=17',
+    name:    item.nombre_rival ?? item.rival_nombre ?? item.name ?? item.contrincante ?? 'Rival',
+    ranking: item.ranking_rival ?? item.rankingRival ?? item.ranking ?? '--',
+    pts:     item.puntos_rival ?? item.puntosRival ?? item.pts ?? 0,
+    avatar:  item.foto_rival ?? item.avatar_rival ?? item.avatar ?? 'https://i.pravatar.cc/150?img=17',
   };
 
   const yo = {
-    name:    item.nombre_yo  ?? 'Tú',
-    ranking: item.ranking_yo ?? '--',
-    pts:     item.puntos_yo  ?? 0,
-    avatar:  item.avatar_yo  ?? 'https://i.pravatar.cc/150?img=1',
+    name:    item.nombre_yo ?? item.usuario_nombre ?? item.name_yo ?? 'Tú',
+    ranking: item.ranking_yo ?? item.rankingYo ?? '--',
+    pts:     item.puntos_yo ?? item.puntosYo ?? item.pts_yo ?? 0,
+    avatar:  item.foto_yo ?? item.avatar_yo ?? 'https://i.pravatar.cc/150?img=1',
   };
 
   const partido = {
-    id:       item.id_partido ?? item.id ?? null,
-    club:     item.club ?? item.nombre_cancha ?? 'Cancha',
-    address:  item.address ?? item.direccion  ?? '',
-    date:     item.date ?? item.fecha ?? '--',
-    time:     item.time ?? item.hora  ?? '--',
-    coverUri: item.foto_cancha_url ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80',
+    id:       item.id_partido ?? item.id_encuentro ?? item.id ?? null,
+    club:     item.nombre_cancha ?? item.lugar ?? item.club ?? item.cancha ?? 'Cancha',
+    address:  item.direccion_cancha ?? item.address ?? item.direccion ?? '',
+    date:     limpiarFecha(item.fecha_partido ?? item.fecha ?? item.date),
+    time:     limpiarHora(item.hora_partido ?? item.hora ?? item.time),
+    coverUri: item.foto_cancha_url ?? item.coverUri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80',
   };
 
   async function handleCancelar() {
@@ -89,7 +109,7 @@ export function DetallePartidoScreen({ navigation, route }) {
                 <Text style={styles.rankBadgeText}> {yo.ranking}</Text>
               </View>
             </View>
-            <Text style={styles.playerName} numberOfLines={1}>{yo.name.split(' ')[0]}</Text>
+            <Text style={styles.playerName} numberOfLines={1}>{String(yo.name || 'Tú').split(' ')[0]}</Text>
             <Text style={styles.playerPts}>{yo.pts} pts</Text>
           </View>
 
@@ -104,7 +124,7 @@ export function DetallePartidoScreen({ navigation, route }) {
                 <Text style={styles.rankBadgeText}> {rival.ranking}</Text>
               </View>
             </View>
-            <Text style={styles.playerName} numberOfLines={1}>{rival.name.split(' ')[0]}</Text>
+            <Text style={styles.playerName} numberOfLines={1}>{String(rival.name || 'Rival').split(' ')[0]}</Text>
             <Text style={styles.playerPts}>{rival.pts} pts</Text>
           </View>
         </View>
@@ -115,10 +135,12 @@ export function DetallePartidoScreen({ navigation, route }) {
         <View style={styles.detailCard}>
           <View style={{ flex: 1 }}>
             <Text style={styles.detailMain}>{partido.club}</Text>
-            <View style={styles.addressRow}>
-              <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-              <Text style={styles.detailSub}> {partido.address}</Text>
-            </View>
+            {partido.address ? (
+              <View style={styles.addressRow}>
+                <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                <Text style={styles.detailSub}> {partido.address}</Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -137,6 +159,15 @@ export function DetallePartidoScreen({ navigation, route }) {
           Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.
         </Text>
 
+        {/* Botón de Chat */}
+        <TouchableOpacity
+          style={styles.chatBtn}
+          onPress={() => navigation.navigate('MatchChat', { partidoId: partido.id, rivalName: rival.name })}
+        >
+          <Ionicons name="chatbubbles-outline" size={20} color={colors.textPrimary} />
+          <Text style={styles.chatBtnText}>Abrir Chat del Partido</Text>
+        </TouchableOpacity>
+
         {/* Botones */}
         <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
           <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
@@ -147,7 +178,7 @@ export function DetallePartidoScreen({ navigation, route }) {
           style={styles.resultadosBtn}
           onPress={() => navigation.navigate('ColocarResultados', { partido: { ...rival, ...partido } })}
         >
-          <Ionicons name="scoreboard-outline" size={20} color={colors.primary} />
+          <Ionicons name="trophy-outline" size={20} color={colors.primary} />
           <Text style={styles.resultadosBtnText}>Colocar resultados</Text>
         </TouchableOpacity>
 
@@ -187,7 +218,7 @@ const styles = StyleSheet.create({
   playersRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'center',
+    justifyContent: 'center', // Corregido de 'justify' a 'justifyContent'
     gap: 16,
     marginBottom: 28,
     width: '100%',
@@ -242,6 +273,15 @@ const styles = StyleSheet.create({
     lineHeight: 19, marginBottom: 24,
     alignSelf: 'flex-start',
   },
+
+  chatBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.surface,
+    borderRadius: 30, paddingVertical: 16,
+    width: '100%', marginBottom: 12,
+  },
+  chatBtnText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
 
   cancelBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

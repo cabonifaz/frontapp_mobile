@@ -32,6 +32,11 @@ export const partidoService = {
     return api.post(`/api/Partido/postular/${idPartido}`);
   },
 
+  // Método específico para consolidar el flujo de Retar / Postular a un partido existente
+  async retarJugador(idPartido) {
+    return api.post(`/api/Partido/postular/${idPartido}`);
+  },
+
   async cancelar(idPartido) {
     return api.post(`/api/Partido/${idPartido}/cancelar`);
   },
@@ -46,5 +51,14 @@ export const partidoService = {
 
   async marcarLeido(idPartido) {
     return api.post(`/api/GestionPartido/${idPartido}/marcar-leido`);
+  },
+
+  // ── Métodos de Chat (NoSQL) ─────────────────────────
+  async obtenerMensajesChat(idPartido) {
+    return api.get(`/api/Chat/partido/${idPartido}`);
+  },
+
+  async enviarMensajeChat(idPartido, mensaje) {
+    return api.post('/api/Chat/enviar', { idPartido, mensaje });
   },
 };

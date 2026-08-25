@@ -506,6 +506,7 @@ async function handleNextStep1() {
           ...data,
           apellidos: data.apellido,
           telefono:  data.celular || null,
+          id_genero: GENERO_MAP[data.genero] ?? null, // NUEVO: 20 = Masculino, 21 = Femenino (tabla maestro)
         });
       } catch (e) {
         Alert.alert('Error al registrarse', e.message);

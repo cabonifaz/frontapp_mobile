@@ -5,16 +5,64 @@ import { colors } from '../../constants';
 
 export const HEADER_BG = colors.dark;
 
-export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, puntos, fotoPerfil }) {
+// 1. MAPEO DE TUS IMÁGENES LOCALES
+const AVATARES = {
+  'avatar_femenino_1.png': require('../../../assets/avatar_femenino_1.png'),
+  'avatar_femenino_2.png': require('../../../assets/avatar_femenino_2.png'),
+  'avatar_femenino_3.png': require('../../../assets/avatar_femenino_3.png'),
+  'avatar_masculino_1.png': require('../../../assets/avatar_masculino_1.png'),
+  'avatar_masculino_2.png': require('../../../assets/avatar_masculino_2.png'),
+  'avatar_masculino_3.png': require('../../../assets/avatar_masculino_3.png'),
+  'avatar_general.png': require('../../../assets/avatar_general.png'),
+};
+
+export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, puntos, fotoPerfil, genero }) {
+  
+  // Imprimimos en consola para depurar qué está llegando exactamente desde la BD
+  console.log("DATOS DE CABECERA -> Nombre:", nombre, "| Género recibido:", genero);
+
+  const obtenerFoto = () => {
+    // 1. Si el usuario ya subió una foto real a internet
+    if (fotoPerfil && fotoPerfil.startsWith('http')) return { uri: fotoPerfil };
+    
+    // 2. Si la base de datos guardó el nombre exacto del archivo
+    if (fotoPerfil && AVATARES[fotoPerfil]) return AVATARES[fotoPerfil];
+    
+    const cantidadLetras = nombre ? nombre.length : 0;
+    
+    const masculinos = [
+      AVATARES['avatar_masculino_1.png'],
+      AVATARES['avatar_masculino_2.png'],
+      AVATARES['avatar_masculino_3.png']
+    ];
+    
+    const femeninos = [
+      AVATARES['avatar_femenino_1.png'],
+      AVATARES['avatar_femenino_2.png'],
+      AVATARES['avatar_femenino_3.png']
+    ];
+
+    // Normalizamos el texto
+    const gen = genero ? String(genero).trim().toLowerCase() : '';
+
+    if (gen === 'm' || gen === 'masculino' || gen === 'hombre' || gen === '1') {
+      return masculinos[cantidadLetras % 3];
+    }
+    
+    if (gen === 'f' || gen === 'femenino' || gen === 'mujer' || gen === '2') {
+      return femeninos[cantidadLetras % 3];
+    }
+    
+    // CORRECCIÓN: Si la BD aún no manda el género, por defecto usamos los MASCULINOS 
+    // para evitar que te muestre un avatar de mujer por error.
+    return masculinos[cantidadLetras % 3];
+  };
+
   return (
     <View style={styles.header}>
       <View style={styles.left}>
         <Image
-          source={
-            fotoPerfil
-              ? { uri: fotoPerfil }
-              : { uri: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxUzKngXZcLOT11hp0FMnpwDtCusZVoIm2kCLfXtUfDg&s=10' }
-          }
+          source={obtenerFoto()}
           style={styles.avatar}
         />
         <View>
