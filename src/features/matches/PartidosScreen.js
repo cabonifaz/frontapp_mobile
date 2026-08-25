@@ -123,7 +123,18 @@ export function PartidosScreen({ navigation }) {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 20 }}>
-          <Text style={styles.pageTitle}>{activeTab}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.pageTitle}>{activeTab}</Text>
+            {activeTab === 'Partidos' && (
+              <TouchableOpacity
+                style={styles.solicitudesBtn}
+                onPress={() => navigation.navigate('MisSolicitudes')}
+              >
+                <Ionicons name="people-outline" size={16} color={colors.primary} />
+                <Text style={styles.solicitudesBtnText}>Solicitudes</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           {loading ? (
             <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
           ) : currentData.length === 0 ? (
@@ -166,10 +177,26 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 0, left: 0, right: 0,
     height: 3, backgroundColor: colors.accent, borderRadius: 2,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    marginBottom: 12,
+  },
   pageTitle: {
     fontSize: 22, fontWeight: 'bold', color: colors.textPrimary,
-    marginTop: 20, marginBottom: 12,
   },
+  solicitudesBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.accentLight,
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  solicitudesBtnText: { fontSize: 13, fontWeight: '600', color: colors.primary },
   sectionLabel: {
     fontSize: 15, fontWeight: 'bold', color: colors.textPrimary,
     marginTop: 8, marginBottom: 10,

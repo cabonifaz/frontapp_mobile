@@ -210,6 +210,15 @@ export function PlayerProfileScreen({ navigation, route }) {
           {activeTab === 'Estadísticas' && <EstadisticasTab p={p} />}
           {activeTab === 'Detalles'     && <DetallesTab     p={p} />}
 
+          <TouchableOpacity
+            style={styles.retarBtn}
+            onPress={() => navigation.navigate('RankedMatch')}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="tennisball-outline" size={20} color={colors.primary} />
+            <Text style={styles.retarBtnText}>Buscar partido para retar</Text>
+          </TouchableOpacity>
+
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
@@ -286,4 +295,17 @@ const styles = StyleSheet.create({
   },
   sobreMiTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 },
   sobreMiText: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 },
+
+  retarBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: colors.accent,
+    borderRadius: 30,
+    paddingVertical: 18,
+    width: '100%',
+    marginTop: 24,
+  },
+  retarBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
 });

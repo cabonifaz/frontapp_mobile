@@ -326,6 +326,23 @@ const styles = StyleSheet.create({
 
   content: { paddingHorizontal: 20, paddingTop: 20 },
 
+  matchmakingCard: {
+    backgroundColor: colors.accentLight,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    gap: 10,
+  },
+  matchmakingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  matchmakingTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  matchmakingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  matchmakingText: { fontSize: 13, color: colors.textSecondary, flex: 1, lineHeight: 18 },
+
   canchaCard: {
     flexDirection: 'row',
     alignItems: 'center',
