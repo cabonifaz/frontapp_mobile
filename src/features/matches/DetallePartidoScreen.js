@@ -1,33 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  SafeAreaView, Image, ImageBackground, Dimensions, ScrollView, Alert,
+  SafeAreaView, Image, ImageBackground, Dimensions, ScrollView, Alert, ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { partidoService } from '../../services/partidoService';
+import { authService } from '../../services/authService'; // 👈 NUEVO: para saber quién está logueado
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H = 200;
 const AVATAR_SIZE = 90;
 
+// A. Avatares vinculados en assets/
+const AVATARES_LOCALES = {
+  avatar_general:     require('../../../assets/avatar_general.png'),
+  avatar_masculino_1: require('../../../assets/avatar_masculino_1.png'),
+  avatar_masculino_2: require('../../../assets/avatar_masculino_2.png'),
+  avatar_masculino_3: require('../../../assets/avatar_masculino_3.png'),
+  avatar_femenino_1:  require('../../../assets/avatar_femenino_1.png'),
+  avatar_femenino_2:  require('../../../assets/avatar_femenino_2.png'),
+  avatar_femenino_3:  require('../../../assets/avatar_femenino_3.png'),
+};
+
+// Lista de avatares por defecto para alternar
+const AVATARES_DEFECTO = [
+  AVATARES_LOCALES.avatar_masculino_1,
+  AVATARES_LOCALES.avatar_masculino_2,
+  AVATARES_LOCALES.avatar_masculino_3,
+  AVATARES_LOCALES.avatar_femenino_1,
+  AVATARES_LOCALES.avatar_femenino_2,
+];
+
+const obtenerFuenteImagen = (foto, nombre = '') => {
+  // 1. Si tiene foto subida a Cloudinary
+  if (foto && (foto.startsWith('http://') || foto.startsWith('https://'))) {
+    return { uri: foto };
+  }
+
+  // 2. Si tiene asignado un avatar específico en BD
+  if (foto && AVATARES_LOCALES[foto]) {
+    return AVATARES_LOCALES[foto];
+  }
+
+  // 3. Si no tiene ninguna foto, usamos el avatar general (morado)
+  // para mantener consistencia absoluta con la pantalla de perfil.
+  return AVATARES_LOCALES.avatar_general;
+};
+
 export function DetallePartidoScreen({ navigation, route }) {
-  const item = route?.params?.partido ?? {};
-
-  console.log('DATOS DEL PARTIDO RECIBIDOS:', item);
-
+  const itemInicial = route?.params?.partido ?? {};
+  const [item, setItem] = useState(itemInicial);
+  const [cargando, setCargando] = useState(false);
   const [cancelando, setCancelando] = useState(false);
+  const [usuarioActualId, setUsuarioActualId] = useState(null); // 👈 NUEVO
 
-  // Formateo seguro de fecha
+  const partidoId = itemInicial.id_partido ?? itemInicial.id_encuentro ?? itemInicial.id;
+
+  // 👇 NUEVO: obtener quién está logueado ahora mismo
+  useEffect(() => {
+    async function obtenerIdUsuario() {
+      try {
+        const id = await authService.getUserId();
+        setUsuarioActualId(id);
+      } catch (e) {
+        console.log('Error al obtener ID del usuario actual:', e);
+      }
+    }
+    obtenerIdUsuario();
+  }, []);
+
+  useEffect(() => {
+    async function cargarDetalle() {
+      if (!partidoId) return;
+      try {
+        setCargando(true);
+        const res = await partidoService.obtenerDetalle(partidoId);
+        const data = res?.data ?? res;
+        console.log('📌 DATOS DEL PARTIDO RECIBIDOS:', data); // 👈 revisa aquí el nombre real del campo del creador
+        if (data && typeof data === 'object') {
+          setItem((prev) => ({ ...prev, ...data }));
+        }
+      } catch (error) {
+        console.log('Error al obtener detalle del partido:', error);
+      } finally {
+        setCargando(false);
+      }
+    }
+    cargarDetalle();
+  }, [partidoId]);
+
   const limpiarFecha = (fechaStr) => {
     if (!fechaStr) return '--';
-    const str = String(fechaStr);
+    const str = String(fechaStr).trim();
     if (str.includes('T')) return str.split('T')[0];
     if (str.includes(' ')) return str.split(' ')[0];
     return str;
   };
 
-  // Formateo seguro de hora
   const limpiarHora = (horaStr) => {
     if (!horaStr) return '--';
     const str = String(horaStr).trim();
@@ -35,26 +105,42 @@ export function DetallePartidoScreen({ navigation, route }) {
     return str.length > 5 ? str.substring(0, 5) : str;
   };
 
-  const rival = {
-    name:    item.nombre_rival ?? item.rival_nombre ?? item.name ?? item.contrincante ?? 'Rival',
-    ranking: item.ranking_rival ?? item.rankingRival ?? item.ranking ?? '--',
-    pts:     item.puntos_rival ?? item.puntosRival ?? item.pts ?? 0,
-    avatar:  item.foto_rival ?? item.avatar_rival ?? item.avatar ?? 'https://i.pravatar.cc/150?img=17',
+  // 👇 NUEVO: identificamos al creador con el campo real de la BD
+  // (ajusta este ?? si tu console.log muestra otro nombre distinto)
+  const idCreador = item.id_creador ?? item.id_usuario_creador;
+
+  // Number() evita que "12" (string) !== 12 (number) rompa la comparación
+  const esMiCreacion =
+    usuarioActualId != null &&
+    idCreador != null &&
+    Number(usuarioActualId) === Number(idCreador);
+
+  // Datos "en bruto" de cada rol del partido
+  const datosCreador = {
+    name:    item.creador ?? item.nombre_yo ?? 'Creador',
+    ranking: item.ranking_creador ?? item.ranking_yo ?? '--',
+    pts:     item.puntos_creador ?? item.puntos_yo ?? 0,
+    avatar:  item.foto_perfil_url_creador ?? item.foto_yo ?? null,
   };
 
-  const yo = {
-    name:    item.nombre_yo ?? item.usuario_nombre ?? item.name_yo ?? 'Tú',
-    ranking: item.ranking_yo ?? item.rankingYo ?? '--',
-    pts:     item.puntos_yo ?? item.puntosYo ?? item.pts_yo ?? 0,
-    avatar:  item.foto_yo ?? item.avatar_yo ?? 'https://i.pravatar.cc/150?img=1',
+  const datosParticipante = {
+    name:    item.participante ?? item.nombre_rival ?? 'Participante',
+    ranking: item.ranking_rival ?? '--',
+    pts:     item.puntos_rival ?? 0,
+    avatar:  item.foto_perfil_url ?? item.foto_rival ?? null,
   };
+
+  // 👇 CLAVE DEL FIX: "yo" y "rival" ahora dependen de quién está logueado,
+  // no de un orden fijo (creador siempre a la izquierda como antes).
+  const yo    = esMiCreacion ? datosCreador : datosParticipante;
+  const rival = esMiCreacion ? datosParticipante : datosCreador;
 
   const partido = {
-    id:       item.id_partido ?? item.id_encuentro ?? item.id ?? null,
-    club:     item.nombre_cancha ?? item.lugar ?? item.club ?? item.cancha ?? 'Cancha',
-    address:  item.direccion_cancha ?? item.address ?? item.direccion ?? '',
-    date:     limpiarFecha(item.fecha_partido ?? item.fecha ?? item.date),
-    time:     limpiarHora(item.hora_partido ?? item.hora ?? item.time),
+    id:       partidoId,
+    club:     item.nombre_cancha ?? item.lugar ?? item.club ?? 'Cancha',
+    address:  item.direccion_cancha ?? item.direccion ?? '',
+    date:     limpiarFecha(item.fecha_partido ?? item.fecha),
+    time:     limpiarHora(item.hora_partido ?? item.hora),
     coverUri: item.foto_cancha_url ?? item.coverUri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80',
   };
 
@@ -78,6 +164,16 @@ export function DetallePartidoScreen({ navigation, route }) {
     ]);
   }
 
+  // 👇 NUEVO: mientras no sabemos quién está logueado, evitamos pintar
+  // "yo"/"rival" al revés por una fracción de segundo (flash de datos).
+  if (usuarioActualId === null) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.root}>
       {/* Cover */}
@@ -97,19 +193,21 @@ export function DetallePartidoScreen({ navigation, route }) {
 
       {/* Sheet */}
       <ScrollView style={styles.sheet} contentContainerStyle={styles.sheetContent}>
+        {cargando && <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: 12 }} />}
 
         {/* Dos jugadores */}
         <View style={styles.playersRow}>
           {/* Jugador izquierda (yo) */}
           <View style={styles.playerCol}>
             <View style={styles.avatarWrap}>
-              <Image source={{ uri: yo.avatar }} style={styles.avatar} />
+              {/* C. Avatar Yo */}
+              <Image source={obtenerFuenteImagen(yo.avatar, yo.name)} style={styles.avatar} />
               <View style={styles.rankBadge}>
                 <Ionicons name="trophy" size={11} color={colors.primary} />
                 <Text style={styles.rankBadgeText}> {yo.ranking}</Text>
               </View>
             </View>
-            <Text style={styles.playerName} numberOfLines={1}>{String(yo.name || 'Tú').split(' ')[0]}</Text>
+            <Text style={styles.playerName} numberOfLines={1}>{String(yo.name).split(' ')[0]}</Text>
             <Text style={styles.playerPts}>{yo.pts} pts</Text>
           </View>
 
@@ -118,13 +216,14 @@ export function DetallePartidoScreen({ navigation, route }) {
           {/* Rival (derecha) */}
           <View style={styles.playerCol}>
             <View style={styles.avatarWrap}>
-              <Image source={{ uri: rival.avatar }} style={styles.avatar} />
+              {/* C. Avatar Rival */}
+              <Image source={obtenerFuenteImagen(rival.avatar, rival.name)} style={styles.avatar} />
               <View style={styles.rankBadge}>
                 <Ionicons name="trophy" size={11} color={colors.primary} />
                 <Text style={styles.rankBadgeText}> {rival.ranking}</Text>
               </View>
             </View>
-            <Text style={styles.playerName} numberOfLines={1}>{String(rival.name || 'Rival').split(' ')[0]}</Text>
+            <Text style={styles.playerName} numberOfLines={1}>{String(rival.name).split(' ')[0]}</Text>
             <Text style={styles.playerPts}>{rival.pts} pts</Text>
           </View>
         </View>
@@ -159,24 +258,24 @@ export function DetallePartidoScreen({ navigation, route }) {
           Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.
         </Text>
 
-        {/* Botón de Chat */}
+        {/* Botón de Chat — ahora usa el rival real, calculado dinámicamente */}
         <TouchableOpacity
           style={styles.chatBtn}
-          onPress={() => navigation.navigate('MatchChat', { partidoId: partido.id, rivalName: rival.name })}
+          onPress={() => {
+            navigation.navigate('MatchChat', {
+              idPartido: partido.id,
+              rival: {
+                name: rival.name,
+                avatar: rival.avatar,
+              },
+            });
+          }}
         >
           <Ionicons name="chatbubbles-outline" size={20} color={colors.textPrimary} />
           <Text style={styles.chatBtnText}>Abrir Chat del Partido</Text>
         </TouchableOpacity>
 
         {/* Botones */}
-        <TouchableOpacity
-          style={styles.chatBtn}
-          onPress={() => navigation.navigate('Chat', { idPartido: partido.id, rival })}
-        >
-          <Ionicons name="chatbubbles-outline" size={20} color={colors.primary} />
-          <Text style={styles.chatBtnText}>Chat con rival</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
           <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
           <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar partido'}</Text>
@@ -209,7 +308,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.35)',
     alignItems: 'center', justifyContent: 'center',
   },
-
   sheet: {
     flex: 1,
     backgroundColor: colors.background,
@@ -222,11 +320,10 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     alignItems: 'center',
   },
-
   playersRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    justifyContent: 'center', // Corregido de 'justify' a 'justifyContent'
+    justifyContent: 'center',
     gap: 16,
     marginBottom: 28,
     width: '100%',
@@ -255,12 +352,10 @@ const styles = StyleSheet.create({
   },
   playerName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, textAlign: 'center' },
   playerPts: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
-
   sectionTitle: {
     fontSize: 16, fontWeight: '700', color: colors.textPrimary,
     alignSelf: 'flex-start', marginBottom: 12,
   },
-
   detailCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -275,13 +370,11 @@ const styles = StyleSheet.create({
   detailMain: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
   addressRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   detailSub: { fontSize: 13, color: colors.textSecondary },
-
   mandatoryNote: {
     fontSize: 13, color: colors.textSecondary,
     lineHeight: 19, marginBottom: 24,
     alignSelf: 'flex-start',
   },
-
   chatBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8,
@@ -290,7 +383,6 @@ const styles = StyleSheet.create({
     width: '100%', marginBottom: 12,
   },
   chatBtnText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
-
   cancelBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8,
@@ -299,7 +391,6 @@ const styles = StyleSheet.create({
     width: '100%', marginBottom: 12,
   },
   cancelBtnText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
-
   resultadosBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8,

@@ -1,7 +1,6 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-// Lee dinámicamente desde el .env o usa la IP local como fallback
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.100.10:5000';
 
 const api = axios.create({
@@ -24,7 +23,15 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    const mensaje = error.response?.data?.mensaje || 'Error de conexión con el servidor';
+    // Muestra en consola la causa exacta del fallo de red
+    console.log('🔴 DETALLE DEL ERROR AXIOS:', {
+      code: error.code,
+      message: error.message,
+      url: error.config?.url,
+      baseURL: error.config?.baseURL,
+    });
+
+    const mensaje = error.response?.data?.mensaje || error.message || 'Error de conexión con el servidor';
     return Promise.reject(new Error(mensaje));
   }
 );

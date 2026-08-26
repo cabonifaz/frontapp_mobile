@@ -4,6 +4,7 @@ import {
   SafeAreaView, Image, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants';
 import { chatService } from '../../services/chatService';
 
@@ -13,13 +14,13 @@ function formatTime(dateStr) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function Bubble({ msg }) {
+function Bubble({ msg, rivalAvatar }) {
   const isMine = msg.es_mio;
   return (
     <View style={[styles.bubbleRow, isMine ? styles.bubbleRowMine : styles.bubbleRowRival]}>
       {!isMine && (
         <Image
-          source={{ uri: msg.foto_perfil_url ?? 'https://i.pravatar.cc/150?img=17' }}
+          source={{ uri: rivalAvatar ?? msg.foto_perfil_url ?? 'https://i.pravatar.cc/150?img=17' }}
           style={styles.bubbleAvatar}
         />
       )}
@@ -43,6 +44,7 @@ export function ChatScreen({ navigation, route }) {
   const [enviando, setEnviando] = useState(false);
   const flatRef = useRef(null);
   const intervalRef = useRef(null);
+  const insets = useSafeAreaInsets();
 
   async function cargar(silent = false) {
     try {
@@ -107,7 +109,8 @@ export function ChatScreen({ navigation, route }) {
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
         {loading ? (
           <View style={styles.loadingWrap}>
@@ -117,8 +120,8 @@ export function ChatScreen({ navigation, route }) {
           <FlatList
             ref={flatRef}
             data={mensajes}
-            keyExtractor={(m, i) => String(m.id_mensaje ?? i)}
-            renderItem={({ item }) => <Bubble msg={item} />}
+            keyExtractor={(m, i) => String(m.id_mensaje ?? m.id ?? i)}
+            renderItem={({ item }) => <Bubble msg={item} rivalAvatar={rival?.avatar} />}
             contentContainerStyle={[
               styles.listContent,
               mensajes.length === 0 && styles.listContentEmpty,
@@ -136,7 +139,7 @@ export function ChatScreen({ navigation, route }) {
           />
         )}
 
-        <View style={styles.inputRow}>
+        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           <TextInput
             style={styles.input}
             placeholder="Escribe un mensaje..."
@@ -226,7 +229,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     gap: 10,

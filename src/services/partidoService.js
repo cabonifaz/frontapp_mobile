@@ -49,6 +49,11 @@ export const partidoService = {
     return api.get(`/api/GestionPartido/${idPartido}`);
   },
 
+  // Alias de compatibilidad para llamadas a obtenerDetalle
+  async obtenerDetalle(idPartido) {
+    return this.detalle(idPartido);
+  },
+
   async marcarLeido(idPartido) {
     return api.post(`/api/GestionPartido/${idPartido}/marcar-leido`);
   },

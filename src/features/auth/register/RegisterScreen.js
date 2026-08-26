@@ -10,6 +10,7 @@ import { PrimaryButton } from '../../../components/common';
 import { authService } from '../../../services/authService';
 import { usuarioService } from '../../../services/usuarioService';
 import { DEPORTES, GENEROS, NIVELES_JUEGO, DEPORTE_DEFAULT } from '../../../constants/maestro';
+import { uploadImage } from '../../../services/cloudinaryService'; // Ajusta la ruta según tu estructura de carpetas
 
 const NIVEL_JUEGO_MAP = {
   'Principiante': NIVELES_JUEGO.PRINCIPIANTE,
@@ -496,7 +497,7 @@ async function handleNextStep1() {
     }
   }
 
-  async function handleFinish() {
+async function handleFinish() {
     try {
       setLoading(true);
 
@@ -506,7 +507,7 @@ async function handleNextStep1() {
           ...data,
           apellidos: data.apellido,
           telefono:  data.celular || null,
-          id_genero: GENERO_MAP[data.genero] ?? null, // NUEVO: 20 = Masculino, 21 = Femenino (tabla maestro)
+          id_genero: GENERO_MAP[data.genero] ?? null,
         });
       } catch (e) {
         Alert.alert('Error al registrarse', e.message);
@@ -521,7 +522,18 @@ async function handleNextStep1() {
         return;
       }
 
-      // 3. Enviar cuestionario
+      // 3. Subir foto de perfil a Cloudinary si existe una seleccionada
+      if (fotoUri) {
+        try {
+          const fotoUrl = await uploadImage(fotoUri);
+          await usuarioService.actualizarFoto(fotoUrl);
+        } catch (e) {
+          // Si falla la foto, podemos avisar o continuar sin interrumpir todo el registro
+          console.log('No se pudo subir la foto de perfil:', e.message);
+        }
+      }
+
+      // 4. Enviar cuestionario
       let nivelCalculado = 1;
       try {
         const idDeporte = DEPORTE_MAP[data.deporte] ?? DEPORTE_DEFAULT;
@@ -540,7 +552,7 @@ async function handleNextStep1() {
         Alert.alert('Error en cuestionario', e.message ?? 'No se pudo completar el cuestionario.');
       }
 
-      // 4. Crear perfil de profesor si aplica
+      // 5. Crear perfil de profesor si aplica
       if (data.es_profesor) {
         try {
           await usuarioService.crearPerfilProfesor({

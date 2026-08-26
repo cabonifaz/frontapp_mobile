@@ -10,6 +10,7 @@ import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { ACTION_CARDS } from '../../data/homeData';
 import { usuarioService } from '../../services/usuarioService';
+import { solicitudService } from '../../services/solicitudService';
 
 function NivelProgress({ percent = 0, size = 54 }) {
   const strokeWidth = 5;
@@ -60,11 +61,12 @@ export function HomeScreen({ navigation }) {
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [solicitudesCount, setSolicitudesCount] = useState(0);
 
   const leftCards = [ACTION_CARDS[0], ACTION_CARDS[2]];
   const rightCards = [ACTION_CARDS[1], ACTION_CARDS[3]];
 
-  const cargarDatos = useCallback(async (isRefresh = false) => {
+  const cargarDatos = useCallback(async () => {
     try {
       let raw = await usuarioService.menuPrincipal();
       if (!raw || raw === '') {
@@ -83,7 +85,15 @@ export function HomeScreen({ navigation }) {
           porcentaje_nivel: raw.progreso_nivel_pct ?? raw.progreso_nivel_porcentaje ?? raw.porcentaje_nivel ?? 0,
         });
       }
+
+      const solicitudes = await solicitudService.listarPendientes();
+      if (Array.isArray(solicitudes)) {
+        setSolicitudesCount(solicitudes.length);
+      } else if (typeof solicitudes === 'number') {
+        setSolicitudesCount(solicitudes);
+      }
     } catch (e) {
+      console.log('Error al cargar datos en Home:', e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -156,16 +166,17 @@ export function HomeScreen({ navigation }) {
           </ScrollView>
         )}
 
-        {/* Botón flotante para Mis Solicitudes */}
         {!loading && (
-          <TouchableOpacity 
-            style={styles.fabContainer} 
+          <TouchableOpacity
+            style={styles.fabContainer}
             activeOpacity={0.85}
             onPress={() => navigation.navigate('MisSolicitudes')}
           >
-            <View style={styles.fabBadge}>
-              <Text style={styles.fabBadgeText}>3</Text>
-            </View>
+            {solicitudesCount > 0 && (
+              <View style={styles.fabBadge}>
+                <Text style={styles.fabBadgeText}>{solicitudesCount}</Text>
+              </View>
+            )}
             <MaterialCommunityIcons name="tennis" size={32} color={colors.dark} style={{ transform: [{ rotate: '45deg' }] }} />
           </TouchableOpacity>
         )}
@@ -178,7 +189,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: HEADER_BG },
   sheet: { flex: 1, backgroundColor: colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: 'hidden' },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 88 }, // Aumenté el paddingBottom para que el botón no tape contenido
+  scrollContent: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 88 },
   sectionTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 16 },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 28 },
   statCard: { flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16 },
@@ -197,8 +208,7 @@ const styles = StyleSheet.create({
   cardSubRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   greenDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.positive },
   cardSub: { fontSize: 12, color: '#FFFFFF' },
-  
-  /* Estilos del Botón Flotante */
+
   fabContainer: {
     position: 'absolute',
     bottom: 24,
@@ -219,7 +229,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     left: -2,
-    backgroundColor: '#E53935', // Rojo alerta
+    backgroundColor: '#E53935',
     width: 24,
     height: 24,
     borderRadius: 12,
@@ -233,5 +243,5 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: 'bold',
-  }
+  },
 });
