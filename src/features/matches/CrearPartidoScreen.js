@@ -198,6 +198,29 @@ export function CrearPartidoScreen({ navigation, route }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+
+        {/* Reglas de matchmaking — solo Rankeado */}
+        {tipo === 'Rankeado' && (
+          <View style={styles.matchmakingCard}>
+            <View style={styles.matchmakingHeader}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
+              <Text style={styles.matchmakingTitle}>Reglas de matchmaking</Text>
+            </View>
+            <View style={styles.matchmakingRow}>
+              <Ionicons name="trophy-outline" size={15} color={colors.textSecondary} />
+              <Text style={styles.matchmakingText}>Se emparejará con jugadores dentro de ±3 posiciones de tu ranking</Text>
+            </View>
+            <View style={styles.matchmakingRow}>
+              <Ionicons name="ribbon-outline" size={15} color={colors.textSecondary} />
+              <Text style={styles.matchmakingText}>El resultado afecta tu posición en el ranking global</Text>
+            </View>
+            <View style={styles.matchmakingRow}>
+              <Ionicons name="time-outline" size={15} color={colors.textSecondary} />
+              <Text style={styles.matchmakingText}>Debes ingresar el resultado dentro de 12 horas del partido</Text>
+            </View>
+          </View>
+        )}
+
         {/* Selector de Cancha */}
         <TouchableOpacity style={styles.canchaCard} onPress={() => setShowCanchaModal(true)} activeOpacity={0.8}>
           {cancha ? (
