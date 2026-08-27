@@ -153,21 +153,23 @@ export function MisSolicitudesScreen({ navigation }) {
         <Text style={styles.headerTitle}>Mis solicitudes</Text>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.fechaTabRow}
-        style={[styles.fechaTabScroll, fechas.length === 0 && { height: 0, borderBottomWidth: 0 }]}
-      >
-        {fechas.map(f => (
-          <TouchableOpacity key={f} style={styles.fechaTab} onPress={() => setFechaActiva(f)}>
-            <Text style={[styles.fechaTabText, fechaActiva === f && styles.fechaTabTextActive]}>
-              {formatFecha(f)}
-            </Text>
-            {fechaActiva === f && <View style={styles.fechaTabIndicator} />}
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {fechas.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.fechaTabRow}
+          style={styles.fechaTabScroll}
+        >
+          {fechas.map(f => (
+            <TouchableOpacity key={f} style={styles.fechaTab} onPress={() => setFechaActiva(f)}>
+              <Text style={[styles.fechaTabText, fechaActiva === f && styles.fechaTabTextActive]}>
+                {formatFecha(f)}
+              </Text>
+              {fechaActiva === f && <View style={styles.fechaTabIndicator} />}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       {loading ? (
         <View style={styles.loadingContainer}>
