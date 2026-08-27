@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   SafeAreaView, Image, ActivityIndicator, Alert,
 } from 'react-native';
+const AVATAR_DEFAULT = require('../../../assets/avatar_general.png');
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
@@ -36,7 +37,10 @@ function SuccessScreen({ retador, onPress }) {
     <View style={styles.successContainer}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.vsCircle}>
-          <Image source={{ uri: retador.foto_perfil_url ?? retador.avatar ?? 'https://i.pravatar.cc/150?img=1' }} style={styles.vsAvatar} />
+          <Image
+            source={retador.foto_perfil_url ? { uri: retador.foto_perfil_url } : AVATAR_DEFAULT}
+            style={styles.vsAvatar}
+          />
         </View>
         <Text style={styles.successTitle}>
           Has aceptado a{'\n'}{firstName} como retador
@@ -149,23 +153,21 @@ export function MisSolicitudesScreen({ navigation }) {
         <Text style={styles.headerTitle}>Mis solicitudes</Text>
       </View>
 
-      {fechas.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.fechaTabRow}
-          style={styles.fechaTabScroll}
-        >
-          {fechas.map(f => (
-            <TouchableOpacity key={f} style={styles.fechaTab} onPress={() => setFechaActiva(f)}>
-              <Text style={[styles.fechaTabText, fechaActiva === f && styles.fechaTabTextActive]}>
-                {formatFecha(f)}
-              </Text>
-              {fechaActiva === f && <View style={styles.fechaTabIndicator} />}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.fechaTabRow}
+        style={[styles.fechaTabScroll, fechas.length === 0 && { height: 0, borderBottomWidth: 0 }]}
+      >
+        {fechas.map(f => (
+          <TouchableOpacity key={f} style={styles.fechaTab} onPress={() => setFechaActiva(f)}>
+            <Text style={[styles.fechaTabText, fechaActiva === f && styles.fechaTabTextActive]}>
+              {formatFecha(f)}
+            </Text>
+            {fechaActiva === f && <View style={styles.fechaTabIndicator} />}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -216,7 +218,7 @@ export function MisSolicitudesScreen({ navigation }) {
             return (
               <View key={idSolicitud} style={styles.retadorCard}>
                 <Image
-                  source={{ uri: s.foto_perfil_url ?? s.avatar ?? 'https://i.pravatar.cc/150?img=1' }}
+                  source={s.foto_perfil_url ? { uri: s.foto_perfil_url } : AVATAR_DEFAULT}
                   style={styles.retadorAvatar}
                 />
                 <View style={styles.retadorInfo}>

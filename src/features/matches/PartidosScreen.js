@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
   ActivityIndicator,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
@@ -81,23 +82,25 @@ export function PartidosScreen({ navigation }) {
   const [clases, setClases] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    partidoService.listarMisPartidos()
-      .then(res => {
-        if (Array.isArray(res) && res.length) {
-          const todosPartidos = res.filter(r => r.categoria_tab === 'PARTIDO');
-          const todasClases  = res.filter(r => r.categoria_tab === 'CLASE');
-          setPartidos(groupByDate(todosPartidos));
-          setClases(groupByDate(todasClases));
-        } else {
-          setPartidos([]);
-          setClases([]);
-        }
-      })
-      .catch(() => { setPartidos([]); setClases([]); })
-      .finally(() => setLoading(false));
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      partidoService.listarMisPartidos()
+        .then(res => {
+          if (Array.isArray(res) && res.length) {
+            const todosPartidos = res.filter(r => r.categoria_tab === 'PARTIDO');
+            const todasClases  = res.filter(r => r.categoria_tab === 'CLASE');
+            setPartidos(groupByDate(todosPartidos));
+            setClases(groupByDate(todasClases));
+          } else {
+            setPartidos([]);
+            setClases([]);
+          }
+        })
+        .catch(() => { setPartidos([]); setClases([]); })
+        .finally(() => setLoading(false));
+    }, [])
+  );
 
   const currentData = activeTab === 'Partidos' ? partidos : clases;
 

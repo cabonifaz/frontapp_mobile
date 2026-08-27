@@ -75,11 +75,11 @@ export function RankingScreen({ navigation }) {
     setSearch('');
     rankingService.listar({ filtroGenero, tamanoPagina: 10 })
       .then(data => {
-        const normalized = (Array.isArray(data) ? data : []).map(p => ({
+        const normalized = (Array.isArray(data) ? data : []).map((p, index) => ({
           name:       p.nombre_completo  ?? p.nombre_usuario ?? p.name ?? 'N/A',
           avatar:     p.foto_perfil_url  ?? p.avatar ?? null,
           pts:        p.puntos           ?? p.puntaje_total  ?? p.pts ?? 0,
-          pos:        p.posicion         ?? p.posicion_ranking ?? p.ranking ?? p.pos ?? 0,
+          pos:        index + 1,
           id_usuario: p.id_usuario,
         }));
         setAllPlayers(normalized.length ? normalized : PLAYER_DATA[filter]);

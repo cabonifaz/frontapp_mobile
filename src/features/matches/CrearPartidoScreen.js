@@ -182,7 +182,16 @@ export function CrearPartidoScreen({ navigation, route }) {
   if (success) {
     return (
       <SafeAreaView style={styles.safe}>
-        <SuccessScreen onPress={(dest) => navigation.navigate(dest)} />
+        <SuccessScreen onPress={() => navigation.reset({
+          index: 1,
+          routes: [
+            {
+              name: 'MainTabs',
+              state: { index: 3, routes: [{ name: 'Home' }, { name: 'Ranking' }, { name: 'Resultados' }, { name: 'Partidos' }, { name: 'Perfil' }] },
+            },
+            { name: 'MisSolicitudes' },
+          ],
+        })} />
       </SafeAreaView>
     );
   }
