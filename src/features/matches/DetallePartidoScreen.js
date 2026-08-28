@@ -144,6 +144,9 @@ export function DetallePartidoScreen({ navigation, route }) {
     coverUri: item.foto_cancha_url ?? item.coverUri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80',
   };
 
+  const estadoPartido = Number(item.estado_partido ?? 0);
+  const esFinalizado  = estadoPartido === 31 || estadoPartido === 32; // 31=Finalizado, 32=Cancelado
+
   async function handleCancelar() {
     Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar este partido?', [
       { text: 'No', style: 'cancel' },
@@ -273,24 +276,23 @@ export function DetallePartidoScreen({ navigation, route }) {
           <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar partido'}</Text>
         </TouchableOpacity>
 
-        {/* 🟢 CORREGIDO: se envía item completo (trae los sets y estado de resultado)
-            además de yo/rival ya resueltos, para no depender de adivinar nombres de campo
-            del lado de ColocarResultadosScreen */}
-        <TouchableOpacity
-          style={styles.resultadosBtn}
-          onPress={() => navigation.navigate('ColocarResultados', {
-            partido: {
-              ...item,
-              ...partido,
-              id_partido: partido.id,
-              yo,
-              rival,
-            },
-          })}
-        >
-          <Ionicons name="trophy-outline" size={20} color={colors.primary} />
-          <Text style={styles.resultadosBtnText}>Colocar resultados</Text>
-        </TouchableOpacity>
+        {!esFinalizado && (
+          <TouchableOpacity
+            style={styles.resultadosBtn}
+            onPress={() => navigation.navigate('ColocarResultados', {
+              partido: {
+                ...item,
+                ...partido,
+                id_partido: partido.id,
+                yo,
+                rival,
+              },
+            })}
+          >
+            <Ionicons name="trophy-outline" size={20} color={colors.primary} />
+            <Text style={styles.resultadosBtnText}>Colocar resultados</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
