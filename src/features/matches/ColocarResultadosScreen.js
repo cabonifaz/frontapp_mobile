@@ -7,6 +7,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { resultadoService } from '../../services/resultadoService';
 
+const AVATAR_DEFAULT = require('../../../assets/avatar_general.png');
+
+function fuenteImagen(url) {
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    return { uri: url };
+  }
+  return AVATAR_DEFAULT;
+}
+
 function ScoreRow({ index, myScore, rivalScore, onChangeMyScore, onChangeRivalScore }) {
   return (
     <View style={styles.scoreRow}>
@@ -219,7 +228,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
           {/* Players + scores */}
           <View style={styles.playersBlock}>
             <View style={styles.playerCol}>
-              <Image source={{ uri: yo.avatar }} style={styles.avatar} />
+              <Image source={fuenteImagen(yo.avatar)} style={styles.avatar} />
               <Text style={styles.playerName} numberOfLines={1}>{yo.name.split(' ')[0]}</Text>
               <Text style={styles.playerPts}>{yo.pts} pts</Text>
             </View>
@@ -238,7 +247,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
             </View>
 
             <View style={styles.playerCol}>
-              <Image source={{ uri: rival.avatar }} style={styles.avatar} />
+              <Image source={fuenteImagen(rival.avatar)} style={styles.avatar} />
               <Text style={styles.playerName} numberOfLines={1}>{rival.name.split(' ')[0]}</Text>
               <Text style={styles.playerPts}>{rival.pts} pts</Text>
             </View>

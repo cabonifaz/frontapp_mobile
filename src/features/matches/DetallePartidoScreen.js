@@ -108,9 +108,9 @@ export function DetallePartidoScreen({ navigation, route }) {
   const idCreador = item.id_creador ?? item.id_usuario_creador;
 
   const esMiCreacion =
-    usuarioActualId != null &&
-    idCreador != null &&
-    Number(usuarioActualId) === Number(idCreador);
+    idParticipante != null && usuarioActualId != null
+      ? Number(usuarioActualId) !== Number(idParticipante)
+      : false;
 
   // Datos "en bruto" de cada rol del partido
   const datosCreador = {
@@ -137,7 +137,7 @@ export function DetallePartidoScreen({ navigation, route }) {
 
   const partido = {
     id:       partidoId,
-    club:     item.nombre_cancha ?? item.lugar ?? item.club ?? 'Cancha',
+    club:     item.nombre_cancha ?? item.cancha ?? item.lugar ?? item.club ?? 'Cancha',
     address:  item.direccion_cancha ?? item.direccion ?? '',
     date:     limpiarFecha(item.fecha_partido ?? item.fecha),
     time:     limpiarHora(item.hora_partido ?? item.hora),
