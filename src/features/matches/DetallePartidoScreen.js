@@ -6,7 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { partidoService } from '../../services/partidoService';
-import { authService } from '../../services/authService'; // 👈 NUEVO: para saber quién está logueado
+import { authService } from '../../services/authService'; // para saber quién está logueado
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H = 200;
@@ -53,11 +53,10 @@ export function DetallePartidoScreen({ navigation, route }) {
   const [item, setItem] = useState(itemInicial);
   const [cargando, setCargando] = useState(false);
   const [cancelando, setCancelando] = useState(false);
-  const [usuarioActualId, setUsuarioActualId] = useState(null); // 👈 NUEVO
+  const [usuarioActualId, setUsuarioActualId] = useState(null);
 
   const partidoId = itemInicial.id_partido ?? itemInicial.id_encuentro ?? itemInicial.id;
 
-  // 👇 NUEVO: obtener quién está logueado ahora mismo
   useEffect(() => {
     async function obtenerIdUsuario() {
       try {
@@ -77,7 +76,7 @@ export function DetallePartidoScreen({ navigation, route }) {
         setCargando(true);
         const res = await partidoService.obtenerDetalle(partidoId);
         const data = res?.data ?? res;
-        console.log('📌 DATOS DEL PARTIDO RECIBIDOS:', data); // 👈 revisa aquí el nombre real del campo del creador
+        console.log('📌 DATOS DEL PARTIDO RECIBIDOS:', data);
         if (data && typeof data === 'object') {
           setItem((prev) => ({ ...prev, ...data }));
         }
@@ -105,11 +104,9 @@ export function DetallePartidoScreen({ navigation, route }) {
     return str.length > 5 ? str.substring(0, 5) : str;
   };
 
-  // 👇 NUEVO: identificamos al creador con el campo real de la BD
-  // (ajusta este ?? si tu console.log muestra otro nombre distinto)
+  // Identificamos al creador con el campo real de la BD
   const idCreador = item.id_creador ?? item.id_usuario_creador;
 
-  // Number() evita que "12" (string) !== 12 (number) rompa la comparación
   const esMiCreacion =
     usuarioActualId != null &&
     idCreador != null &&
@@ -117,21 +114,24 @@ export function DetallePartidoScreen({ navigation, route }) {
 
   // Datos "en bruto" de cada rol del partido
   const datosCreador = {
+    id:      idCreador,
     name:    item.creador ?? item.nombre_yo ?? 'Creador',
     ranking: item.ranking_creador ?? item.ranking_yo ?? '--',
     pts:     item.puntos_creador ?? item.puntos_yo ?? 0,
     avatar:  item.foto_perfil_url_creador ?? item.foto_yo ?? null,
   };
 
+  // 🟢 CORREGIDO: id y avatar apuntaban a columnas equivocadas del SP actualizado
   const datosParticipante = {
-    name:    item.participante ?? item.nombre_rival ?? 'Participante',
+    id:      item.id_usuario_rival ?? item.id_rival ?? item.id_usuario, // id_usuario queda como fallback legacy
+    name:    item.participante ?? item.rival ?? item.nombre_rival ?? 'Participante',
     ranking: item.ranking_rival ?? '--',
     pts:     item.puntos_rival ?? 0,
-    avatar:  item.foto_perfil_url ?? item.foto_rival ?? null,
+    // foto_perfil_url en el SP corresponde al CREADOR, no al rival: usar el alias correcto
+    avatar:  item.foto_perfil_url_rival ?? item.foto_perfil_url_rival_alt ?? item.foto_rival ?? null,
   };
 
-  // 👇 CLAVE DEL FIX: "yo" y "rival" ahora dependen de quién está logueado,
-  // no de un orden fijo (creador siempre a la izquierda como antes).
+  // "yo" y "rival" dependen de quién está logueado, no de un orden fijo
   const yo    = esMiCreacion ? datosCreador : datosParticipante;
   const rival = esMiCreacion ? datosParticipante : datosCreador;
 
@@ -164,8 +164,6 @@ export function DetallePartidoScreen({ navigation, route }) {
     ]);
   }
 
-  // 👇 NUEVO: mientras no sabemos quién está logueado, evitamos pintar
-  // "yo"/"rival" al revés por una fracción de segundo (flash de datos).
   if (usuarioActualId === null) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
@@ -197,10 +195,8 @@ export function DetallePartidoScreen({ navigation, route }) {
 
         {/* Dos jugadores */}
         <View style={styles.playersRow}>
-          {/* Jugador izquierda (yo) */}
           <View style={styles.playerCol}>
             <View style={styles.avatarWrap}>
-              {/* C. Avatar Yo */}
               <Image source={obtenerFuenteImagen(yo.avatar, yo.name)} style={styles.avatar} />
               <View style={styles.rankBadge}>
                 <Ionicons name="trophy" size={11} color={colors.primary} />
@@ -213,10 +209,8 @@ export function DetallePartidoScreen({ navigation, route }) {
 
           <Text style={styles.vsLabel}>vs</Text>
 
-          {/* Rival (derecha) */}
           <View style={styles.playerCol}>
             <View style={styles.avatarWrap}>
-              {/* C. Avatar Rival */}
               <Image source={obtenerFuenteImagen(rival.avatar, rival.name)} style={styles.avatar} />
               <View style={styles.rankBadge}>
                 <Ionicons name="trophy" size={11} color={colors.primary} />
@@ -258,7 +252,6 @@ export function DetallePartidoScreen({ navigation, route }) {
           Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.
         </Text>
 
-        {/* Botón de Chat — ahora usa el rival real, calculado dinámicamente */}
         <TouchableOpacity
           style={styles.chatBtn}
           onPress={() => {
@@ -275,15 +268,25 @@ export function DetallePartidoScreen({ navigation, route }) {
           <Text style={styles.chatBtnText}>Abrir Chat del Partido</Text>
         </TouchableOpacity>
 
-        {/* Botones */}
         <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
           <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
           <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar partido'}</Text>
         </TouchableOpacity>
 
+        {/* 🟢 CORREGIDO: se envía item completo (trae los sets y estado de resultado)
+            además de yo/rival ya resueltos, para no depender de adivinar nombres de campo
+            del lado de ColocarResultadosScreen */}
         <TouchableOpacity
           style={styles.resultadosBtn}
-          onPress={() => navigation.navigate('ColocarResultados', { partido: { ...rival, ...partido } })}
+          onPress={() => navigation.navigate('ColocarResultados', {
+            partido: {
+              ...item,
+              ...partido,
+              id_partido: partido.id,
+              yo,
+              rival,
+            },
+          })}
         >
           <Ionicons name="trophy-outline" size={20} color={colors.primary} />
           <Text style={styles.resultadosBtnText}>Colocar resultados</Text>

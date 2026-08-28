@@ -17,15 +17,15 @@ export const resultadoService = {
       id_rival:          idRival,
       calificacion_rival: calificacionRival,
       comentario,
-      sets: JSON.stringify(sets),
+      sets:              sets, // <-- ¡SOLO PASA LA VARIABLE!
     });
   },
 
   async confirmar(idPartido, { estaDeAcuerdo, idRival, sets }) {
     return api.post(`/api/GestionResultado/${idPartido}/confirmar`, {
-      esta_de_acuerdo: estaDeAcuerdo,
-      id_rival:        idRival,
-      sets:            JSON.stringify(sets),
+      esta_de_acuerdo:   estaDeAcuerdo,
+      id_rival:          idRival,
+      sets:              sets, // <-- ¡AQUÍ TAMBIÉN!
     });
   },
 };

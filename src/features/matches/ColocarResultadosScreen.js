@@ -73,10 +73,10 @@ function ConfirmationView({ scores, rivalName, onReview, onAgree, loading }) {
       </View>
 
       <View style={styles.confirmBtns}>
-        <TouchableOpacity style={styles.reviewBtn} onPress={onReview}>
+        <TouchableOpacity style={styles.reviewBtn} onPress={onReview} disabled={loading}>
           <Text style={styles.reviewBtnText}>No, deseo revisión</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.agreeBtn} onPress={onAgree}>
+        <TouchableOpacity style={styles.agreeBtn} onPress={onAgree} disabled={loading}>
           <Text style={styles.agreeBtnText}>Sí, de acuerdo</Text>
         </TouchableOpacity>
       </View>
@@ -87,27 +87,49 @@ function ConfirmationView({ scores, rivalName, onReview, onAgree, loading }) {
 export function ColocarResultadosScreen({ navigation, route }) {
   const partido = route?.params?.partido ?? {};
   const idPartido = partido.id_partido ?? partido.id ?? null;
+
+  // 🟢 CORREGIDO: primero intenta leer el objeto anidado que manda DetallePartidoScreen
+  // (partido.rival / partido.yo), y si no viene, cae a los campos planos legacy.
   const rival = {
-    id:     partido.id_rival ?? partido.id_usuario_rival ?? null,
-    name:   partido.name    ?? partido.nombre_rival ?? 'Rival',
-    avatar: partido.avatar  ?? partido.foto_rival   ?? 'https://i.pravatar.cc/150?img=17',
-    pts:    partido.pts     ?? partido.puntos_rival  ?? 0,
-    ranking:partido.ranking ?? partido.ranking_rival ?? '--',
+    id:      partido.rival?.id     ?? partido.id_rival ?? partido.id_usuario_rival ?? null,
+    name:    partido.rival?.name   ?? partido.name     ?? partido.nombre_rival ?? 'Rival',
+    avatar:  partido.rival?.avatar ?? partido.avatar   ?? partido.foto_rival   ?? 'https://i.pravatar.cc/150?img=17',
+    pts:     partido.rival?.pts    ?? partido.pts      ?? partido.puntos_rival  ?? 0,
+    ranking: partido.rival?.ranking ?? partido.ranking ?? partido.ranking_rival ?? '--',
   };
   const yo = {
-    name:   partido.nombre_yo   ?? 'Tú',
-    avatar: partido.avatar_yo   ?? 'https://i.pravatar.cc/150?img=1',
-    pts:    partido.puntos_yo   ?? 0,
+    name:   partido.yo?.name   ?? partido.nombre_yo ?? 'Tú',
+    avatar: partido.yo?.avatar ?? partido.avatar_yo ?? 'https://i.pravatar.cc/150?img=1',
+    pts:    partido.yo?.pts    ?? partido.puntos_yo ?? 0,
   };
 
+  // 🟢 CORREGIDO: recuperar los sets ya publicados en la BD (si existen), en vez de
+  // arrancar siempre en blanco. Soporta tanto set1_puntos_local/visitante (nombres
+  // actuales del SP) como set1_local/visitante (por si algún endpoint viejo los usa).
   const [scores, setScores] = useState([
-    { my: '', rival: '' },
-    { my: '', rival: '' },
-    { my: '', rival: '' },
+    {
+      my:    String(partido.set1_puntos_local ?? partido.set1_local ?? ''),
+      rival: String(partido.set1_puntos_visitante ?? partido.set1_visitante ?? ''),
+    },
+    {
+      my:    String(partido.set2_puntos_local ?? partido.set2_local ?? ''),
+      rival: String(partido.set2_puntos_visitante ?? partido.set2_visitante ?? ''),
+    },
+    {
+      my:    String(partido.set3_puntos_local ?? partido.set3_local ?? ''),
+      rival: String(partido.set3_puntos_visitante ?? partido.set3_visitante ?? ''),
+    },
   ]);
+
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
-  const [confirmed, setConfirmed] = useState(false);
+
+  // 🟢 CORREGIDO: si ya existe un resultado publicado (id_resultado no nulo),
+  // saltamos directo a la pantalla de confirmación con los marcadores reales.
+  const [confirmed, setConfirmed] = useState(
+    Boolean(partido.id_resultado)
+  );
+
   const [publicando, setPublicando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
 
@@ -121,8 +143,9 @@ export function ColocarResultadosScreen({ navigation, route }) {
     try {
       setPublicando(true);
       const sets = scores
-        .filter(s => s.my !== '' || s.rival !== '')
+        .filter(s => s.my !== '' && s.rival !== '')
         .map(s => ({ mi_puntaje: Number(s.my) || 0, puntaje_rival: Number(s.rival) || 0 }));
+
       if (idPartido) {
         await resultadoService.publicar(idPartido, {
           idRival:          rival.id,
@@ -131,9 +154,20 @@ export function ColocarResultadosScreen({ navigation, route }) {
           sets,
         });
       }
-      setConfirmed(true);
+
+      Alert.alert(
+        '¡Resultado publicado!',
+        'Se ha enviado el resultado. Queda pendiente de la confirmación de tu rival.',
+        [
+          {
+            text: 'Entendido',
+            onPress: () => navigation.goBack(),
+          },
+        ]
+      );
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'No se pudo publicar el resultado.');
+      const mensajeError = e.response?.data?.mensaje || e.message || 'No se pudo publicar el resultado.';
+      Alert.alert('Error', mensajeError);
     } finally {
       setPublicando(false);
     }
@@ -143,7 +177,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
     try {
       setConfirmando(true);
       const sets = scores
-        .filter(s => s.my !== '' || s.rival !== '')
+        .filter(s => s.my !== '' && s.rival !== '')
         .map(s => ({ mi_puntaje: Number(s.my) || 0, puntaje_rival: Number(s.rival) || 0 }));
       if (idPartido) {
         await resultadoService.confirmar(idPartido, { estaDeAcuerdo, idRival: rival.id, sets });
@@ -246,7 +280,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
             onPress={handlePublicar}
           >
             <Ionicons
-              name="scoreboard-outline"
+              name="stats-chart-outline"
               size={20}
               color={canConfirm ? colors.primary : colors.textSecondary}
             />
@@ -356,7 +390,6 @@ const styles = StyleSheet.create({
   confirmBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
   confirmBtnTextDisabled: { color: colors.textSecondary },
 
-  // Confirmation state
   confirmContainer: {
     flex: 1,
     paddingHorizontal: 24,

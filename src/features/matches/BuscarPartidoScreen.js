@@ -35,10 +35,13 @@ function formatHora(hora) {
 
 function getFilteredPlayers(filters, base) {
   return base.filter(p => {
-    if (filters.cancha && p.club !== filters.cancha) return false;
-    if (filters.fecha && p.date !== filters.fecha) return false;
-    if (filters.hora && p.time !== filters.hora) return false;
-    if (filters.partido && p.matchType !== filters.partido) return false;
+    // TODO: Los filtros visuales están desactivados temporalmente porque los formatos
+    // de fecha/cancha del backend no coinciden con los valores de los modales estáticos.
+    // Reactivar una vez que los modales usen datos reales del backend.
+    // if (filters.cancha && p.club !== filters.cancha) return false;
+    // if (filters.fecha && p.date !== filters.fecha) return false;
+    // if (filters.hora && p.time !== filters.hora) return false;
+    // if (filters.partido && p.matchType !== filters.partido) return false;
     return true;
   });
 }
@@ -85,7 +88,6 @@ function PlayerCard({ player, onPress, onRetarPress }) {
   );
 }
 
-// ... (CanchaModal, FechaModal, HoraModal y PartidoModal se mantienen igual)
 function CanchaModal({ visible, onClose, onAdd }) {
   const [search, setSearch] = useState('');
   const filtered = COURTS.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
@@ -220,7 +222,7 @@ export function BuscarPartidoScreen({ navigation, route }) {
     const call = activeTab === 'Rankeado'
       ? partidoService.buscarRankeado({ idDeporte: DEPORTE_DEFAULT })
       : partidoService.buscarAmistoso({ idDeporte: DEPORTE_DEFAULT });
-    
+
     call
       .then(res => {
         if (Array.isArray(res) && res.length) {
@@ -232,7 +234,6 @@ export function BuscarPartidoScreen({ navigation, route }) {
             avatar:     p.foto_perfil_url ?? p.avatar ?? null,
             ranking:    p.posicion_ranking ?? p.ranking ?? null,
             pts:        p.puntaje_total   ?? p.pts    ?? null,
-            // AQUI ESTÁ LA MAGIA: Forzamos buscar la cancha real y formatear fechas
             club:       p.cancha ?? p.nombre_cancha ?? p.ubicacion ?? 'Cancha no especificada',
             date:       formatFecha(p.fecha_partido ?? p.date),
             time:       formatHora(p.hora_partido ?? p.time),
