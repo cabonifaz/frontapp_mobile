@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
-  ActivityIndicator,
+  ActivityIndicator, Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,22 @@ import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { TABS } from '../../data/partidosData';
 import { partidoService } from '../../services/partidoService';
 import { useUsuario } from '../../hooks/useUsuario';
+
+const AVATARES_LOCALES = {
+  avatar_general:     require('../../../assets/avatar_general.png'),
+  avatar_masculino_1: require('../../../assets/avatar_masculino_1.png'),
+  avatar_masculino_2: require('../../../assets/avatar_masculino_2.png'),
+  avatar_masculino_3: require('../../../assets/avatar_masculino_3.png'),
+  avatar_femenino_1:  require('../../../assets/avatar_femenino_1.png'),
+  avatar_femenino_2:  require('../../../assets/avatar_femenino_2.png'),
+  avatar_femenino_3:  require('../../../assets/avatar_femenino_3.png'),
+};
+
+function fuenteAvatar(foto) {
+  if (foto && (foto.startsWith('http://') || foto.startsWith('https://'))) return { uri: foto };
+  if (foto && AVATARES_LOCALES[foto]) return AVATARES_LOCALES[foto];
+  return AVATARES_LOCALES.avatar_general;
+}
 
 function formatSectionDate(dateStr) {
   if (!dateStr) return 'Sin fecha';
@@ -30,28 +46,50 @@ function groupByDate(items) {
 }
 
 function AppointmentCard({ item, onPress }) {
+  const esClase     = item.categoria_tab === 'CLASE';
+  const nombreRival = item.nombre_rival ?? item.rival ?? item.participante ?? null;
+  const fotoRival   = item.foto_perfil_url_rival ?? item.foto_rival ?? item.foto_perfil_url ?? null;
+  const rankingRival = item.ranking_rival ?? item.ranking ?? null;
+  const tieneNotif  = item.tiene_mensajes_nuevos === 1 || item.tiene_mensajes_nuevos === true;
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={onPress ? 0.75 : 1}>
-      <View style={styles.cardIconWrap}>
-        <Ionicons
-          name={item.categoria_tab === 'CLASE' ? 'school-outline' : 'tennisball-outline'}
-          size={26}
-          color={colors.accent}
-        />
-      </View>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
+      {/* Avatar del rival */}
+      {esClase ? (
+        <View style={styles.cardIconWrap}>
+          <Ionicons name="school-outline" size={26} color={colors.accent} />
+        </View>
+      ) : (
+        <Image source={fuenteAvatar(fotoRival)} style={styles.cardAvatar} />
+      )}
+
       <View style={styles.cardInfo}>
-        <Text style={styles.cardName}>{item.tipo_reto ?? 'Partido'}</Text>
-        <Text style={styles.cardClub}>{item.lugar ?? ''}</Text>
+        {/* Nombre + ranking */}
+        <View style={styles.nameRow}>
+          <Text style={styles.cardName} numberOfLines={1}>
+            {nombreRival ?? item.tipo_reto ?? 'Partido'}
+          </Text>
+          {rankingRival != null && (
+            <View style={styles.rankRow}>
+              <Ionicons name="trophy" size={11} color={colors.textPrimary} />
+              <Text style={styles.cardRanking}> {rankingRival}</Text>
+            </View>
+          )}
+        </View>
+        {/* Cancha */}
+        <Text style={styles.cardClub} numberOfLines={1}>{item.lugar ?? item.nombre_cancha ?? ''}</Text>
+        {/* Fecha + hora */}
         <View style={styles.cardDateRow}>
-          <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-          <Text style={styles.cardMeta}> {item.hora_partido ?? ''}</Text>
+          <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
+          <Text style={styles.cardMeta}> {formatSectionDate(item.fecha_partido)}</Text>
+          <Text style={{ width: 8 }} />
+          <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
+          <Text style={styles.cardMeta}> {(item.hora_partido ?? '').substring(0, 5)}</Text>
         </View>
       </View>
-      {item.estado ? (
-        <View style={styles.estadoBadge}>
-          <Text style={styles.estadoText}>{item.estado}</Text>
-        </View>
-      ) : null}
+
+      {/* Punto rojo de notificación */}
+      {tieneNotif && <View style={styles.notifDot} />}
     </TouchableOpacity>
   );
 }
@@ -207,27 +245,29 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row', backgroundColor: colors.surface,
     borderRadius: 16, padding: 14, marginBottom: 12,
-    alignItems: 'center', gap: 14,
+    alignItems: 'center', gap: 12,
+  },
+  cardAvatar: {
+    width: 52, height: 52, borderRadius: 26, backgroundColor: '#ccc',
   },
   cardIconWrap: {
-    width: 48, height: 48, borderRadius: 24,
+    width: 52, height: 52, borderRadius: 26,
     backgroundColor: colors.background,
     alignItems: 'center', justifyContent: 'center',
   },
   cardInfo: { flex: 1 },
-  cardName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 3 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 },
+  cardName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, flexShrink: 1 },
+  rankRow: { flexDirection: 'row', alignItems: 'center' },
+  cardRanking: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
   cardClub: { fontSize: 13, color: colors.textSecondary, marginBottom: 5, fontStyle: 'italic' },
   cardDateRow: { flexDirection: 'row', alignItems: 'center' },
-  cardMeta: { fontSize: 13, color: colors.textSecondary },
-  estadoBadge: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+  cardMeta: { fontSize: 12, color: colors.textSecondary },
+  notifDot: {
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: '#E53935',
+    alignSelf: 'center',
   },
-  estadoText: { fontSize: 11, color: colors.textSecondary, fontWeight: '600' },
   emptyState: { alignItems: 'center', marginTop: 60, gap: 12 },
   emptyText: { fontSize: 15, color: colors.textSecondary },
 });
