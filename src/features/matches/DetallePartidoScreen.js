@@ -105,26 +105,26 @@ export function DetallePartidoScreen({ navigation, route }) {
     return str.length > 5 ? str.substring(0, 5) : str;
   };
 
-  // 👇 NUEVO: identificamos al creador con el campo real de la BD
-  // (ajusta este ?? si tu console.log muestra otro nombre distinto)
-  const idCreador = item.id_creador ?? item.id_usuario_creador;
-
-  // Number() evita que "12" (string) !== 12 (number) rompa la comparación
+  // El SP devuelve id_usuario = ID del participante (retador/rival).
+  // Si el usuario actual ES el participante → no es el creador.
+  const idParticipante = item.id_usuario ?? null;
   const esMiCreacion =
-    usuarioActualId != null &&
-    idCreador != null &&
-    Number(usuarioActualId) === Number(idCreador);
+    idParticipante != null && usuarioActualId != null
+      ? Number(usuarioActualId) !== Number(idParticipante)
+      : false;
 
   // Datos "en bruto" de cada rol del partido
   const datosCreador = {
-    name:    item.creador ?? item.nombre_yo ?? 'Creador',
+    id:      null,
+    name:    item.creador ?? item.nombre_yo ?? 'Yo',
     ranking: item.ranking_creador ?? item.ranking_yo ?? '--',
     pts:     item.puntos_creador ?? item.puntos_yo ?? 0,
     avatar:  item.foto_perfil_url_creador ?? item.foto_yo ?? null,
   };
 
   const datosParticipante = {
-    name:    item.participante ?? item.nombre_rival ?? 'Participante',
+    id:      item.id_usuario ?? null,
+    name:    item.participante ?? item.nombre_rival ?? 'Rival',
     ranking: item.ranking_rival ?? '--',
     pts:     item.puntos_rival ?? 0,
     avatar:  item.foto_perfil_url ?? item.foto_rival ?? null,
@@ -137,7 +137,7 @@ export function DetallePartidoScreen({ navigation, route }) {
 
   const partido = {
     id:       partidoId,
-    club:     item.nombre_cancha ?? item.lugar ?? item.club ?? 'Cancha',
+    club:     item.nombre_cancha ?? item.cancha ?? item.lugar ?? item.club ?? 'Cancha',
     address:  item.direccion_cancha ?? item.direccion ?? '',
     date:     limpiarFecha(item.fecha_partido ?? item.fecha),
     time:     limpiarHora(item.hora_partido ?? item.hora),
@@ -283,7 +283,16 @@ export function DetallePartidoScreen({ navigation, route }) {
 
         <TouchableOpacity
           style={styles.resultadosBtn}
-          onPress={() => navigation.navigate('ColocarResultados', { partido: { ...rival, ...partido } })}
+          onPress={() => navigation.navigate('ColocarResultados', {
+            partido: {
+              ...partido,
+              id_rival: rival.id,
+              name:     rival.name,
+              avatar:   rival.avatar,
+              pts:      rival.pts,
+              ranking:  rival.ranking,
+            },
+          })}
         >
           <Ionicons name="trophy-outline" size={20} color={colors.primary} />
           <Text style={styles.resultadosBtnText}>Colocar resultados</Text>

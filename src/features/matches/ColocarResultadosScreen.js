@@ -7,6 +7,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { resultadoService } from '../../services/resultadoService';
 
+const AVATAR_DEFAULT = require('../../../assets/avatar_general.png');
+
+function fuenteImagen(url) {
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    return { uri: url };
+  }
+  return AVATAR_DEFAULT;
+}
+
 function ScoreRow({ index, myScore, rivalScore, onChangeMyScore, onChangeRivalScore }) {
   return (
     <View style={styles.scoreRow}>
@@ -88,16 +97,16 @@ export function ColocarResultadosScreen({ navigation, route }) {
   const partido = route?.params?.partido ?? {};
   const idPartido = partido.id_partido ?? partido.id ?? null;
   const rival = {
-    id:     partido.id_rival ?? partido.id_usuario_rival ?? null,
-    name:   partido.name    ?? partido.nombre_rival ?? 'Rival',
-    avatar: partido.avatar  ?? partido.foto_rival   ?? 'https://i.pravatar.cc/150?img=17',
-    pts:    partido.pts     ?? partido.puntos_rival  ?? 0,
-    ranking:partido.ranking ?? partido.ranking_rival ?? '--',
+    id:      partido.id_rival ?? partido.id_usuario_rival ?? null,
+    name:    partido.name    ?? partido.nombre_rival ?? 'Rival',
+    avatar:  partido.avatar  ?? partido.foto_rival   ?? null,
+    pts:     partido.pts     ?? partido.puntos_rival  ?? 0,
+    ranking: partido.ranking ?? partido.ranking_rival ?? '--',
   };
   const yo = {
-    name:   partido.nombre_yo   ?? 'Tú',
-    avatar: partido.avatar_yo   ?? 'https://i.pravatar.cc/150?img=1',
-    pts:    partido.puntos_yo   ?? 0,
+    name:   partido.nombre_yo ?? 'Tú',
+    avatar: partido.avatar_yo ?? null,
+    pts:    partido.puntos_yo ?? 0,
   };
 
   const [scores, setScores] = useState([
@@ -185,7 +194,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
           {/* Players + scores */}
           <View style={styles.playersBlock}>
             <View style={styles.playerCol}>
-              <Image source={{ uri: yo.avatar }} style={styles.avatar} />
+              <Image source={fuenteImagen(yo.avatar)} style={styles.avatar} />
               <Text style={styles.playerName} numberOfLines={1}>{yo.name.split(' ')[0]}</Text>
               <Text style={styles.playerPts}>{yo.pts} pts</Text>
             </View>
@@ -204,7 +213,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
             </View>
 
             <View style={styles.playerCol}>
-              <Image source={{ uri: rival.avatar }} style={styles.avatar} />
+              <Image source={fuenteImagen(rival.avatar)} style={styles.avatar} />
               <Text style={styles.playerName} numberOfLines={1}>{rival.name.split(' ')[0]}</Text>
               <Text style={styles.playerPts}>{rival.pts} pts</Text>
             </View>
