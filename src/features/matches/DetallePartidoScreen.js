@@ -104,8 +104,8 @@ export function DetallePartidoScreen({ navigation, route }) {
     return str.length > 5 ? str.substring(0, 5) : str;
   };
 
-  // Identificamos al creador con el campo real de la BD
-  const idCreador = item.id_creador ?? item.id_usuario_creador;
+  const idCreador     = item.id_creador ?? item.id_usuario_creador ?? null;
+  const idParticipante = item.id_usuario_rival ?? item.id_rival ?? item.id_usuario ?? null;
 
   const esMiCreacion =
     idParticipante != null && usuarioActualId != null

@@ -102,13 +102,13 @@ export function ColocarResultadosScreen({ navigation, route }) {
   const rival = {
     id:      partido.rival?.id     ?? partido.id_rival ?? partido.id_usuario_rival ?? null,
     name:    partido.rival?.name   ?? partido.name     ?? partido.nombre_rival ?? 'Rival',
-    avatar:  partido.rival?.avatar ?? partido.avatar   ?? partido.foto_rival   ?? 'https://i.pravatar.cc/150?img=17',
+    avatar:  partido.rival?.avatar ?? partido.avatar   ?? partido.foto_rival   ?? null,
     pts:     partido.rival?.pts    ?? partido.pts      ?? partido.puntos_rival  ?? 0,
     ranking: partido.rival?.ranking ?? partido.ranking ?? partido.ranking_rival ?? '--',
   };
   const yo = {
     name:   partido.yo?.name   ?? partido.nombre_yo ?? 'Tú',
-    avatar: partido.yo?.avatar ?? partido.avatar_yo ?? 'https://i.pravatar.cc/150?img=1',
+    avatar: partido.yo?.avatar ?? partido.avatar_yo ?? null,
     pts:    partido.yo?.pts    ?? partido.puntos_yo ?? 0,
   };
 
