@@ -251,19 +251,41 @@ export function DetallePartidoScreen({ navigation, route }) {
           </View>
         </View>
 
-        <Text style={styles.mandatoryNote}>
-          Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.
-        </Text>
+        {/* Resultado final (solo cuando está Finalizado) */}
+        {esFinalizado && (
+          <>
+            <Text style={styles.sectionTitle}>Resultado final</Text>
+            <View style={[styles.detailCard, { flexDirection: 'column', gap: 10 }]}>
+              {[1, 2, 3].map(n => {
+                const local = item[`set${n}_puntos_local`];
+                const visit = item[`set${n}_puntos_visitante`];
+                if (local == null && visit == null) return null;
+                return (
+                  <View key={n} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.detailSub}>Set {n}</Text>
+                    <Text style={styles.detailMain}>{local ?? 0}  –  {visit ?? 0}</Text>
+                  </View>
+                );
+              })}
+              {[1, 2, 3].every(n => item[`set${n}_puntos_local`] == null) && (
+                <Text style={[styles.detailSub, { textAlign: 'center' }]}>Sin sets registrados</Text>
+              )}
+            </View>
+          </>
+        )}
+
+        {!esFinalizado && (
+          <Text style={styles.mandatoryNote}>
+            Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.
+          </Text>
+        )}
 
         <TouchableOpacity
           style={styles.chatBtn}
           onPress={() => {
             navigation.navigate('MatchChat', {
               idPartido: partido.id,
-              rival: {
-                name: rival.name,
-                avatar: rival.avatar,
-              },
+              rival: { name: rival.name, avatar: rival.avatar },
             });
           }}
         >
@@ -271,22 +293,18 @@ export function DetallePartidoScreen({ navigation, route }) {
           <Text style={styles.chatBtnText}>Abrir Chat del Partido</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
-          <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
-          <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar partido'}</Text>
-        </TouchableOpacity>
+        {!esFinalizado && (
+          <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
+            <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
+            <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar partido'}</Text>
+          </TouchableOpacity>
+        )}
 
         {!esFinalizado && (
           <TouchableOpacity
             style={styles.resultadosBtn}
             onPress={() => navigation.navigate('ColocarResultados', {
-              partido: {
-                ...item,
-                ...partido,
-                id_partido: partido.id,
-                yo,
-                rival,
-              },
+              partido: { ...item, ...partido, id_partido: partido.id, yo, rival },
             })}
           >
             <Ionicons name="trophy-outline" size={20} color={colors.primary} />
