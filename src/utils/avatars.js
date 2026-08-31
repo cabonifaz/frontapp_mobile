@@ -11,16 +11,17 @@ export const LOCAL_AVATARS = {
 
 // Función helper para resolver la imagen
 export const getAvatarSource = (fotoPerfilUrl) => {
-  // Si no hay foto en la BD, devolvemos el general
-  if (!fotoPerfilUrl) {
-    return LOCAL_AVATARS.avatar_general;
-  }
-  
-  // Si la clave de la BD coincide con alguna de nuestras imágenes locales
-  if (LOCAL_AVATARS[fotoPerfilUrl]) {
-    return LOCAL_AVATARS[fotoPerfilUrl];
+  if (!fotoPerfilUrl) return LOCAL_AVATARS.avatar_general;
+
+  // Normaliza: quita extensión .png si viene con ella (ej: "avatar_masculino_3.png")
+  const key = fotoPerfilUrl.replace(/\.png$/i, '');
+
+  if (LOCAL_AVATARS[key]) return LOCAL_AVATARS[key];
+
+  // URL web real (Cloudinary, Google, Facebook, etc.)
+  if (fotoPerfilUrl.startsWith('http://') || fotoPerfilUrl.startsWith('https://')) {
+    return { uri: fotoPerfilUrl };
   }
 
-  // Si es una URL web real (por si en un futuro usas Cloudinary o fotos de Google)
-  return { uri: fotoPerfilUrl };
+  return LOCAL_AVATARS.avatar_general;
 };

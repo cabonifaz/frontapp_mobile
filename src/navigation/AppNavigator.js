@@ -14,6 +14,7 @@ import { ForgotPasswordScreen } from '../features/auth/forgot_password/ForgotPas
 import { HomeScreen } from '../features/home/HomeScreen';
 import { RankingScreen } from '../features/ranking/RankingScreen';
 import { ResultadosScreen } from '../features/results/ResultadosScreen';
+import { DetalleResultadoScreen } from '../features/results/DetalleResultadoScreen';
 import { PartidosScreen } from '../features/matches/PartidosScreen';
 import { BuscarPartidoScreen } from '../features/matches/BuscarPartidoScreen';
 import { CrearPartidoScreen } from '../features/matches/CrearPartidoScreen';
@@ -99,6 +100,7 @@ export function AppNavigator() {
         <Stack.Screen name="RetarJugador" component={RetarScreen} />
         <Stack.Screen name="MisSolicitudes" component={MisSolicitudesScreen} />
         <Stack.Screen name="DetallePartido" component={DetallePartidoScreen} />
+        <Stack.Screen name="DetalleResultado" component={DetalleResultadoScreen} />
         <Stack.Screen name="ColocarResultados" component={ColocarResultadosScreen} />
         
         {/* AQUÍ ESTABLECEMOS QUE 'MatchChat' USE LA PANTALLA COMPLETA DE CHAT */}

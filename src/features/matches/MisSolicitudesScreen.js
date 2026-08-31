@@ -83,6 +83,8 @@ export function MisSolicitudesScreen({ navigation }) {
   // Soportar lista de partidos (partidos) o un único partido por retrocompatibilidad
   const partidos = datos?.partidos ?? (datos?.partido ? [datos.partido] : []);
   const solicitudes = datos?.solicitudes ?? datos?.postulantes ?? [];
+  // Solo mostrar la sección de partidos si el SP la incluye en la respuesta
+  const haySeccionPartidos = datos != null && (datos.partidos !== undefined || datos.partido !== undefined);
 
   const fechas = solicitudes.length > 0
     ? [...new Set(solicitudes.map(s => s.fecha ?? s.date).filter(Boolean))]
@@ -179,35 +181,37 @@ export function MisSolicitudesScreen({ navigation }) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
           {/* Listado de Partidos Creados (Buscando Oponente) */}
-          {partidos.length > 0 ? (
-            partidos.map((p, idx) => {
-              const pId = p.id_partido ?? p.id ?? idx;
-              return (
-                <View key={pId} style={styles.partidoCard}>
-                  <Image
-                    source={{ uri: p.foto_cancha_url ?? p.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
-                    style={styles.partidoImg}
-                  />
-                  <View style={styles.partidoInfo}>
-                    <Text style={styles.partidoCancha}>{p.nombre_cancha ?? p.cancha ?? 'Cancha'}</Text>
-                    <View style={styles.metaRow}>
-                      <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                      <Text style={styles.metaText}> {formatFecha(p.fecha ?? p.fecha_partido)}</Text>
-                      <Text style={{ width: 10 }} />
-                      <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                      <Text style={styles.metaText}> {p.hora ?? p.hora_partido ?? '--'}</Text>
+          {haySeccionPartidos && (
+            partidos.length > 0 ? (
+              partidos.map((p, idx) => {
+                const pId = p.id_partido ?? p.id ?? idx;
+                return (
+                  <View key={pId} style={styles.partidoCard}>
+                    <Image
+                      source={{ uri: p.foto_cancha_url ?? p.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
+                      style={styles.partidoImg}
+                    />
+                    <View style={styles.partidoInfo}>
+                      <Text style={styles.partidoCancha}>{p.nombre_cancha ?? p.cancha ?? 'Cancha'}</Text>
+                      <View style={styles.metaRow}>
+                        <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                        <Text style={styles.metaText}> {formatFecha(p.fecha ?? p.fecha_partido)}</Text>
+                        <Text style={{ width: 10 }} />
+                        <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                        <Text style={styles.metaText}> {p.hora ?? p.hora_partido ?? '--'}</Text>
+                      </View>
                     </View>
+                    <TouchableOpacity onPress={() => handleCancelarPartido(p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity onPress={() => handleCancelarPartido(p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              );
-            })
-          ) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No tienes partidos activos buscando oponente</Text>
-            </View>
+                );
+              })
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No tienes partidos activos buscando oponente</Text>
+              </View>
+            )
           )}
 
           {/* Jugadores retándote */}

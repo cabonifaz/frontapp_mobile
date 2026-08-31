@@ -8,6 +8,7 @@ import { colors } from '../../constants';
 import { COURTS, DATES, HOURS, MATCH_TYPES } from '../../data/buscarPartidoData';
 import { partidoService } from '../../services/partidoService';
 import { DEPORTE_DEFAULT } from '../../constants/maestro';
+import { getAvatarSource } from '../../utils/avatars';
 
 const TABS = ['Rankeado', 'Amistoso'];
 const FILTER_KEYS = ['cancha', 'fecha', 'hora', 'partido'];
@@ -59,10 +60,10 @@ function FilterChip({ label, active, onPress, onRemove }) {
   );
 }
 
-function PlayerCard({ player, onPress, onRetarPress }) {
+function PlayerCard({ player, onPress, onRetarPress, yaRetado }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
-      <Image source={{ uri: player.avatar }} style={styles.cardAvatar} />
+      <Image source={getAvatarSource(player.avatar)} style={styles.cardAvatar} />
       <View style={styles.cardInfo}>
         <View style={styles.nameRow}>
           <Text style={styles.playerName}>{player.name}</Text>
@@ -80,9 +81,15 @@ function PlayerCard({ player, onPress, onRetarPress }) {
       </View>
       <View style={styles.cardRight}>
         <Text style={styles.timeAgo}>Hace 15 min.</Text>
-        <TouchableOpacity style={styles.retarBtn} onPress={onRetarPress}>
-          <Text style={styles.retarText}>Retar</Text>
-        </TouchableOpacity>
+        {yaRetado ? (
+          <View style={[styles.retarBtn, styles.retadoBtn]}>
+            <Text style={styles.retadoText}>Retado</Text>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.retarBtn} onPress={onRetarPress}>
+            <Text style={styles.retarText}>Retar</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -212,6 +219,7 @@ export function BuscarPartidoScreen({ navigation, route }) {
   const [openModal, setOpenModal] = useState(null);
   const [basePlayers, setBasePlayers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [retadosIds, setRetadosIds] = useState([]);
 
   const players = getFilteredPlayers(filters, basePlayers);
   const hasFilters = Object.values(filters).some(Boolean);
@@ -315,8 +323,12 @@ export function BuscarPartidoScreen({ navigation, route }) {
             <PlayerCard
               key={p.id}
               player={p}
+              yaRetado={retadosIds.includes(p.id)}
               onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name ?? p.nombre_usuario, pts: p.pts ?? p.puntaje_total, ranking: p.ranking ?? p.posicion_ranking, avatar: p.avatar ?? p.foto_perfil_url, id_usuario: p.id_usuario ?? p.id_jugador } })}
-              onRetarPress={() => navigation.navigate('RetarJugador', { player: p })}
+              onRetarPress={() => {
+                setRetadosIds(prev => [...prev, p.id]);
+                navigation.navigate('RetarJugador', { player: p });
+              }}
             />
           ))
         )}
@@ -370,6 +382,8 @@ const styles = StyleSheet.create({
   timeAgo: { fontSize: 11, color: colors.textSecondary },
   retarBtn: { borderWidth: 1.5, borderColor: colors.textPrimary, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 },
   retarText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  retadoBtn: { borderColor: colors.border, backgroundColor: colors.surface },
+  retadoText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
   emptyState: { alignItems: 'center', marginTop: 48, gap: 12 },
   emptyText: { fontSize: 15, color: colors.textSecondary },
   bottomBar: { paddingHorizontal: 20, paddingVertical: 16 },
