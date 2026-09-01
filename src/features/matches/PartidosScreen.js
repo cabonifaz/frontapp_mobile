@@ -52,6 +52,31 @@ function AppointmentCard({ item, onPress }) {
   const rankingRival = item.ranking_rival ?? item.ranking ?? null;
   const tieneNotif  = item.tiene_mensajes_nuevos === 1 || item.tiene_mensajes_nuevos === true;
 
+  // 🟢 LÓGICA DE ESTADOS Y COLORES (Corrección implementada)
+  const valorEstado = item.estado ?? item.estado_partido ?? 'Pendiente';
+  const estadoStr = String(valorEstado);
+
+  let statusBg = '#FFF3E0'; // Naranja claro por defecto
+  let statusTxt = '#E65100'; // Texto naranja
+  
+  const st = estadoStr.toLowerCase();
+
+  // Evaluamos tanto por texto como por ID numérico
+  if (st.includes('confirmado') || st === '2') {
+    statusBg = '#E3F2FD'; statusTxt = '#1565C0'; // Azul
+  } else if (st.includes('finalizado') || st.includes('completado') || st === '3') {
+    statusBg = '#E8F5E9'; statusTxt = '#2E7D32'; // Verde
+  } else if (st.includes('cancelado') || st === '4') {
+    statusBg = '#FFEBEE'; statusTxt = '#C62828'; // Rojo
+  }
+
+  // Traducción visual para IDs numéricos
+  let etiquetaVisual = estadoStr;
+  if (estadoStr === '1') etiquetaVisual = 'Pendiente';
+  if (estadoStr === '2') etiquetaVisual = 'Confirmado';
+  if (estadoStr === '3') etiquetaVisual = 'Finalizado';
+  if (estadoStr === '4') etiquetaVisual = 'Cancelado';
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
       {/* Avatar del rival */}
@@ -64,20 +89,29 @@ function AppointmentCard({ item, onPress }) {
       )}
 
       <View style={styles.cardInfo}>
-        {/* Nombre + ranking */}
-        <View style={styles.nameRow}>
-          <Text style={styles.cardName} numberOfLines={1}>
-            {nombreRival ?? item.tipo_reto ?? 'Partido'}
-          </Text>
-          {rankingRival != null && (
-            <View style={styles.rankRow}>
-              <Ionicons name="trophy" size={11} color={colors.textPrimary} />
-              <Text style={styles.cardRanking}> {rankingRival}</Text>
+        {/* Cabecera de la Info (Nombre + Etiqueta de Estado) */}
+        <View style={styles.cardHeaderInfo}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.nameRow}>
+              <Text style={styles.cardName} numberOfLines={1}>
+                {nombreRival ?? item.tipo_reto ?? 'Partido'}
+              </Text>
+              {rankingRival != null && (
+                <View style={styles.rankRow}>
+                  <Ionicons name="trophy" size={11} color={colors.textPrimary} />
+                  <Text style={styles.cardRanking}> {rankingRival}</Text>
+                </View>
+              )}
             </View>
-          )}
+            <Text style={styles.cardClub} numberOfLines={1}>{item.lugar ?? item.nombre_cancha ?? ''}</Text>
+          </View>
+
+          {/* 🟢 BADGE DE ESTADO */}
+          <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
+            <Text style={[styles.statusText, { color: statusTxt }]}>{etiquetaVisual}</Text>
+          </View>
         </View>
-        {/* Cancha */}
-        <Text style={styles.cardClub} numberOfLines={1}>{item.lugar ?? item.nombre_cancha ?? ''}</Text>
+
         {/* Fecha + hora */}
         <View style={styles.cardDateRow}>
           <Ionicons name="calendar-outline" size={12} color={colors.textSecondary} />
@@ -256,11 +290,30 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   cardInfo: { flex: 1 },
+  // 🟢 Estilo para envolver nombre y badge en la misma línea
+  cardHeaderInfo: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start' 
+  },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 },
   cardName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, flexShrink: 1 },
   rankRow: { flexDirection: 'row', alignItems: 'center' },
   cardRanking: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
   cardClub: { fontSize: 13, color: colors.textSecondary, marginBottom: 5, fontStyle: 'italic' },
+  // 🟢 Estilos para el Badge
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+    marginTop: 2
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
   cardDateRow: { flexDirection: 'row', alignItems: 'center' },
   cardMeta: { fontSize: 12, color: colors.textSecondary },
   notifDot: {
