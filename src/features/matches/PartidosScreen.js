@@ -77,13 +77,7 @@ function AppointmentCard({ item, onPress }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
       {/* Avatar del rival */}
-      {esClase ? (
-        <View style={styles.cardIconWrap}>
-          <Ionicons name="school-outline" size={26} color={colors.accent} />
-        </View>
-      ) : (
-        <Image source={fuenteAvatar(fotoRival)} style={styles.cardAvatar} />
-      )}
+      <Image source={fuenteAvatar(fotoRival)} style={styles.cardAvatar} />
 
       <View style={styles.cardInfo}>
         {/* Nombre + ranking */}
@@ -216,7 +210,11 @@ export function PartidosScreen({ navigation }) {
           ) : (
             <Section
               data={currentData}
-              onPressItem={(item) => navigation.navigate('DetallePartido', { partido: item })}
+              onPressItem={(item) =>
+                item.categoria_tab === 'CLASE'
+                  ? navigation.navigate('DetalleClase', { clase: item })
+                  : navigation.navigate('DetallePartido', { partido: item })
+              }
             />
           )}
           <View style={{ height: 32 }} />

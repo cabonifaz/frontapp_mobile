@@ -6,6 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { claseService } from '../../services/claseService';
+import { getAvatarSource } from '../../utils/avatars';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H = 200;
@@ -43,7 +44,7 @@ export function DetalleClaseScreen({ navigation, route }) {
   const profesor = {
     name:     clase.nombre_profesor ?? clase.name    ?? 'Profesor',
     ranking:  clase.ranking_profesor ?? clase.ranking ?? '--',
-    avatar:   clase.foto_profesor    ?? clase.avatar  ?? 'https://i.pravatar.cc/150?img=40',
+    avatar:   clase.foto_profesor    ?? clase.avatar  ?? null,
     club:     clase.nombre_cancha    ?? clase.club    ?? 'Cancha',
     address:  clase.direccion        ?? clase.address ?? '',
     date:     clase.fecha            ?? clase.date    ?? '--',
@@ -112,7 +113,7 @@ export function DetalleClaseScreen({ navigation, route }) {
       <View style={styles.sheet}>
         {/* Avatar */}
         <View style={styles.avatarWrap}>
-          <Image source={{ uri: profesor.avatar }} style={styles.avatar} />
+          <Image source={getAvatarSource(profesor.avatar)} style={styles.avatar} />
           <View style={styles.rankBadge}>
             <Ionicons name="trophy" size={13} color={colors.primary} />
             <Text style={styles.rankBadgeText}> {profesor.ranking}</Text>
