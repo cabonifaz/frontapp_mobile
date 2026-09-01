@@ -45,45 +45,22 @@ function groupByDate(items) {
   return Object.values(map);
 }
 
-const ESTADO_COLORES = [
-  { keys: ['buscando'],   bg: '#FFF3CD', text: '#856404' },
-  { keys: ['pendiente'],  bg: '#CCE5FF', text: '#004085' },
-  { keys: ['confirmado'], bg: '#D4EDDA', text: '#155724' },
-  { keys: ['finalizado', 'completado'], bg: '#E2E3E5', text: '#383D41' },
-  { keys: ['cancelado'],  bg: '#F8D7DA', text: '#721C24' },
-];
-
-function getEstadoBadge(item) {
-  // El SP devuelve el nombre del estado en el campo "estado"
-  const label = item.estado ?? item.nombre_estado ?? item.estado_nombre ?? null;
-  if (!label) return null;
-  const lower = label.toLowerCase();
-  const config = ESTADO_COLORES.find(c => c.keys.some(k => lower.includes(k)));
-  return {
-    label,
-    bg:   config?.bg   ?? '#E2E3E5',
-    text: config?.text ?? '#383D41',
-  };
-}
-
 function AppointmentCard({ item, onPress }) {
-  const esClase      = item.categoria_tab === 'CLASE';
-  const nombreRival  = item.nombre_rival ?? item.rival ?? item.participante ?? null;
-  const fotoRival    = item.foto_perfil_url_rival ?? item.foto_rival ?? item.foto_perfil_url ?? null;
+  const esClase     = item.categoria_tab === 'CLASE';
+  const nombreRival = item.nombre_rival ?? item.rival ?? item.participante ?? null;
+  const fotoRival   = item.foto_perfil_url_rival ?? item.foto_rival ?? item.foto_perfil_url ?? null;
   const rankingRival = item.ranking_rival ?? item.ranking ?? null;
-  const tieneNotif   = item.tiene_mensajes_nuevos === 1 || item.tiene_mensajes_nuevos === true;
-  const estadoBadge  = getEstadoBadge(item);
+  const tieneNotif  = item.tiene_mensajes_nuevos === 1 || item.tiene_mensajes_nuevos === true;
 
-  // 🟢 LÓGICA DE ESTADOS Y COLORES (Corrección implementada)
+  // Lógica de estado y colores
   const valorEstado = item.estado ?? item.estado_partido ?? 'Pendiente';
   const estadoStr = String(valorEstado);
 
-  let statusBg = '#FFF3E0'; // Naranja claro por defecto
-  let statusTxt = '#E65100'; // Texto naranja
+  let statusBg = '#FFF3E0'; // Naranja claro (Pendiente por defecto)
+  let statusTxt = '#E65100';
   
   const st = estadoStr.toLowerCase();
 
-  // Evaluamos tanto por texto como por ID numérico
   if (st.includes('confirmado') || st === '2') {
     statusBg = '#E3F2FD'; statusTxt = '#1565C0'; // Azul
   } else if (st.includes('finalizado') || st.includes('completado') || st === '3') {
@@ -92,7 +69,6 @@ function AppointmentCard({ item, onPress }) {
     statusBg = '#FFEBEE'; statusTxt = '#C62828'; // Rojo
   }
 
-  // Traducción visual para IDs numéricos
   let etiquetaVisual = estadoStr;
   if (estadoStr === '1') etiquetaVisual = 'Pendiente';
   if (estadoStr === '2') etiquetaVisual = 'Confirmado';
@@ -101,11 +77,17 @@ function AppointmentCard({ item, onPress }) {
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
-      {/* Avatar del rival */}
-      <Image source={fuenteAvatar(fotoRival)} style={styles.cardAvatar} />
+      {/* Icono de clase o Avatar de rival */}
+      {esClase ? (
+        <View style={styles.cardIconWrap}>
+          <Ionicons name="school-outline" size={26} color={colors.accent} />
+        </View>
+      ) : (
+        <Image source={fuenteAvatar(fotoRival)} style={styles.cardAvatar} />
+      )}
 
       <View style={styles.cardInfo}>
-        {/* Cabecera de la Info (Nombre + Etiqueta de Estado) */}
+        {/* Cabecera Info: Nombre + Badge Estado */}
         <View style={styles.cardHeaderInfo}>
           <View style={{ flex: 1 }}>
             <View style={styles.nameRow}>
@@ -122,7 +104,7 @@ function AppointmentCard({ item, onPress }) {
             <Text style={styles.cardClub} numberOfLines={1}>{item.lugar ?? item.nombre_cancha ?? ''}</Text>
           </View>
 
-          {/* 🟢 BADGE DE ESTADO */}
+          {/* Badge de estado único en la esquina superior derecha */}
           <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
             <Text style={[styles.statusText, { color: statusTxt }]}>{etiquetaVisual}</Text>
           </View>
@@ -136,14 +118,6 @@ function AppointmentCard({ item, onPress }) {
           <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
           <Text style={styles.cardMeta}> {(item.hora_partido ?? '').substring(0, 5)}</Text>
         </View>
-        {/* Badge de estado */}
-        {estadoBadge && (
-          <View style={[styles.estadoBadge, { backgroundColor: estadoBadge.bg }]}>
-            <Text style={[styles.estadoBadgeText, { color: estadoBadge.text }]}>
-              {estadoBadge.label}
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* Punto rojo de notificación */}
@@ -318,7 +292,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   cardInfo: { flex: 1 },
-  // 🟢 Estilo para envolver nombre y badge en la misma línea
   cardHeaderInfo: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -329,7 +302,6 @@ const styles = StyleSheet.create({
   rankRow: { flexDirection: 'row', alignItems: 'center' },
   cardRanking: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
   cardClub: { fontSize: 13, color: colors.textSecondary, marginBottom: 5, fontStyle: 'italic' },
-  // 🟢 Estilos para el Badge
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -348,17 +320,6 @@ const styles = StyleSheet.create({
     width: 10, height: 10, borderRadius: 5,
     backgroundColor: '#E53935',
     alignSelf: 'center',
-  },
-  estadoBadge: {
-    alignSelf: 'flex-start',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    marginTop: 5,
-  },
-  estadoBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
   },
   emptyState: { alignItems: 'center', marginTop: 60, gap: 12 },
   emptyText: { fontSize: 15, color: colors.textSecondary },

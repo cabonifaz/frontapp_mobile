@@ -11,6 +11,11 @@ import { resultadoService } from '../../services/resultadoService';
 import { useUsuario } from '../../hooks/useUsuario';
 import { getAvatarSource } from '../../utils/avatars';
 
+// Garantizamos que 'Histórico' esté presente entre los filtros
+const LISTA_FILTROS = DATE_FILTERS.includes('Histórico') 
+  ? DATE_FILTERS 
+  : [...DATE_FILTERS, 'Histórico'];
+
 function getDateParam(filter) {
   const hoy = new Date();
   if (filter === 'Hoy') return hoy.toISOString().split('T')[0];
@@ -19,6 +24,12 @@ function getDateParam(filter) {
     ayer.setDate(ayer.getDate() - 1);
     return ayer.toISOString().split('T')[0];
   }
+  if (filter === 'Esta Semana') {
+    const inicioSemana = new Date(hoy);
+    inicioSemana.setDate(hoy.getDate() - 7);
+    return inicioSemana.toISOString().split('T')[0];
+  }
+  // Si es 'Histórico', retornamos null para obtener todos los partidos sin restricción de fecha
   return null;
 }
 
@@ -154,9 +165,14 @@ export function ResultadosScreen({ navigation }) {
             )}
           </View>
 
-          {/* Filtros de fecha */}
-          <View style={styles.filterRow}>
-            {DATE_FILTERS.map((f) => (
+          {/* Filtros de fecha en scroll horizontal */}
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false} 
+            style={styles.filterScrollView}
+            contentContainerStyle={styles.filterRow}
+          >
+            {LISTA_FILTROS.map((f) => (
               <TouchableOpacity
                 key={f}
                 style={[styles.filterBtn, activeFilter === f && styles.filterBtnActive]}
@@ -165,7 +181,7 @@ export function ResultadosScreen({ navigation }) {
                 <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
 
           {/* Contenido */}
           {loading ? (
@@ -222,7 +238,15 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
 
-  filterRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  filterScrollView: {
+    marginBottom: 20,
+    marginHorizontal: -20, // Permite que el scroll toque los bordes laterales
+  },
+  filterRow: { 
+    flexDirection: 'row', 
+    gap: 10, 
+    paddingHorizontal: 20, 
+  },
   filterBtn: {
     paddingHorizontal: 18,
     paddingVertical: 10,
