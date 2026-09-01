@@ -46,11 +46,11 @@ function groupByDate(items) {
 }
 
 const ESTADO_COLORES = [
-  { keys: ['buscando'],   bg: '#FFF3CD', text: '#856404' },
-  { keys: ['pendiente'],  bg: '#CCE5FF', text: '#004085' },
-  { keys: ['confirmado'], bg: '#D4EDDA', text: '#155724' },
-  { keys: ['finalizado', 'completado'], bg: '#E2E3E5', text: '#383D41' },
-  { keys: ['cancelado'],  bg: '#F8D7DA', text: '#721C24' },
+  { keys: ['buscando'],                     bg: '#FFF3CD', text: '#856404' },
+  { keys: ['pendiente', 'solicitada'],      bg: '#CCE5FF', text: '#004085' },
+  { keys: ['confirmado', 'aceptada'],       bg: '#D4EDDA', text: '#155724' },
+  { keys: ['finalizado', 'completado'],     bg: '#E2E3E5', text: '#383D41' },
+  { keys: ['cancelado'],                    bg: '#F8D7DA', text: '#721C24' },
 ];
 
 function getEstadoBadge(item) {
@@ -73,31 +73,6 @@ function AppointmentCard({ item, onPress }) {
   const rankingRival = item.ranking_rival ?? item.ranking ?? null;
   const tieneNotif   = item.tiene_mensajes_nuevos === 1 || item.tiene_mensajes_nuevos === true;
   const estadoBadge  = getEstadoBadge(item);
-
-  // 🟢 LÓGICA DE ESTADOS Y COLORES (Corrección implementada)
-  const valorEstado = item.estado ?? item.estado_partido ?? 'Pendiente';
-  const estadoStr = String(valorEstado);
-
-  let statusBg = '#FFF3E0'; // Naranja claro por defecto
-  let statusTxt = '#E65100'; // Texto naranja
-  
-  const st = estadoStr.toLowerCase();
-
-  // Evaluamos tanto por texto como por ID numérico
-  if (st.includes('confirmado') || st === '2') {
-    statusBg = '#E3F2FD'; statusTxt = '#1565C0'; // Azul
-  } else if (st.includes('finalizado') || st.includes('completado') || st === '3') {
-    statusBg = '#E8F5E9'; statusTxt = '#2E7D32'; // Verde
-  } else if (st.includes('cancelado') || st === '4') {
-    statusBg = '#FFEBEE'; statusTxt = '#C62828'; // Rojo
-  }
-
-  // Traducción visual para IDs numéricos
-  let etiquetaVisual = estadoStr;
-  if (estadoStr === '1') etiquetaVisual = 'Pendiente';
-  if (estadoStr === '2') etiquetaVisual = 'Confirmado';
-  if (estadoStr === '3') etiquetaVisual = 'Finalizado';
-  if (estadoStr === '4') etiquetaVisual = 'Cancelado';
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
@@ -122,10 +97,11 @@ function AppointmentCard({ item, onPress }) {
             <Text style={styles.cardClub} numberOfLines={1}>{item.lugar ?? item.nombre_cancha ?? ''}</Text>
           </View>
 
-          {/* 🟢 BADGE DE ESTADO */}
-          <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-            <Text style={[styles.statusText, { color: statusTxt }]}>{etiquetaVisual}</Text>
-          </View>
+          {estadoBadge && (
+            <View style={[styles.statusBadge, { backgroundColor: estadoBadge.bg }]}>
+              <Text style={[styles.statusText, { color: estadoBadge.text }]}>{estadoBadge.label}</Text>
+            </View>
+          )}
         </View>
 
         {/* Fecha + hora */}
@@ -136,14 +112,6 @@ function AppointmentCard({ item, onPress }) {
           <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
           <Text style={styles.cardMeta}> {(item.hora_partido ?? '').substring(0, 5)}</Text>
         </View>
-        {/* Badge de estado */}
-        {estadoBadge && (
-          <View style={[styles.estadoBadge, { backgroundColor: estadoBadge.bg }]}>
-            <Text style={[styles.estadoBadgeText, { color: estadoBadge.text }]}>
-              {estadoBadge.label}
-            </Text>
-          </View>
-        )}
       </View>
 
       {/* Punto rojo de notificación */}
