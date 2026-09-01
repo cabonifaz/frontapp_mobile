@@ -11,6 +11,12 @@ const HORAS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
   '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
 ];
+
+function getHorasDisponibles(fechaSeleccionada) {
+  if (!fechaSeleccionada || fechaSeleccionada.key !== '0') return HORAS;
+  const horaActual = new Date().getHours();
+  return HORAS.filter(h => parseInt(h, 10) > horaActual);
+}
 const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
 function getNextDays(n = 14) {
@@ -114,6 +120,16 @@ export function TomarClaseScreen({ navigation }) {
 
   const canSearch = !!cancha && !!fecha && horas.length > 0;
 
+  useEffect(() => {
+    if (horas.length > 0 && fecha) {
+      const disponibles = getHorasDisponibles(fecha);
+      const validas = horas.filter(h => disponibles.includes(h));
+      if (validas.length !== horas.length) setHoras(validas);
+    }
+  }, [fecha]);
+
+  const horasDisponibles = getHorasDisponibles(fecha);
+
   function toggleHora(h) {
     setHoras(prev =>
       prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h]
@@ -185,7 +201,7 @@ export function TomarClaseScreen({ navigation }) {
           contentContainerStyle={styles.hChipRow}
           style={styles.hScroll}
         >
-          {HORAS.map(h => {
+          {horasDisponibles.map(h => {
             const active = horas.includes(h);
             return (
               <TouchableOpacity

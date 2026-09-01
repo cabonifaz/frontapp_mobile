@@ -13,6 +13,12 @@ const HORAS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
   '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00',
 ];
+
+function getHorasDisponibles(fechaSeleccionada) {
+  if (!fechaSeleccionada || fechaSeleccionada.key !== '0') return HORAS;
+  const horaActual = new Date().getHours();
+  return HORAS.filter(h => parseInt(h, 10) > horaActual);
+}
 const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
 function getNextDays(n = 14) {
@@ -152,6 +158,14 @@ export function CrearPartidoScreen({ navigation, route }) {
   }, []);
   // ------------------------------------
 
+  useEffect(() => {
+    if (hora && fecha) {
+      const disponibles = getHorasDisponibles(fecha);
+      if (!disponibles.includes(hora)) setHora(null);
+    }
+  }, [fecha]);
+
+  const horasDisponibles = getHorasDisponibles(fecha);
   const canConfirm = !!cancha && !!fecha && !!hora && !creando;
 
   const handleCrear = async () => {
@@ -284,7 +298,7 @@ export function CrearPartidoScreen({ navigation, route }) {
           contentContainerStyle={styles.hChipRow}
           style={styles.hScroll}
         >
-          {HORAS.map(h => {
+          {horasDisponibles.map(h => {
             const active = hora === h;
             return (
               <TouchableOpacity
