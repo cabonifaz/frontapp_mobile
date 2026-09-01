@@ -3,12 +3,13 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   SafeAreaView, Image, ActivityIndicator, Alert,
 } from 'react-native';
-const AVATAR_DEFAULT = require('../../../assets/avatar_general.png');
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { solicitudService } from '../../services/solicitudService';
 import { partidoService } from '../../services/partidoService';
+import { claseService } from '../../services/claseService';
+import { getAvatarSource } from '../../utils/avatars';
 
 const DIAS  = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -38,7 +39,7 @@ function SuccessScreen({ retador, onPress }) {
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.vsCircle}>
           <Image
-            source={retador.foto_perfil_url ? { uri: retador.foto_perfil_url } : AVATAR_DEFAULT}
+            source={getAvatarSource(retador.foto_perfil_url)}
             style={styles.vsAvatar}
           />
         </View>
@@ -56,16 +57,53 @@ function SuccessScreen({ retador, onPress }) {
   );
 }
 
+function ClaseSuccessScreen({ alumno, onPress }) {
+  const firstName = (alumno.nombre_alumno ?? alumno.nombre ?? 'el alumno').split(' ')[0];
+  return (
+    <View style={styles.successContainer}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={styles.vsCircle}>
+          <Image
+            source={getAvatarSource(alumno.foto_alumno ?? alumno.foto_perfil_url)}
+            style={styles.vsAvatar}
+          />
+        </View>
+        <Text style={styles.successTitle}>
+          ¡Genial!{'\n'}Has aceptado la clase de {firstName}
+        </Text>
+        <Text style={styles.successSubtitle}>
+          Puedes chatear con tu alumno desde la sección de clases.
+        </Text>
+      </View>
+      <TouchableOpacity style={styles.accentBtn} onPress={onPress}>
+        <Text style={styles.accentBtnText}>Ir a mis partidos</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export function MisSolicitudesScreen({ navigation }) {
   const [datos, setDatos] = useState(null);
   const [loading, setLoading] = useState(true);
   const [retadorAceptado, setRetadorAceptado] = useState(null);
   const [accionLoading, setAccionLoading] = useState(null);
+  const [solicitudesClase, setSolicitudesClase] = useState([]);
+  const [claseAceptada, setClaseAceptada] = useState(null);
+  const [accionClaseLoading, setAccionClaseLoading] = useState(null);
 
   const cargar = useCallback(async () => {
     try {
-      const res = await solicitudService.misSolicitudes();
-      setDatos(res);
+      const [res, claseRes] = await Promise.allSettled([
+        solicitudService.misSolicitudes(),
+        claseService.solicitudesProfesor(),
+      ]);
+      if (res.status === 'fulfilled') setDatos(res.value);
+      else setDatos(null);
+      if (claseRes.status === 'fulfilled' && Array.isArray(claseRes.value)) {
+        setSolicitudesClase(claseRes.value);
+      } else {
+        setSolicitudesClase([]);
+      }
     } catch {
       setDatos(null);
     } finally {
@@ -83,6 +121,8 @@ export function MisSolicitudesScreen({ navigation }) {
   // Soportar lista de partidos (partidos) o un único partido por retrocompatibilidad
   const partidos = datos?.partidos ?? (datos?.partido ? [datos.partido] : []);
   const solicitudes = datos?.solicitudes ?? datos?.postulantes ?? [];
+  // Solo mostrar la sección de partidos si el SP la incluye en la respuesta
+  const haySeccionPartidos = datos != null && (datos.partidos !== undefined || datos.partido !== undefined);
 
   const fechas = solicitudes.length > 0
     ? [...new Set(solicitudes.map(s => s.fecha ?? s.date).filter(Boolean))]
@@ -111,6 +151,19 @@ export function MisSolicitudesScreen({ navigation }) {
     }
   }
 
+  async function handleAceptarClase(solicitudClase) {
+    const idClase = solicitudClase.id_clase ?? solicitudClase.id;
+    try {
+      setAccionClaseLoading(idClase);
+      await claseService.aceptar(idClase);
+      setClaseAceptada(solicitudClase);
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'No se pudo aceptar la clase.');
+    } finally {
+      setAccionClaseLoading(null);
+    }
+  }
+
   async function handleCancelarPartido(partidoItem) {
     const idPartido = partidoItem.id_partido ?? partidoItem.id;
     Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar este partido?', [
@@ -131,6 +184,17 @@ export function MisSolicitudesScreen({ navigation }) {
         },
       },
     ]);
+  }
+
+  if (claseAceptada) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <ClaseSuccessScreen
+          alumno={claseAceptada}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Partidos' })}
+        />
+      </SafeAreaView>
+    );
   }
 
   if (retadorAceptado) {
@@ -179,35 +243,37 @@ export function MisSolicitudesScreen({ navigation }) {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
           {/* Listado de Partidos Creados (Buscando Oponente) */}
-          {partidos.length > 0 ? (
-            partidos.map((p, idx) => {
-              const pId = p.id_partido ?? p.id ?? idx;
-              return (
-                <View key={pId} style={styles.partidoCard}>
-                  <Image
-                    source={{ uri: p.foto_cancha_url ?? p.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
-                    style={styles.partidoImg}
-                  />
-                  <View style={styles.partidoInfo}>
-                    <Text style={styles.partidoCancha}>{p.nombre_cancha ?? p.cancha ?? 'Cancha'}</Text>
-                    <View style={styles.metaRow}>
-                      <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                      <Text style={styles.metaText}> {formatFecha(p.fecha ?? p.fecha_partido)}</Text>
-                      <Text style={{ width: 10 }} />
-                      <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                      <Text style={styles.metaText}> {p.hora ?? p.hora_partido ?? '--'}</Text>
+          {haySeccionPartidos && (
+            partidos.length > 0 ? (
+              partidos.map((p, idx) => {
+                const pId = p.id_partido ?? p.id ?? idx;
+                return (
+                  <View key={pId} style={styles.partidoCard}>
+                    <Image
+                      source={{ uri: p.foto_cancha_url ?? p.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
+                      style={styles.partidoImg}
+                    />
+                    <View style={styles.partidoInfo}>
+                      <Text style={styles.partidoCancha}>{p.nombre_cancha ?? p.cancha ?? 'Cancha'}</Text>
+                      <View style={styles.metaRow}>
+                        <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                        <Text style={styles.metaText}> {formatFecha(p.fecha ?? p.fecha_partido)}</Text>
+                        <Text style={{ width: 10 }} />
+                        <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                        <Text style={styles.metaText}> {p.hora ?? p.hora_partido ?? '--'}</Text>
+                      </View>
                     </View>
+                    <TouchableOpacity onPress={() => handleCancelarPartido(p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity onPress={() => handleCancelarPartido(p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                    <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
-                  </TouchableOpacity>
-                </View>
-              );
-            })
-          ) : (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No tienes partidos activos buscando oponente</Text>
-            </View>
+                );
+              })
+            ) : (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyText}>No tienes partidos activos buscando oponente</Text>
+              </View>
+            )
           )}
 
           {/* Jugadores retándote */}
@@ -220,7 +286,7 @@ export function MisSolicitudesScreen({ navigation }) {
             return (
               <View key={idSolicitud} style={styles.retadorCard}>
                 <Image
-                  source={s.foto_perfil_url ? { uri: s.foto_perfil_url } : AVATAR_DEFAULT}
+                  source={getAvatarSource(s.foto_perfil_url)}
                   style={styles.retadorAvatar}
                 />
                 <View style={styles.retadorInfo}>
@@ -257,6 +323,51 @@ export function MisSolicitudesScreen({ navigation }) {
               <Text style={styles.emptyText}>No hay jugadores retándote aún</Text>
             </View>
           )}
+
+          {/* Solicitudes de clase (solo profesores) */}
+          {solicitudesClase.length > 0 && (
+            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Solicitudes de clase</Text>
+          )}
+          {solicitudesClase.map((sc, i) => {
+            const idClase = sc.id_clase ?? sc.id ?? String(i);
+            const cargandoClase = accionClaseLoading === idClase;
+            const hora = typeof (sc.hora_clase ?? sc.hora) === 'string'
+              ? (sc.hora_clase ?? sc.hora ?? '--').substring(0, 5)
+              : '--';
+            return (
+              <View key={idClase} style={styles.retadorCard}>
+                <Image
+                  source={getAvatarSource(sc.foto_alumno ?? sc.foto_perfil_url)}
+                  style={styles.retadorAvatar}
+                />
+                <View style={styles.retadorInfo}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.retadorName}>{sc.nombre_alumno ?? sc.nombre ?? 'Alumno'}</Text>
+                    <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
+                    <Text style={styles.retadorRanking}> {sc.ranking_alumno ?? sc.ranking ?? '--'}</Text>
+                  </View>
+                  <Text style={styles.retadorClub}>{sc.nombre_cancha ?? sc.lugar ?? ''}</Text>
+                  <View style={styles.metaRow}>
+                    <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                    <Text style={styles.metaText}> {formatFecha(sc.fecha_clase ?? sc.fecha)}</Text>
+                    <Text style={{ width: 10 }} />
+                    <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                    <Text style={styles.metaText}> {hora}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.aceptarBtn, cargandoClase && { opacity: 0.5 }]}
+                  onPress={() => handleAceptarClase(sc)}
+                  disabled={cargandoClase}
+                >
+                  {cargandoClase
+                    ? <ActivityIndicator size="small" color={colors.textPrimary} />
+                    : <Text style={styles.aceptarText}>Aceptar</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            );
+          })}
 
           <View style={{ height: 32 }} />
         </ScrollView>

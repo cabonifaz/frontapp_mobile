@@ -41,4 +41,8 @@ export const claseService = {
   async detalle(idClase) {
     return api.get(`/api/Clase/${idClase}`);
   },
+
+  async solicitudesProfesor(idDeporte = DEPORTE_DEFAULT) {
+    return api.get(`/api/Clase/solicitudes-profesor?id_deporte=${idDeporte}`);
+  },
 };

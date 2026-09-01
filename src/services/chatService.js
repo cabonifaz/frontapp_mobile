@@ -5,10 +5,13 @@ export const chatService = {
     return api.get(`/api/Chat/partido/${idPartido}`);
   },
   async enviar(idPartido, mensaje) {
-    // El backend espera un objeto con { partidoId, mensaje } según el DTO
-    return api.post('/api/Chat/enviar', { 
-      partidoId: idPartido, 
-      mensaje: mensaje 
-    });
+    return api.post('/api/Chat/enviar', { partidoId: idPartido, mensaje });
+  },
+
+  async listarClase(idClase) {
+    return api.get(`/api/Chat/clase/${idClase}`);
+  },
+  async enviarClase(idClase, mensaje) {
+    return api.post('/api/Chat/enviar', { claseId: idClase, mensaje });
   },
 };

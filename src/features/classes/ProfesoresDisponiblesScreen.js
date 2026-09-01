@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { claseService } from '../../services/claseService';
 import { DEPORTE_DEFAULT } from '../../constants/maestro';
+import { getAvatarSource } from '../../utils/avatars';
 
 function ProfesorCard({ profesor, onSolicitar, cargando }) {
   const nombre = profesor.nombre ?? profesor.name ?? 'Profesor';
@@ -14,7 +15,7 @@ function ProfesorCard({ profesor, onSolicitar, cargando }) {
   return (
     <View style={styles.card}>
       <Image
-        source={{ uri: profesor.foto_perfil_url ?? profesor.avatar ?? 'https://i.pravatar.cc/150?img=40' }}
+        source={getAvatarSource(profesor.foto_perfil_url ?? profesor.avatar)}
         style={styles.cardAvatar}
       />
       <View style={styles.cardInfo}>
@@ -55,7 +56,7 @@ function SuccessScreen({ profesor, onPress }) {
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.successCircle}>
           <Image
-            source={{ uri: profesor.foto_perfil_url ?? profesor.avatar ?? 'https://i.pravatar.cc/150?img=40' }}
+            source={getAvatarSource(profesor.foto_perfil_url ?? profesor.avatar)}
             style={styles.successAvatar}
           />
         </View>

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Image, Modal, TextInput,
+  SafeAreaView, Image, Modal, TextInput, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
-import { COURTS } from '../../data/buscarPartidoData';
+import { maestroService } from '../../services/maestroService';
 
 const HORAS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
@@ -31,9 +31,22 @@ const DAYS = getNextDays(14);
 
 function CanchaModal({ visible, onClose, onSelect }) {
   const [search, setSearch] = useState('');
-  const filtered = COURTS.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase())
+  const [canchas, setCanchas] = useState([]);
+  const [loadingCanchas, setLoadingCanchas] = useState(true);
+
+  useEffect(() => {
+    if (!visible) return;
+    setLoadingCanchas(true);
+    maestroService.canchas()
+      .then(res => setCanchas(Array.isArray(res) ? res : []))
+      .catch(() => setCanchas([]))
+      .finally(() => setLoadingCanchas(false));
+  }, [visible]);
+
+  const filtered = canchas.filter(c =>
+    (c.nombre ?? c.name ?? '').toLowerCase().includes(search.toLowerCase())
   );
+
   return (
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>
@@ -54,20 +67,40 @@ function CanchaModal({ visible, onClose, onSelect }) {
             underlineColorAndroid="transparent"
           />
         </View>
-        <ScrollView>
-          {filtered.map(c => (
-            <TouchableOpacity key={c.id} style={styles.courtCard} onPress={() => onSelect(c)}>
-              <Image source={{ uri: c.uri }} style={styles.courtImg} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.courtName}>{c.name}</Text>
-                <View style={styles.addressRow}>
-                  <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                  <Text style={styles.courtAddress}> {c.address}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {loadingCanchas ? (
+          <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
+        ) : (
+          <ScrollView>
+            {filtered.map((c, i) => {
+              const id      = c.id_maestro ?? c.id ?? String(i);
+              const nombre  = c.nombre ?? c.name ?? 'Cancha';
+              const address = c.descripcion ?? c.valor ?? c.address ?? '';
+              const fotoUri = c.foto_url ?? c.uri ?? null;
+              return (
+                <TouchableOpacity
+                  key={id}
+                  style={styles.courtCard}
+                  onPress={() => onSelect({ id, nombre, address, fotoUri })}
+                >
+                  {fotoUri ? (
+                    <Image source={{ uri: fotoUri }} style={styles.courtImg} />
+                  ) : (
+                    <View style={[styles.courtImg, { backgroundColor: '#E0E0E0', alignItems: 'center', justifyContent: 'center' }]}>
+                      <Ionicons name="tennisball-outline" size={28} color={colors.textSecondary} />
+                    </View>
+                  )}
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.courtName}>{nombre}</Text>
+                    <View style={styles.addressRow}>
+                      <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                      <Text style={styles.courtAddress}> {address}</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
       </SafeAreaView>
     </Modal>
   );
@@ -100,16 +133,16 @@ export function TomarClaseScreen({ navigation }) {
 
         {/* Cancha */}
         <TouchableOpacity style={styles.canchaCard} onPress={() => setShowCanchaModal(true)} activeOpacity={0.8}>
-          {cancha ? (
-            <Image source={{ uri: cancha.uri }} style={styles.canchaImg} />
+          {cancha?.fotoUri ? (
+            <Image source={{ uri: cancha.fotoUri }} style={styles.canchaImg} />
           ) : (
             <View style={[styles.canchaImg, styles.canchaImgPlaceholder]}>
-              <Ionicons name="image-outline" size={28} color={colors.textSecondary} />
+              <Ionicons name={cancha ? 'tennisball-outline' : 'image-outline'} size={28} color={colors.textSecondary} />
             </View>
           )}
           <View style={{ flex: 1 }}>
             <Text style={styles.canchaName}>
-              {cancha ? cancha.name : 'Selecciona una cancha'}
+              {cancha ? cancha.nombre : 'Selecciona una cancha'}
             </Text>
             <Text style={styles.canchaHint}>
               {cancha ? 'Toca para cambiar' : 'Toca para seleccionar una cancha'}
