@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants';
 import { chatService } from '../../services/chatService';
+import { getAvatarSource } from '../../utils/avatars';
 
 function formatTime(dateStr) {
   if (!dateStr) return '';
@@ -20,7 +21,7 @@ function Bubble({ msg, rivalAvatar }) {
     <View style={[styles.bubbleRow, isMine ? styles.bubbleRowMine : styles.bubbleRowRival]}>
       {!isMine && (
         <Image
-          source={{ uri: rivalAvatar ?? msg.foto_perfil_url ?? 'https://i.pravatar.cc/150?img=17' }}
+          source={getAvatarSource(rivalAvatar ?? msg.foto_perfil_url)}
           style={styles.bubbleAvatar}
         />
       )}
@@ -37,7 +38,8 @@ function Bubble({ msg, rivalAvatar }) {
 }
 
 export function ChatScreen({ navigation, route }) {
-  const { idPartido, rival } = route.params ?? {};
+  const { idPartido, idClase, rival } = route.params ?? {};
+  const esClase = !!idClase && !idPartido;
   const [mensajes, setMensajes] = useState([]);
   const [texto, setTexto] = useState('');
   const [loading, setLoading] = useState(true);
@@ -49,7 +51,9 @@ export function ChatScreen({ navigation, route }) {
   async function cargar(silent = false) {
     try {
       if (!silent) setLoading(true);
-      const res = await chatService.listar(idPartido);
+      const res = esClase
+        ? await chatService.listarClase(idClase)
+        : await chatService.listar(idPartido);
       if (Array.isArray(res)) setMensajes(res);
     } catch {
       // poll silently
@@ -72,11 +76,15 @@ export function ChatScreen({ navigation, route }) {
 
   async function handleEnviar() {
     const trimmed = texto.trim();
-    if (!trimmed || !idPartido || enviando) return;
+    if (!trimmed || enviando) return;
     setTexto('');
     try {
       setEnviando(true);
-      await chatService.enviar(idPartido, trimmed);
+      if (esClase) {
+        await chatService.enviarClase(idClase, trimmed);
+      } else {
+        await chatService.enviar(idPartido, trimmed);
+      }
       await cargar(true);
     } catch {
       setTexto(trimmed);
@@ -84,6 +92,12 @@ export function ChatScreen({ navigation, route }) {
       setEnviando(false);
     }
   }
+
+  const avatarSource = rival?.avatar
+    ? (typeof rival.avatar === 'string'
+        ? { uri: rival.avatar }
+        : rival.avatar)
+    : null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -94,8 +108,8 @@ export function ChatScreen({ navigation, route }) {
         >
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        {rival?.avatar ? (
-          <Image source={{ uri: rival.avatar }} style={styles.headerAvatar} />
+        {avatarSource ? (
+          <Image source={avatarSource} style={styles.headerAvatar} />
         ) : (
           <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
             <Ionicons name="person" size={20} color={colors.textSecondary} />
@@ -103,7 +117,7 @@ export function ChatScreen({ navigation, route }) {
         )}
         <View style={{ flex: 1 }}>
           <Text style={styles.headerName} numberOfLines={1}>{rival?.name ?? 'Chat'}</Text>
-          <Text style={styles.headerSub}>Partido programado</Text>
+          <Text style={styles.headerSub}>{esClase ? 'Clase programada' : 'Partido programado'}</Text>
         </View>
       </View>
 
