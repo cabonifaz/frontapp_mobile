@@ -11,8 +11,9 @@ import { getAvatarSource } from '../../utils/avatars';
 
 function formatTime(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const utc = dateStr.includes('Z') || dateStr.includes('+') ? dateStr : dateStr + 'Z';
+  const d = new Date(utc);
+  return d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Lima', hour12: false });
 }
 
 function Bubble({ msg, rivalAvatar }) {

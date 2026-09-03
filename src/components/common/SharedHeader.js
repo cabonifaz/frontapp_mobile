@@ -17,9 +17,6 @@ const AVATARES = {
 };
 
 export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, puntos, fotoPerfil, genero }) {
-  
-  // Imprimimos en consola para depurar qué está llegando exactamente desde la BD
-  console.log("DATOS DE CABECERA -> Nombre:", nombre, "| Género recibido:", genero);
 
   const obtenerFoto = () => {
     // 1. Si el usuario ya subió una foto real a internet

@@ -11,6 +11,9 @@ import { DEPORTE_DEFAULT } from '../../constants/maestro';
 import { getAvatarSource } from '../../utils/avatars';
 
 const TABS = ['Rankeado', 'Amistoso'];
+
+// Persiste los IDs retados durante la sesión (se limpia solo al cerrar la app)
+const retadosEnSesion = new Set();
 const FILTER_KEYS = ['cancha', 'fecha', 'hora', 'partido'];
 const FILTER_LABELS = { cancha: 'Cancha', fecha: 'Fecha', hora: 'Hora', partido: 'Partido' };
 
@@ -219,7 +222,7 @@ export function BuscarPartidoScreen({ navigation, route }) {
   const [openModal, setOpenModal] = useState(null);
   const [basePlayers, setBasePlayers] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [retadosIds, setRetadosIds] = useState([]);
+  const [retadosIds, setRetadosIds] = useState([...retadosEnSesion]);
 
   const players = getFilteredPlayers(filters, basePlayers);
   const hasFilters = Object.values(filters).some(Boolean);
@@ -326,8 +329,13 @@ export function BuscarPartidoScreen({ navigation, route }) {
               yaRetado={retadosIds.includes(p.id)}
               onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name ?? p.nombre_usuario, pts: p.pts ?? p.puntaje_total, ranking: p.ranking ?? p.posicion_ranking, avatar: p.avatar ?? p.foto_perfil_url, id_usuario: p.id_usuario ?? p.id_jugador } })}
               onRetarPress={() => {
-                setRetadosIds(prev => [...prev, p.id]);
-                navigation.navigate('RetarJugador', { player: p });
+                navigation.navigate('RetarJugador', {
+                  player: p,
+                  onRetadoExitoso: () => {
+                    retadosEnSesion.add(p.id);
+                    setRetadosIds(prev => [...prev, p.id]);
+                  },
+                });
               }}
             />
           ))

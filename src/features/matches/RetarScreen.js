@@ -1,22 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity,
   SafeAreaView, Image, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
-import { PROFILE_MOCK } from '../../data/profileData';
 import { partidoService } from '../../services/partidoService';
+import { usuarioService } from '../../services/usuarioService';
+import { getAvatarSource } from '../../utils/avatars';
 
-function SuccessScreen({ player, onVolver }) {
+function SuccessScreen({ player, miAvatar, onVolver }) {
   const firstName = player.name?.split(' ')[0] ?? player.name;
   return (
     <View style={styles.successContainer}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.vsCircle}>
-          <Image source={{ uri: PROFILE_MOCK.avatar }} style={styles.vsAvatar} />
+          <Image source={miAvatar} style={styles.vsAvatar} />
           <Text style={styles.vsText}>vs</Text>
-          <Image source={{ uri: player.avatar }} style={styles.vsAvatar} />
+          <Image source={getAvatarSource(player.avatar)} style={styles.vsAvatar} />
         </View>
         <Text style={styles.successTitle}>{'Has retado a\n'}{firstName}</Text>
         <Text style={styles.successSubtitle}>
@@ -35,15 +36,54 @@ export function RetarScreen({ navigation, route }) {
   const firstName = player.name?.split(' ')[0] ?? 'este jugador';
   const [success, setSuccess] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  const [miAvatar, setMiAvatar] = useState(getAvatarSource(null));
+
+  useEffect(() => {
+    usuarioService.perfil()
+      .then(p => setMiAvatar(getAvatarSource(p?.foto_perfil_url)))
+      .catch(() => {});
+  }, []);
 
   async function handleConfirmar() {
+    const idPartido = player.id ?? player.id_partido ?? null;
     try {
       setConfirmando(true);
-      const idPartido = player.id ?? player.id_partido ?? null;
       if (idPartido) await partidoService.postular(idPartido);
+      route.params?.onRetadoExitoso?.();
       setSuccess(true);
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'No se pudo enviar el reto.');
+      const msg = e.message ?? '';
+      if (msg.includes('YA_RECHAZADO')) {
+        setConfirmando(false);
+        Alert.alert(
+          'Ya retaste a este jugador',
+          `Anteriormente ${firstName} te rechazó. ¿Quieres intentarlo de nuevo?`,
+          [
+            { text: 'No', style: 'cancel' },
+            {
+              text: 'Sí, intentar',
+              onPress: async () => {
+                try {
+                  setConfirmando(true);
+                  if (idPartido) await partidoService.repostular(idPartido);
+                  route.params?.onRetadoExitoso?.();
+                  setSuccess(true);
+                } catch (err) {
+                  Alert.alert('Error', err.message || 'No se pudo enviar el reto.');
+                } finally {
+                  setConfirmando(false);
+                }
+              },
+            },
+          ]
+        );
+        return;
+      } else if (msg.includes('YA_PENDIENTE')) {
+        route.params?.onRetadoExitoso?.();
+        setSuccess(true);
+      } else {
+        Alert.alert('Error', msg || 'No se pudo enviar el reto.');
+      }
     } finally {
       setConfirmando(false);
     }
@@ -52,7 +92,7 @@ export function RetarScreen({ navigation, route }) {
   if (success) {
     return (
       <SafeAreaView style={styles.safe}>
-        <SuccessScreen player={player} onVolver={() => navigation.goBack()} />
+        <SuccessScreen player={player} miAvatar={miAvatar} onVolver={() => navigation.goBack()} />
       </SafeAreaView>
     );
   }
@@ -75,7 +115,7 @@ export function RetarScreen({ navigation, route }) {
             player: { nombre: player.name ?? player.nombre_usuario, pts: player.pts ?? player.puntaje_total ?? 177, ranking: player.ranking ?? player.posicion_ranking, avatar: player.avatar ?? player.foto_perfil_url, id_usuario: player.id_usuario ?? player.id_jugador }
           })}
         >
-          <Image source={{ uri: player.avatar }} style={styles.playerAvatar} />
+          <Image source={getAvatarSource(player.avatar)} style={styles.playerAvatar} />
           <View style={styles.playerInfo}>
             <Text style={styles.playerName}>{player.name}</Text>
             <View style={styles.rankRow}>

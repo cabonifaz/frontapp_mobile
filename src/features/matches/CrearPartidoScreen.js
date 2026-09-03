@@ -246,16 +246,16 @@ export function CrearPartidoScreen({ navigation, route }) {
 
         {/* Selector de Cancha */}
         <TouchableOpacity style={styles.canchaCard} onPress={() => setShowCanchaModal(true)} activeOpacity={0.8}>
-          {cancha ? (
-            <Image source={{ uri: cancha.uri }} style={styles.canchaImg} />
+          {cancha && (cancha.foto_url ?? cancha.uri) ? (
+            <Image source={{ uri: cancha.foto_url ?? cancha.uri }} style={styles.canchaImg} />
           ) : (
             <View style={[styles.canchaImg, styles.canchaImgPlaceholder]}>
-              <Ionicons name="image-outline" size={28} color={colors.textSecondary} />
+              <Ionicons name={cancha ? 'tennisball-outline' : 'image-outline'} size={28} color={colors.textSecondary} />
             </View>
           )}
           <View style={{ flex: 1 }}>
             <Text style={styles.canchaName}>
-              {cancha ? cancha.name : 'Selecciona una cancha'}
+              {cancha ? (cancha.nombre ?? cancha.name) : 'Selecciona una cancha'}
             </Text>
             <Text style={styles.canchaHint}>
               {cancha ? 'Toca para cambiar' : 'Toca para seleccionar una cancha'}

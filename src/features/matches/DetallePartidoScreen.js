@@ -6,47 +6,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { partidoService } from '../../services/partidoService';
-import { authService } from '../../services/authService'; // para saber quién está logueado
+import { authService } from '../../services/authService';
+import { getAvatarSource } from '../../utils/avatars';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H = 200;
 const AVATAR_SIZE = 90;
-
-// A. Avatares vinculados en assets/
-const AVATARES_LOCALES = {
-  avatar_general:     require('../../../assets/avatar_general.png'),
-  avatar_masculino_1: require('../../../assets/avatar_masculino_1.png'),
-  avatar_masculino_2: require('../../../assets/avatar_masculino_2.png'),
-  avatar_masculino_3: require('../../../assets/avatar_masculino_3.png'),
-  avatar_femenino_1:  require('../../../assets/avatar_femenino_1.png'),
-  avatar_femenino_2:  require('../../../assets/avatar_femenino_2.png'),
-  avatar_femenino_3:  require('../../../assets/avatar_femenino_3.png'),
-};
-
-// Lista de avatares por defecto para alternar
-const AVATARES_DEFECTO = [
-  AVATARES_LOCALES.avatar_masculino_1,
-  AVATARES_LOCALES.avatar_masculino_2,
-  AVATARES_LOCALES.avatar_masculino_3,
-  AVATARES_LOCALES.avatar_femenino_1,
-  AVATARES_LOCALES.avatar_femenino_2,
-];
-
-const obtenerFuenteImagen = (foto, nombre = '') => {
-  // 1. Si tiene foto subida a Cloudinary
-  if (foto && (foto.startsWith('http://') || foto.startsWith('https://'))) {
-    return { uri: foto };
-  }
-
-  // 2. Si tiene asignado un avatar específico en BD
-  if (foto && AVATARES_LOCALES[foto]) {
-    return AVATARES_LOCALES[foto];
-  }
-
-  // 3. Si no tiene ninguna foto, usamos el avatar general (morado)
-  // para mantener consistencia absoluta con la pantalla de perfil.
-  return AVATARES_LOCALES.avatar_general;
-};
 
 export function DetallePartidoScreen({ navigation, route }) {
   const itemInicial = route?.params?.partido ?? {};
@@ -76,7 +41,6 @@ export function DetallePartidoScreen({ navigation, route }) {
         setCargando(true);
         const res = await partidoService.obtenerDetalle(partidoId);
         const data = res?.data ?? res;
-        console.log('📌 DATOS DEL PARTIDO RECIBIDOS:', data);
         if (data && typeof data === 'object') {
           setItem((prev) => ({ ...prev, ...data }));
         }
@@ -145,6 +109,7 @@ export function DetallePartidoScreen({ navigation, route }) {
   };
 
   const estadoPartido = Number(item.estado_partido ?? 0);
+  const esBuscando    = estadoPartido === 28; // BUSCANDO: sin rival confirmado
   const esFinalizado  = estadoPartido === 31 || estadoPartido === 32; // 31=Finalizado, 32=Cancelado
 
   async function handleCancelar() {
@@ -200,7 +165,7 @@ export function DetallePartidoScreen({ navigation, route }) {
         <View style={styles.playersRow}>
           <View style={styles.playerCol}>
             <View style={styles.avatarWrap}>
-              <Image source={obtenerFuenteImagen(yo.avatar, yo.name)} style={styles.avatar} />
+              <Image source={getAvatarSource(yo.avatar, yo.name)} style={styles.avatar} />
               <View style={styles.rankBadge}>
                 <Ionicons name="trophy" size={11} color={colors.primary} />
                 <Text style={styles.rankBadgeText}> {yo.ranking}</Text>
@@ -212,17 +177,33 @@ export function DetallePartidoScreen({ navigation, route }) {
 
           <Text style={styles.vsLabel}>vs</Text>
 
-          <View style={styles.playerCol}>
-            <View style={styles.avatarWrap}>
-              <Image source={obtenerFuenteImagen(rival.avatar, rival.name)} style={styles.avatar} />
-              <View style={styles.rankBadge}>
-                <Ionicons name="trophy" size={11} color={colors.primary} />
-                <Text style={styles.rankBadgeText}> {rival.ranking}</Text>
+          {esBuscando ? (
+            <View style={styles.playerCol}>
+              <View style={styles.avatarWrap}>
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <Ionicons name="person-add-outline" size={32} color={colors.textSecondary} />
+                </View>
+                <View style={styles.rankBadge}>
+                  <Ionicons name="trophy" size={11} color={colors.primary} />
+                  <Text style={styles.rankBadgeText}> --</Text>
+                </View>
               </View>
+              <Text style={styles.playerName}>Rival</Text>
+              <Text style={styles.playerPts}>Buscando...</Text>
             </View>
-            <Text style={styles.playerName} numberOfLines={1}>{String(rival.name).split(' ')[0]}</Text>
-            <Text style={styles.playerPts}>{rival.pts} pts</Text>
-          </View>
+          ) : (
+            <View style={styles.playerCol}>
+              <View style={styles.avatarWrap}>
+                <Image source={getAvatarSource(rival.avatar, rival.name)} style={styles.avatar} />
+                <View style={styles.rankBadge}>
+                  <Ionicons name="trophy" size={11} color={colors.primary} />
+                  <Text style={styles.rankBadgeText}> {rival.ranking}</Text>
+                </View>
+              </View>
+              <Text style={styles.playerName} numberOfLines={1}>{String(rival.name).split(' ')[0]}</Text>
+              <Text style={styles.playerPts}>{rival.pts} pts</Text>
+            </View>
+          )}
         </View>
 
         {/* Detalles */}
@@ -274,24 +255,26 @@ export function DetallePartidoScreen({ navigation, route }) {
           </>
         )}
 
-        {!esFinalizado && (
+        {!esFinalizado && !esBuscando && (
           <Text style={styles.mandatoryNote}>
             Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.
           </Text>
         )}
 
-        <TouchableOpacity
-          style={styles.chatBtn}
-          onPress={() => {
-            navigation.navigate('MatchChat', {
-              idPartido: partido.id,
-              rival: { name: rival.name, avatar: rival.avatar },
-            });
-          }}
-        >
-          <Ionicons name="chatbubbles-outline" size={20} color={colors.textPrimary} />
-          <Text style={styles.chatBtnText}>Abrir Chat del Partido</Text>
-        </TouchableOpacity>
+        {!esBuscando && (
+          <TouchableOpacity
+            style={styles.chatBtn}
+            onPress={() => {
+              navigation.navigate('MatchChat', {
+                idPartido: partido.id,
+                rival: { name: rival.name, avatar: rival.avatar },
+              });
+            }}
+          >
+            <Ionicons name="chatbubbles-outline" size={20} color={colors.textPrimary} />
+            <Text style={styles.chatBtnText}>Abrir Chat del Partido</Text>
+          </TouchableOpacity>
+        )}
 
         {!esFinalizado && (
           <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
@@ -300,7 +283,7 @@ export function DetallePartidoScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        {!esFinalizado && (
+        {!esFinalizado && !esBuscando && (
           <TouchableOpacity
             style={styles.resultadosBtn}
             onPress={() => navigation.navigate('ColocarResultados', {
@@ -358,6 +341,11 @@ const styles = StyleSheet.create({
     borderRadius: AVATAR_SIZE / 2,
     backgroundColor: '#ccc',
     borderWidth: 3, borderColor: colors.background,
+  },
+  avatarPlaceholder: {
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   rankBadge: {
     flexDirection: 'row',

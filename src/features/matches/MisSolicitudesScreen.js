@@ -151,6 +151,23 @@ export function MisSolicitudesScreen({ navigation }) {
     }
   }
 
+  async function handleRechazar(solicitud) {
+    const idSolicitud = solicitud.id_solicitud ?? solicitud.id;
+    const idRetador   = solicitud.id_usuario   ?? solicitud.id_usuario_retador;
+    try {
+      setAccionLoading(idSolicitud);
+      await solicitudService.rechazar(idSolicitud, idRetador);
+      setDatos(prev => ({
+        ...prev,
+        solicitudes: (prev?.solicitudes ?? []).filter(s => (s.id_solicitud ?? s.id) !== idSolicitud),
+      }));
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'No se pudo rechazar al retador.');
+    } finally {
+      setAccionLoading(null);
+    }
+  }
+
   async function handleAceptarClase(solicitudClase) {
     const idClase = solicitudClase.id_clase ?? solicitudClase.id;
     try {
@@ -217,7 +234,7 @@ export function MisSolicitudesScreen({ navigation }) {
         <Text style={styles.headerTitle}>Mis solicitudes</Text>
       </View>
 
-      {fechas.length > 0 && (
+      {fechas.length > 1 && (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -240,7 +257,7 @@ export function MisSolicitudesScreen({ navigation }) {
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
           {/* Listado de Partidos Creados (Buscando Oponente) */}
           {haySeccionPartidos && (
@@ -291,7 +308,9 @@ export function MisSolicitudesScreen({ navigation }) {
                 />
                 <View style={styles.retadorInfo}>
                   <View style={styles.nameRow}>
-                    <Text style={styles.retadorName}>{s.nombre ?? s.name ?? 'Jugador'}</Text>
+                    <Text style={styles.retadorName}>
+                      {s.apellidos ? `${s.nombre ?? ''} ${s.apellidos}`.trim() : (s.nombre ?? s.name ?? 'Jugador')}
+                    </Text>
                     <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
                     <Text style={styles.retadorRanking}> {s.ranking ?? '--'}</Text>
                   </View>
@@ -304,16 +323,25 @@ export function MisSolicitudesScreen({ navigation }) {
                     <Text style={styles.metaText}> {s.hora ?? s.time ?? '--'}</Text>
                   </View>
                 </View>
-                <TouchableOpacity
-                  style={[styles.aceptarBtn, cargando && { opacity: 0.5 }]}
-                  onPress={() => handleAceptar(s)}
-                  disabled={cargando}
-                >
-                  {cargando
-                    ? <ActivityIndicator size="small" color={colors.textPrimary} />
-                    : <Text style={styles.aceptarText}>Aceptar</Text>
-                  }
-                </TouchableOpacity>
+                <View style={styles.accionesCol}>
+                  <TouchableOpacity
+                    style={[styles.aceptarBtn, cargando && { opacity: 0.5 }]}
+                    onPress={() => handleAceptar(s)}
+                    disabled={cargando}
+                  >
+                    {cargando
+                      ? <ActivityIndicator size="small" color={colors.textPrimary} />
+                      : <Text style={styles.aceptarText}>Aceptar</Text>
+                    }
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.rechazarBtn, cargando && { opacity: 0.5 }]}
+                    onPress={() => handleRechazar(s)}
+                    disabled={cargando}
+                  >
+                    <Text style={styles.rechazarText}>Rechazar</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             );
           })}
@@ -389,7 +417,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary },
 
-  fechaTabScroll: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  fechaTabScroll: { flex: 0, borderBottomWidth: 1, borderBottomColor: colors.border },
   fechaTabRow: { paddingHorizontal: 20 },
   fechaTab: { paddingVertical: 14, marginRight: 24, position: 'relative' },
   fechaTabText: { fontSize: 15, fontWeight: '500', color: colors.textSecondary },
@@ -433,12 +461,18 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center' },
   metaText: { fontSize: 12, color: colors.textSecondary },
 
+  accionesCol: { alignItems: 'center', gap: 8 },
   aceptarBtn: {
     borderWidth: 1.5, borderColor: colors.textPrimary,
     borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8,
-    minWidth: 72, alignItems: 'center',
+    minWidth: 80, alignItems: 'center',
   },
   aceptarText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  rechazarBtn: {
+    borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8,
+    minWidth: 80, alignItems: 'center',
+  },
+  rechazarText: { fontSize: 13, fontWeight: '500', color: colors.textSecondary },
 
   successContainer: { flex: 1, paddingHorizontal: 32, paddingBottom: 40, paddingTop: 20 },
   vsCircle: {

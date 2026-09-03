@@ -17,15 +17,18 @@ export function useUsuario() {
   const [usuario, setUsuario] = useState(null);
 
   useEffect(() => {
-    usuarioService.menuPrincipal()
-      .then(raw => {
-        if (raw) { setUsuario(normalizar(raw)); return; }
-        return usuarioService.perfil();
-      })
-      .then(raw => {
+    (async () => {
+      try {
+        let raw = await usuarioService.menuPrincipal();
+        if (!raw) raw = await usuarioService.perfil();
         if (raw) setUsuario(normalizar(raw));
-      })
-      .catch(() => {});
+      } catch {
+        try {
+          const raw = await usuarioService.perfil();
+          if (raw) setUsuario(normalizar(raw));
+        } catch {}
+      }
+    })();
   }, []);
 
   return usuario;

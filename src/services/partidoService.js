@@ -37,6 +37,10 @@ export const partidoService = {
     return api.post(`/api/Partido/postular/${idPartido}`);
   },
 
+  async repostular(idPartido) {
+    return api.post(`/api/Partido/${idPartido}/repostular`);
+  },
+
   async cancelar(idPartido) {
     return api.post(`/api/Partido/${idPartido}/cancelar`);
   },
