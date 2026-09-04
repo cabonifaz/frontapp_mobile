@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../../../constants';
 import { PrimaryButton } from '../../../components/common';
+import { CircularCropModal } from '../../../components/CircularCropModal';
 import { authService } from '../../../services/authService';
 import { usuarioService } from '../../../services/usuarioService';
 import { DEPORTES, GENEROS, NIVELES_JUEGO, DEPORTE_DEFAULT } from '../../../constants/maestro';
@@ -369,7 +370,9 @@ function Step3({ data, setData, onNext, onBack }) {
 
 // --- Step 4: Foto de perfil ---
 
-function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri }) {
+function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri, setFotoCropParams }) {
+  const [rawUri, setRawUri] = useState(null);
+
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -378,17 +381,22 @@ function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri }) {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
+      allowsEditing: false,
+      quality: 1,
     });
     if (!result.canceled && result.assets?.[0]?.uri) {
-      setFotoUri(result.assets[0].uri);
+      setRawUri(result.assets[0].uri);
     }
   }
 
   return (
     <View style={{ flex: 1 }}>
+      <CircularCropModal
+        visible={!!rawUri}
+        imageUri={rawUri}
+        onCancel={() => setRawUri(null)}
+        onCrop={(uri, params) => { setFotoUri(uri); setFotoCropParams(params); setRawUri(null); }}
+      />
       <Text style={styles.stepTitle}>Elige una foto de perfil</Text>
       <Text style={styles.stepSubtitle}>Tranquilo, luego puedes volver a cambiarla.</Text>
       <Text style={[styles.stepSubtitle, { color: colors.accent, marginBottom: 0 }]}>Opcional*</Text>
@@ -455,7 +463,8 @@ export function RegisterScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [nivelObtenido, setNivelObtenido] = useState(null);
   const [puntajeObtenido, setPuntajeObtenido] = useState(null);
-  const [fotoUri, setFotoUri] = useState(null);
+  const [fotoUri,       setFotoUri]       = useState(null);
+  const [fotoCropParams, setFotoCropParams] = useState(null);
   const [data, setData] = useState({
     nombre: '', apellido: '', genero: '', edad: '',
     correo: '', celular: '', contrasena: '',
@@ -525,7 +534,7 @@ async function handleFinish() {
       // 3. Subir foto de perfil a Cloudinary si existe una seleccionada
       if (fotoUri) {
         try {
-          const fotoUrl = await uploadImage(fotoUri);
+          const fotoUrl = await uploadImage(fotoUri, fotoCropParams);
           await usuarioService.actualizarFoto(fotoUrl);
         } catch (e) {
           // Si falla la foto, podemos avisar o continuar sin interrumpir todo el registro
@@ -629,6 +638,7 @@ async function handleFinish() {
               loading={loading}
               fotoUri={fotoUri}
               setFotoUri={setFotoUri}
+              setFotoCropParams={setFotoCropParams}
             />
           )}
         </View>

@@ -9,9 +9,11 @@ import { claseService } from '../../services/claseService';
 import { DEPORTE_DEFAULT } from '../../constants/maestro';
 import { getAvatarSource } from '../../utils/avatars';
 
-function ProfesorCard({ profesor, onSolicitar, cargando }) {
-  const nombre = profesor.nombre ?? profesor.name ?? 'Profesor';
+function ProfesorCard({ profesor, onSolicitar, cargando, cancha, fecha, horaInicio }) {
+  const nombre = profesor.nombre ?? profesor.nombre_completo ?? profesor.name ?? 'Profesor';
   const nombreCorto = nombre.split(' ').map((p, i) => i === 0 ? p[0] + '.' : p).join(' ');
+  const rating = profesor.ranking ?? profesor.calificacion_promedio;
+  const ratingStr = rating != null ? (typeof rating === 'number' ? rating.toFixed(1) : String(rating)) : '--';
   return (
     <View style={styles.card}>
       <Image
@@ -21,16 +23,16 @@ function ProfesorCard({ profesor, onSolicitar, cargando }) {
       <View style={styles.cardInfo}>
         <View style={styles.nameRow}>
           <Text style={styles.cardName}>{nombreCorto}</Text>
-          <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
-          <Text style={styles.cardRanking}> {profesor.ranking ?? '--'}</Text>
+          <Ionicons name="star" size={13} color={colors.accent} style={{ marginLeft: 6 }} />
+          <Text style={styles.cardRanking}> {ratingStr}</Text>
         </View>
-        <Text style={styles.cardClub}>{profesor.nombre_cancha ?? profesor.club ?? ''}</Text>
+        <Text style={styles.cardClub}>{cancha?.nombre ?? profesor.nombre_cancha ?? profesor.club ?? ''}</Text>
         <View style={styles.dateRow}>
           <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-          <Text style={styles.cardMeta}> {profesor.fecha ?? profesor.date ?? '--'}</Text>
+          <Text style={styles.cardMeta}> {fecha?.key ?? fecha ?? '--'}</Text>
           <Text style={{ width: 10 }} />
           <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-          <Text style={styles.cardMeta}> {profesor.hora ?? profesor.time ?? '--'}</Text>
+          <Text style={styles.cardMeta}> {horaInicio ?? '--'}</Text>
         </View>
       </View>
       <View style={styles.cardRight}>
@@ -103,12 +105,14 @@ export function ProfesoresDisponiblesScreen({ navigation, route }) {
     const idProfesor = profesor.id_usuario ?? profesor.id;
     try {
       setSolicitandoId(idProfesor);
-      const horaFiltro = Array.isArray(horas) ? horas[0] : horas;
+      const horaInicio      = Array.isArray(horas) ? horas[0] : horas;
+      const duracionMinutos = Array.isArray(horas) ? horas.length * 60 : 60;
       await claseService.solicitar({
         idProfesor,
         idCancha:  cancha.id,
         fecha:     fecha.iso ?? fecha,
-        hora:      horaFiltro,
+        hora:      horaInicio,
+        duracionMinutos,
       });
       setProfesorAceptado(profesor);
     } catch (e) {
@@ -151,12 +155,16 @@ export function ProfesoresDisponiblesScreen({ navigation, route }) {
           ) : (
             profesores.map((p, i) => {
               const id = p.id_usuario ?? p.id ?? String(i);
+              const horaInicio = Array.isArray(horas) ? horas[0] : horas;
               return (
                 <ProfesorCard
                   key={id}
                   profesor={p}
                   cargando={solicitandoId === id}
                   onSolicitar={() => handleSolicitar(p)}
+                  cancha={cancha}
+                  fecha={fecha}
+                  horaInicio={horaInicio}
                 />
               );
             })

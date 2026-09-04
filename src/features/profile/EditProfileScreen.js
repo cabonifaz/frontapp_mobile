@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { PROFILE_MOCK } from '../../data/profileData';
 import { PrimaryButton } from '../../components/common';
+import { CircularCropModal } from '../../components/CircularCropModal';
 import { usuarioService } from '../../services/usuarioService';
 import { uploadImage } from '../../services/cloudinaryService';
 
@@ -131,8 +132,10 @@ export function EditProfileScreen({ navigation, route }) {
   const [mes,  setMes]  = useState('');
   const [año,  setAño]  = useState('');
 
-  const [avatarUri, setAvatarUri] = useState(initial.avatar ?? null);
-  const [saving,    setSaving]    = useState(false);
+  const [avatarUri,   setAvatarUri]   = useState(initial.avatar ?? null);
+  const [rawUri,      setRawUri]      = useState(null);
+  const [cropParams,  setCropParams]  = useState(null);
+  const [saving,      setSaving]      = useState(false);
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -142,12 +145,11 @@ export function EditProfileScreen({ navigation, route }) {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 1,
     });
-    if (!result.canceled) {
-      setAvatarUri(result.assets[0].uri);
+    if (!result.canceled && result.assets?.[0]?.uri) {
+      setRawUri(result.assets[0].uri);
     }
   }
 
@@ -156,7 +158,7 @@ export function EditProfileScreen({ navigation, route }) {
     try {
       const isNewPhoto = avatarUri && !avatarUri.startsWith('http');
       if (isNewPhoto) {
-        const url = await uploadImage(avatarUri);
+        const url = await uploadImage(avatarUri, cropParams);
         await usuarioService.actualizarFoto(url);
         setAvatarUri(url);
       }
@@ -172,6 +174,12 @@ export function EditProfileScreen({ navigation, route }) {
 
   return (
     <SafeAreaView style={styles.safe}>
+      <CircularCropModal
+        visible={!!rawUri}
+        imageUri={rawUri}
+        onCancel={() => setRawUri(null)}
+        onCrop={(uri, params) => { setAvatarUri(uri); setCropParams(params); setRawUri(null); }}
+      />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
 
         {/* Header */}

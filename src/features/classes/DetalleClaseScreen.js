@@ -60,10 +60,10 @@ export function DetalleClaseScreen({ navigation, route }) {
 
   const d = detalle ?? claseParams;
 
-  // Determinar si soy alumno o profesor
+  // Determinar si soy alumno o profesor (null = aún cargando, no mostrar botones)
   const soyAlumno = idUsuarioActual != null && d.id_alumno != null
     ? Number(d.id_alumno) === idUsuarioActual
-    : true; // default: mostrar botón completar
+    : null;
 
   // Datos del "otro" participante
   const nombreOtro = soyAlumno
@@ -130,7 +130,7 @@ export function DetalleClaseScreen({ navigation, route }) {
       idClase,
       rival: {
         name:   nombreOtro,
-        avatar: getAvatarSource(fotoOtro),
+        avatar: fotoOtro,
       },
     });
   }
@@ -178,7 +178,9 @@ export function DetalleClaseScreen({ navigation, route }) {
         </View>
 
         <Text style={styles.name}>{nombreOtro}</Text>
-        <Text style={styles.role}>{soyAlumno ? 'Profesor' : 'Alumno'}</Text>
+        {soyAlumno !== null && (
+          <Text style={styles.role}>{soyAlumno ? 'Profesor' : 'Alumno'}</Text>
+        )}
 
         <Text style={styles.sectionTitle}>Detalles de la clase</Text>
 
@@ -212,7 +214,7 @@ export function DetalleClaseScreen({ navigation, route }) {
           <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar clase'}</Text>
         </TouchableOpacity>
 
-        {soyAlumno && (
+        {soyAlumno === false && (
           <TouchableOpacity style={styles.completadaBtn} onPress={handleCompletar} disabled={completando}>
             <Ionicons name="checkmark" size={20} color={colors.primary} />
             <Text style={styles.completadaBtnText}>{completando ? 'Guardando...' : 'Clase completada'}</Text>

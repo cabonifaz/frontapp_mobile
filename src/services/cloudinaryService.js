@@ -1,7 +1,7 @@
 const CLOUD_NAME    = 'tf4oxaty';
 const UPLOAD_PRESET = 'avo_sports';
 
-export async function uploadImage(localUri) {
+export async function uploadImage(localUri, cropParams) {
   const formData = new FormData();
   formData.append('file', { uri: localUri, type: 'image/jpeg', name: 'photo.jpg' });
   formData.append('upload_preset', UPLOAD_PRESET);
@@ -14,5 +14,10 @@ export async function uploadImage(localUri) {
   if (!response.ok) throw new Error('Error al subir la imagen');
 
   const data = await response.json();
-  return data.secure_url;
+
+  if (!cropParams) return data.secure_url;
+
+  const { x, y, w, h } = cropParams;
+  const transform = `c_crop,x_${x},y_${y},w_${w},h_${h}`;
+  return data.secure_url.replace('/upload/', `/upload/${transform}/`);
 }

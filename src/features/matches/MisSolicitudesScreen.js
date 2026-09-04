@@ -181,6 +181,27 @@ export function MisSolicitudesScreen({ navigation }) {
     }
   }
 
+  async function handleRechazarClase(solicitudClase) {
+    const idClase = solicitudClase.id_clase ?? solicitudClase.id;
+    Alert.alert('Rechazar clase', '¿Seguro que quieres rechazar esta solicitud?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Sí, rechazar', style: 'destructive',
+        onPress: async () => {
+          try {
+            setAccionClaseLoading(idClase);
+            await claseService.cancelar(idClase);
+            setSolicitudesClase(prev => prev.filter(sc => (sc.id_clase ?? sc.id) !== idClase));
+          } catch (e) {
+            Alert.alert('Error', e.message ?? 'No se pudo rechazar la clase.');
+          } finally {
+            setAccionClaseLoading(null);
+          }
+        },
+      },
+    ]);
+  }
+
   async function handleCancelarPartido(partidoItem) {
     const idPartido = partidoItem.id_partido ?? partidoItem.id;
     Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar este partido?', [
@@ -383,16 +404,25 @@ export function MisSolicitudesScreen({ navigation }) {
                     <Text style={styles.metaText}> {hora}</Text>
                   </View>
                 </View>
-                <TouchableOpacity
-                  style={[styles.aceptarBtn, cargandoClase && { opacity: 0.5 }]}
-                  onPress={() => handleAceptarClase(sc)}
-                  disabled={cargandoClase}
-                >
-                  {cargandoClase
-                    ? <ActivityIndicator size="small" color={colors.textPrimary} />
-                    : <Text style={styles.aceptarText}>Aceptar</Text>
-                  }
-                </TouchableOpacity>
+                <View style={styles.accionesCol}>
+                  <TouchableOpacity
+                    style={[styles.aceptarBtn, cargandoClase && { opacity: 0.5 }]}
+                    onPress={() => handleAceptarClase(sc)}
+                    disabled={cargandoClase}
+                  >
+                    {cargandoClase
+                      ? <ActivityIndicator size="small" color={colors.textPrimary} />
+                      : <Text style={styles.aceptarText}>Aceptar</Text>
+                    }
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.rechazarBtn, cargandoClase && { opacity: 0.5 }]}
+                    onPress={() => handleRechazarClase(sc)}
+                    disabled={cargandoClase}
+                  >
+                    <Text style={styles.rechazarText}>Rechazar</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             );
           })}
