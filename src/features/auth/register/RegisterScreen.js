@@ -370,7 +370,7 @@ function Step3({ data, setData, onNext, onBack }) {
 
 // --- Step 4: Foto de perfil ---
 
-function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri, setFotoCropParams }) {
+function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri, fotoCropParams, setFotoCropParams }) {
   const [rawUri, setRawUri] = useState(null);
 
   async function pickImage() {
@@ -404,7 +404,26 @@ function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri, setFotoCropPara
       <View style={styles.avatarWrapper}>
         <TouchableOpacity style={styles.avatarCircle} onPress={pickImage} activeOpacity={0.8}>
           {fotoUri ? (
-            <Image source={{ uri: fotoUri }} style={styles.avatarImage} />
+            (() => {
+              const PREVIEW = 160;
+              const cp = fotoCropParams;
+              if (cp?.naturalW) {
+                const s = PREVIEW / cp.w;
+                return (
+                  <Image
+                    source={{ uri: fotoUri }}
+                    style={{
+                      position: 'absolute',
+                      width: cp.naturalW * s,
+                      height: cp.naturalH * s,
+                      left: -cp.x * s,
+                      top: -cp.y * s,
+                    }}
+                  />
+                );
+              }
+              return <Image source={{ uri: fotoUri }} style={styles.avatarImage} />;
+            })()
           ) : (
             <Ionicons name="person-outline" size={64} color={colors.textSecondary} />
           )}
@@ -638,6 +657,7 @@ async function handleFinish() {
               loading={loading}
               fotoUri={fotoUri}
               setFotoUri={setFotoUri}
+              fotoCropParams={fotoCropParams}
               setFotoCropParams={setFotoCropParams}
             />
           )}

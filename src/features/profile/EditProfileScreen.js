@@ -203,7 +203,28 @@ export function EditProfileScreen({ navigation, route }) {
           {/* Avatar */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarWrap}>
-              <Image source={avatarUri ? { uri: avatarUri } : undefined} style={styles.avatar} />
+              <View style={[styles.avatar, { overflow: 'hidden' }]}>
+                {avatarUri && (() => {
+                  const PREVIEW = 100;
+                  const cp = cropParams;
+                  if (cp?.naturalW) {
+                    const s = PREVIEW / cp.w;
+                    return (
+                      <Image
+                        source={{ uri: avatarUri }}
+                        style={{
+                          position: 'absolute',
+                          width: cp.naturalW * s,
+                          height: cp.naturalH * s,
+                          left: -cp.x * s,
+                          top: -cp.y * s,
+                        }}
+                      />
+                    );
+                  }
+                  return <Image source={{ uri: avatarUri }} style={styles.avatar} />;
+                })()}
+              </View>
               <TouchableOpacity style={styles.cameraBtn} onPress={pickImage}>
                 <Ionicons name="camera" size={18} color={colors.primary} />
               </TouchableOpacity>

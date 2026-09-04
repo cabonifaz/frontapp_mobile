@@ -87,13 +87,15 @@ export function CircularCropModal({ visible, imageUri, onCancel, onCrop }) {
     const px = panRef.current.x;
     const py = panRef.current.y;
     const cropW = Math.round(CROP_RADIUS * 2 / s);
-    const cropX = Math.round(w / 2 - CROP_RADIUS / s - px / s);
-    const cropY = Math.round(h / 2 - CROP_RADIUS / s - py / s);
+    const cropX = Math.max(0, Math.round(w / 2 - CROP_RADIUS / s - px / s));
+    const cropY = Math.max(0, Math.round(h / 2 - CROP_RADIUS / s - py / s));
     return {
-      x: Math.max(0, cropX),
-      y: Math.max(0, cropY),
-      w: Math.min(cropW, w - Math.max(0, cropX)),
-      h: Math.min(cropW, h - Math.max(0, cropY)),
+      x: cropX,
+      y: cropY,
+      w: Math.min(cropW, w - cropX),
+      h: Math.min(cropW, h - cropY),
+      naturalW: w,
+      naturalH: h,
     };
   }
 
