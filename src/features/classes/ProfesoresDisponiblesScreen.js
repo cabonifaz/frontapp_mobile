@@ -11,7 +11,6 @@ import { getAvatarSource } from '../../utils/avatars';
 
 function ProfesorCard({ profesor, onSolicitar, cargando, cancha, fecha, horaInicio }) {
   const nombre = profesor.nombre ?? profesor.nombre_completo ?? profesor.name ?? 'Profesor';
-  const nombreCorto = nombre.split(' ').map((p, i) => i === 0 ? p[0] + '.' : p).join(' ');
   const rating = profesor.ranking ?? profesor.calificacion_promedio;
   const ratingStr = rating != null ? (typeof rating === 'number' ? rating.toFixed(1) : String(rating)) : '--';
   return (
@@ -22,7 +21,7 @@ function ProfesorCard({ profesor, onSolicitar, cargando, cancha, fecha, horaInic
       />
       <View style={styles.cardInfo}>
         <View style={styles.nameRow}>
-          <Text style={styles.cardName}>{nombreCorto}</Text>
+          <Text style={styles.cardName}>{nombre}</Text>
           <Ionicons name="star" size={13} color={colors.accent} style={{ marginLeft: 6 }} />
           <Text style={styles.cardRanking}> {ratingStr}</Text>
         </View>
