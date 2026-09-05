@@ -209,12 +209,17 @@ export function DetalleClaseScreen({ navigation, route }) {
 
         <View style={{ flex: 1 }} />
 
+        <TouchableOpacity style={styles.chatActionBtn} onPress={handleChatear}>
+          <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.textPrimary} />
+          <Text style={styles.cancelBtnText}>Chatear</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
           <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
           <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar clase'}</Text>
         </TouchableOpacity>
 
-        {soyAlumno === false && (
+        {soyAlumno === false && String(d.estado ?? '').toUpperCase() !== 'SOLICITADA' && (
           <TouchableOpacity style={styles.completadaBtn} onPress={handleCompletar} disabled={completando}>
             <Ionicons name="checkmark" size={20} color={colors.primary} />
             <Text style={styles.completadaBtnText}>{completando ? 'Guardando...' : 'Clase completada'}</Text>
@@ -300,6 +305,11 @@ const styles = StyleSheet.create({
   addressRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   detailSub: { fontSize: 13, color: colors.textSecondary },
 
+  chatActionBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, borderWidth: 1.5, borderColor: colors.textPrimary,
+    borderRadius: 30, paddingVertical: 16, width: '100%', marginBottom: 12,
+  },
   cancelBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, borderWidth: 1.5, borderColor: colors.textPrimary,

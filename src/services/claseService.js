@@ -30,6 +30,10 @@ export const claseService = {
     return api.post(`/api/Clase/${idClase}/cancelar`);
   },
 
+  async rechazar(idClase) {
+    return api.post(`/api/Clase/${idClase}/rechazar`);
+  },
+
   async dejarFeedback(idClase, { calificacion, comentario }) {
     return api.post(`/api/Clase/${idClase}/feedback`, { calificacion, comentario });
   },

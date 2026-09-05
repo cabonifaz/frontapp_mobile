@@ -16,13 +16,13 @@ function fuenteImagen(url) {
   return AVATAR_DEFAULT;
 }
 
-function ScoreRow({ index, myScore, rivalScore, onChangeMyScore, onChangeRivalScore }) {
+function ScoreRow({ index, myScore, rivalScore, onChangeMyScore, onChangeRivalScore, readonly }) {
   return (
     <View style={styles.scoreRow}>
       <Text style={styles.setLabel}>Set {index + 1}</Text>
       <View style={styles.scoreBoxes}>
         <TextInput
-          style={styles.scoreInput}
+          style={[styles.scoreInput, readonly && styles.scoreInputReadonly]}
           keyboardType="number-pad"
           maxLength={2}
           value={myScore}
@@ -30,10 +30,11 @@ function ScoreRow({ index, myScore, rivalScore, onChangeMyScore, onChangeRivalSc
           placeholder="0"
           placeholderTextColor={colors.textSecondary}
           textAlign="center"
+          editable={!readonly}
         />
         <Text style={styles.scoreSeparator}>:</Text>
         <TextInput
-          style={styles.scoreInput}
+          style={[styles.scoreInput, readonly && styles.scoreInputReadonly]}
           keyboardType="number-pad"
           maxLength={2}
           value={rivalScore}
@@ -41,6 +42,7 @@ function ScoreRow({ index, myScore, rivalScore, onChangeMyScore, onChangeRivalSc
           placeholder="0"
           placeholderTextColor={colors.textSecondary}
           textAlign="center"
+          editable={!readonly}
         />
       </View>
     </View>
@@ -112,23 +114,14 @@ export function ColocarResultadosScreen({ navigation, route }) {
     pts:    partido.yo?.pts    ?? partido.puntos_yo ?? 0,
   };
 
-  // 🟢 CORREGIDO: recuperar los sets ya publicados en la BD (si existen), en vez de
-  // arrancar siempre en blanco. Soporta tanto set1_puntos_local/visitante (nombres
-  // actuales del SP) como set1_local/visitante (por si algún endpoint viejo los usa).
-  const [scores, setScores] = useState([
-    {
-      my:    String(partido.set1_puntos_local ?? partido.set1_local ?? ''),
-      rival: String(partido.set1_puntos_visitante ?? partido.set1_visitante ?? ''),
-    },
-    {
-      my:    String(partido.set2_puntos_local ?? partido.set2_local ?? ''),
-      rival: String(partido.set2_puntos_visitante ?? partido.set2_visitante ?? ''),
-    },
-    {
-      my:    String(partido.set3_puntos_local ?? partido.set3_local ?? ''),
-      rival: String(partido.set3_puntos_visitante ?? partido.set3_visitante ?? ''),
-    },
-  ]);
+  const numSets = partido.num_sets ?? 5;
+
+  const [scores, setScores] = useState(
+    Array.from({ length: numSets }, (_, i) => ({
+      my:    String(partido[`set${i + 1}_puntos_local`]     ?? partido[`set${i + 1}_local`]     ?? ''),
+      rival: String(partido[`set${i + 1}_puntos_visitante`] ?? partido[`set${i + 1}_visitante`] ?? ''),
+    }))
+  );
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -142,18 +135,38 @@ export function ColocarResultadosScreen({ navigation, route }) {
   const [publicando, setPublicando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
 
+  const [tipoResultado, setTipoResultado] = useState('normal'); // 'normal' | 'walkover' | 'abandono'
+  const [jugadorEspecial, setJugadorEspecial] = useState(null); // 'yo' | 'rival'
+
   const updateScore = (index, side, value) => {
     setScores(prev => prev.map((s, i) => i === index ? { ...s, [side]: value } : s));
   };
 
-  const canConfirm = scores.some(s => s.my !== '' || s.rival !== '');
+  const canConfirm = tipoResultado === 'normal'
+    ? scores.some(s => s.my !== '' || s.rival !== '')
+    : jugadorEspecial !== null;
 
   async function handlePublicar() {
     try {
       setPublicando(true);
-      const sets = scores
-        .filter(s => s.my !== '' && s.rival !== '')
-        .map(s => ({ mi_puntaje: Number(s.my) || 0, puntaje_rival: Number(s.rival) || 0 }));
+
+      let sets;
+      if (tipoResultado === 'walkover') {
+        sets = Array.from({ length: numSets }, () => ({
+          mi_puntaje:    jugadorEspecial === 'yo' ? 0 : 15,
+          puntaje_rival: jugadorEspecial === 'yo' ? 15 : 0,
+        }));
+      } else if (tipoResultado === 'abandono') {
+        sets = scores.map(s =>
+          s.my !== '' && s.rival !== ''
+            ? { mi_puntaje: Number(s.my) || 0, puntaje_rival: Number(s.rival) || 0 }
+            : { mi_puntaje: jugadorEspecial === 'yo' ? 0 : 15, puntaje_rival: jugadorEspecial === 'yo' ? 15 : 0 }
+        );
+      } else {
+        sets = scores
+          .filter(s => s.my !== '' && s.rival !== '')
+          .map(s => ({ mi_puntaje: Number(s.my) || 0, puntaje_rival: Number(s.rival) || 0 }));
+      }
 
       if (idPartido) {
         await resultadoService.publicar(idPartido, {
@@ -225,6 +238,52 @@ export function ColocarResultadosScreen({ navigation, route }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
+          {/* Tipo de resultado */}
+          <Text style={styles.sectionTitle}>Tipo de resultado</Text>
+          <View style={styles.tipoToggle}>
+            {[
+              { key: 'normal',   label: 'Normal' },
+              { key: 'walkover', label: 'Walkover' },
+              { key: 'abandono', label: 'Abandono' },
+            ].map(op => (
+              <TouchableOpacity
+                key={op.key}
+                style={[styles.tipoBtn, tipoResultado === op.key && styles.tipoBtnActive]}
+                onPress={() => { setTipoResultado(op.key); setJugadorEspecial(null); }}
+              >
+                <Text style={[styles.tipoBtnText, tipoResultado === op.key && styles.tipoBtnTextActive]}>
+                  {op.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Selector de jugador para walkover / abandono */}
+          {tipoResultado !== 'normal' && (
+            <View style={styles.jugadorSelector}>
+              <Text style={styles.jugadorSelectorLabel}>
+                {tipoResultado === 'walkover' ? '¿Quién no se presentó?' : '¿Quién abandonó?'}
+              </Text>
+              <View style={styles.jugadorBtns}>
+                {[
+                  { key: 'yo',    display: yo.name.split(' ')[0],    avatar: yo.avatar },
+                  { key: 'rival', display: rival.name.split(' ')[0], avatar: rival.avatar },
+                ].map(j => (
+                  <TouchableOpacity
+                    key={j.key}
+                    style={[styles.jugadorBtn, jugadorEspecial === j.key && styles.jugadorBtnActive]}
+                    onPress={() => setJugadorEspecial(j.key)}
+                  >
+                    <Image source={fuenteImagen(j.avatar)} style={styles.jugadorAvatar} />
+                    <Text style={[styles.jugadorBtnText, jugadorEspecial === j.key && styles.jugadorBtnTextActive]}>
+                      {j.display}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
           {/* Players + scores */}
           <View style={styles.playersBlock}>
             <View style={styles.playerCol}>
@@ -234,16 +293,35 @@ export function ColocarResultadosScreen({ navigation, route }) {
             </View>
 
             <View style={styles.scoresCol}>
-              {scores.map((s, i) => (
-                <ScoreRow
-                  key={i}
-                  index={i}
-                  myScore={s.my}
-                  rivalScore={s.rival}
-                  onChangeMyScore={v => updateScore(i, 'my', v)}
-                  onChangeRivalScore={v => updateScore(i, 'rival', v)}
-                />
-              ))}
+              {tipoResultado === 'walkover'
+                ? Array.from({ length: numSets }, (_, i) => ({
+                    my:    jugadorEspecial === 'yo'    ? '0' : jugadorEspecial === 'rival' ? '15' : '',
+                    rival: jugadorEspecial === 'rival' ? '0' : jugadorEspecial === 'yo'   ? '15' : '',
+                  })).map((s, i) => (
+                    <ScoreRow
+                      key={i}
+                      index={i}
+                      myScore={s.my}
+                      rivalScore={s.rival}
+                      readonly
+                    />
+                  ))
+                : scores.map((s, i) => (
+                    <ScoreRow
+                      key={i}
+                      index={i}
+                      myScore={s.my}
+                      rivalScore={s.rival}
+                      onChangeMyScore={v => updateScore(i, 'my', v)}
+                      onChangeRivalScore={v => updateScore(i, 'rival', v)}
+                    />
+                  ))
+              }
+              {tipoResultado === 'abandono' && (
+                <Text style={styles.abandonoNote}>
+                  Los sets vacíos se registran 15-0 a favor del jugador que continuó.
+                </Text>
+              )}
             </View>
 
             <View style={styles.playerCol}>
@@ -346,7 +424,56 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.textPrimary,
   },
+  scoreInputReadonly: {
+    opacity: 0.6,
+  },
   scoreSeparator: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary },
+
+  tipoToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: 30,
+    padding: 4,
+    marginBottom: 20,
+  },
+  tipoBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 26,
+  },
+  tipoBtnActive: { backgroundColor: colors.accent },
+  tipoBtnText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  tipoBtnTextActive: { color: colors.primary, fontWeight: '700' },
+
+  jugadorSelector: { marginBottom: 20 },
+  jugadorSelectorLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  jugadorBtns: { flexDirection: 'row', gap: 12 },
+  jugadorBtn: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+  },
+  jugadorBtnActive: { backgroundColor: colors.accent },
+  jugadorAvatar: { width: 48, height: 48, borderRadius: 24, marginBottom: 8 },
+  jugadorBtnText: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
+  jugadorBtnTextActive: { color: colors.primary, fontWeight: '700' },
+
+  abandonoNote: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 17,
+  },
 
   sectionTitle: {
     fontSize: 15,

@@ -1,15 +1,15 @@
 export const RANKEADO_PLAYERS = [
-  { id: '1', name: 'O. Bendezú', ranking: 27, club: 'Club Real Lima', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=40', matchType: '1 vs 1' },
-  { id: '2', name: 'N. Peyre', ranking: 28, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=14', matchType: '1 vs 1' },
-  { id: '3', name: 'A. Ortiz', ranking: 32, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '17:00', avatar: 'https://i.pravatar.cc/150?img=22', matchType: '1 vs 1' },
-  { id: '4', name: 'R. Pino', ranking: 33, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=17', matchType: '2 vs 2' },
+  { id: '1', name: 'O. Bendezú', ranking: 27, club: 'Club Real Lima', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=40', matchType: 'Singles' },
+  { id: '2', name: 'N. Peyre', ranking: 28, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=14', matchType: 'Singles' },
+  { id: '3', name: 'A. Ortiz', ranking: 32, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '17:00', avatar: 'https://i.pravatar.cc/150?img=22', matchType: 'Singles' },
+  { id: '4', name: 'R. Pino', ranking: 33, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=17', matchType: 'Dobles' },
 ];
 
 export const AMISTOSO_PLAYERS = [
-  { id: '1', name: 'O. Bendezú', ranking: 27, club: 'Club Real Lima', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=40', matchType: '1 vs 1' },
-  { id: '2', name: 'N. Peyre', ranking: 28, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=14', matchType: '1 vs 1' },
-  { id: '3', name: 'A. Ortiz', ranking: 32, club: 'Club Terrazas Miraflores', date: '12 Feb', time: '17:00', avatar: 'https://i.pravatar.cc/150?img=22', matchType: '1 vs 1' },
-  { id: '4', name: 'R. Pino', ranking: 33, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=17', matchType: '2 vs 2' },
+  { id: '1', name: 'O. Bendezú', ranking: 27, club: 'Club Real Lima', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=40', matchType: 'Singles' },
+  { id: '2', name: 'N. Peyre', ranking: 28, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=14', matchType: 'Singles' },
+  { id: '3', name: 'A. Ortiz', ranking: 32, club: 'Club Terrazas Miraflores', date: '12 Feb', time: '17:00', avatar: 'https://i.pravatar.cc/150?img=22', matchType: 'Singles' },
+  { id: '4', name: 'R. Pino', ranking: 33, club: 'Club Terrazas Miraflores', date: '15 Feb', time: '15:00', avatar: 'https://i.pravatar.cc/150?img=17', matchType: 'Dobles' },
 ];
 
 export const COURTS = [
@@ -22,4 +22,4 @@ export const DATES = ['12', '13', '14', '15', '16', '17', '18', '19', '20', '21'
 
 export const HOURS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00'];
 
-export const MATCH_TYPES = ['1 vs 1', '2 vs 2'];
+export const MATCH_TYPES = ['Singles', 'Dobles'];

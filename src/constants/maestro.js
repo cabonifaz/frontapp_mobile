@@ -62,8 +62,8 @@ export const ESTADOS_CLASE = {
 
 // CAT_TIPO_JUEGO (id_maestro_padre = 10)
 export const TIPOS_JUEGO = {
-  UNO_VS_UNO: 45,
-  DOBLES:     46,
+  SINGLES: 45,
+  DOBLES:  46,
 };
 
 // CAT_PROVEEDOR_AUTH (id_maestro_padre = 14)

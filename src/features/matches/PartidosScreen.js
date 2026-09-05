@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
   ActivityIndicator, Image,
@@ -61,11 +62,11 @@ function AppointmentCard({ item, onPress }) {
   
   const st = estadoStr.toLowerCase();
 
-  if (st.includes('confirmado') || st === '2') {
+  if (st.includes('confirmado') || st.includes('aceptad') || st === '2') {
     statusBg = '#E3F2FD'; statusTxt = '#1565C0'; // Azul
-  } else if (st.includes('finalizado') || st.includes('completado') || st === '3') {
+  } else if (st.includes('finalizad') || st.includes('completad') || st === '3') {
     statusBg = '#E8F5E9'; statusTxt = '#2E7D32'; // Verde
-  } else if (st.includes('cancelado') || st === '4') {
+  } else if (st.includes('cancelad') || st.includes('rechazad') || st === '4') {
     statusBg = '#FFEBEE'; statusTxt = '#C62828'; // Rojo
   }
 
@@ -148,29 +149,43 @@ function Section({ data, onPressItem }) {
 export function PartidosScreen({ navigation }) {
   const usuario = useUsuario();
   const [activeTab, setActiveTab] = useState('Partidos');
-  const [partidos, setPartidos] = useState([]);
-  const [clases, setClases] = useState([]);
+  const [rawItems, setRawItems] = useState([]);
+  const [userId, setUserId] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    SecureStore.getItemAsync('id_usuario').then(id => setUserId(Number(id)));
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
       partidoService.listarMisPartidos()
-        .then(res => {
-          if (Array.isArray(res) && res.length) {
-            const todosPartidos = res.filter(r => r.categoria_tab === 'PARTIDO');
-            const todasClases  = res.filter(r => r.categoria_tab === 'CLASE');
-            setPartidos(groupByDate(todosPartidos));
-            setClases(groupByDate(todasClases));
-          } else {
-            setPartidos([]);
-            setClases([]);
-          }
-        })
-        .catch(() => { setPartidos([]); setClases([]); })
+        .then(res => setRawItems(Array.isArray(res) && res.length ? res : []))
+        .catch(() => setRawItems([]))
         .finally(() => setLoading(false));
     }, [])
   );
+
+  const partidos = useMemo(
+    () => groupByDate(rawItems.filter(r => r.categoria_tab === 'PARTIDO')),
+    [rawItems]
+  );
+
+  // Clases SOLICITADAS: solo visibles para el alumno que la pidió.
+  // Clases RECHAZADAS: nunca visibles en el tab (el alumno no ve el rechazo aquí).
+  const clases = useMemo(() => {
+    const filtered = rawItems.filter(r => {
+      if (r.categoria_tab !== 'CLASE') return false;
+      const estado = String(r.estado ?? '').toLowerCase();
+      if (estado.includes('rechazad')) return false;
+      if (estado.includes('solicitad')) {
+        return userId !== null && Number(r.id_alumno_clase) === userId;
+      }
+      return true;
+    });
+    return groupByDate(filtered);
+  }, [rawItems, userId]);
 
   const currentData = activeTab === 'Partidos' ? partidos : clases;
 
@@ -198,15 +213,15 @@ export function PartidosScreen({ navigation }) {
         <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 20 }}>
           <View style={styles.titleRow}>
             <Text style={styles.pageTitle}>{activeTab}</Text>
-            {activeTab === 'Partidos' && (
-              <TouchableOpacity
-                style={styles.solicitudesBtn}
-                onPress={() => navigation.navigate('MisSolicitudes')}
-              >
-                <Ionicons name="people-outline" size={16} color={colors.primary} />
-                <Text style={styles.solicitudesBtnText}>Solicitudes</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={styles.solicitudesBtn}
+              onPress={() => navigation.navigate('MisSolicitudes', {
+                tipo: activeTab === 'Clases' ? 'clases' : 'partidos',
+              })}
+            >
+              <Ionicons name="people-outline" size={16} color={colors.primary} />
+              <Text style={styles.solicitudesBtnText}>Solicitudes</Text>
+            </TouchableOpacity>
           </View>
           {loading ? (
             <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />

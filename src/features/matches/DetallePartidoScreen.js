@@ -237,7 +237,7 @@ export function DetallePartidoScreen({ navigation, route }) {
           <>
             <Text style={styles.sectionTitle}>Resultado final</Text>
             <View style={[styles.detailCard, { flexDirection: 'column', gap: 10 }]}>
-              {[1, 2, 3].map(n => {
+              {Array.from({ length: item.num_sets ?? 5 }, (_, i) => i + 1).map(n => {
                 const local = item[`set${n}_puntos_local`];
                 const visit = item[`set${n}_puntos_visitante`];
                 if (local == null && visit == null) return null;
@@ -248,7 +248,7 @@ export function DetallePartidoScreen({ navigation, route }) {
                   </View>
                 );
               })}
-              {[1, 2, 3].every(n => item[`set${n}_puntos_local`] == null) && (
+              {Array.from({ length: item.num_sets ?? 5 }, (_, i) => i + 1).every(n => item[`set${n}_puntos_local`] == null) && (
                 <Text style={[styles.detailSub, { textAlign: 'center' }]}>Sin sets registrados</Text>
               )}
             </View>

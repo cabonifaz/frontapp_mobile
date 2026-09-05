@@ -187,7 +187,7 @@ function HoraModal({ visible, onClose, onAdd }) {
 }
 
 function PartidoModal({ visible, onClose, onAdd }) {
-  const [selected, setSelected] = useState('1 vs 1');
+  const [selected, setSelected] = useState('Singles');
   return (
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>

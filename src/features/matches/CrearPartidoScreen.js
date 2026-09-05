@@ -36,8 +36,8 @@ function getNextDays(n = 14) {
 }
 
 const TIPO_JUEGO_MAP = {
-  '1 vs 1': TIPOS_JUEGO.UNO_VS_UNO,
-  '2 vs 2': TIPOS_JUEGO.DOBLES,
+  'Singles': TIPOS_JUEGO.SINGLES,
+  'Dobles':  TIPOS_JUEGO.DOBLES,
 };
 
 const DAYS = getNextDays(14);
@@ -134,7 +134,8 @@ export function CrearPartidoScreen({ navigation, route }) {
   const [cancha, setCancha] = useState(null);
   const [fecha, setFecha] = useState(null);
   const [hora, setHora] = useState(null);
-  const [tipoJuego, setTipoJuego] = useState('1 vs 1');
+  const [tipoJuego, setTipoJuego] = useState('Singles');
+  const [numSets, setNumSets] = useState(5);
   const [showCanchaModal, setShowCanchaModal] = useState(false);
   const [success, setSuccess] = useState(false);
   const [creando, setCreando] = useState(false);
@@ -183,7 +184,7 @@ export function CrearPartidoScreen({ navigation, route }) {
       if (tipo === 'Rankeado') {
         await partidoService.crearRankeado(datos);
       } else {
-        await partidoService.crearAmistoso(datos);
+        await partidoService.crearAmistoso({ ...datos, num_sets: numSets });
       }
       setSuccess(true);
     } catch (e) {
@@ -315,7 +316,7 @@ export function CrearPartidoScreen({ navigation, route }) {
         {/* Tipo de juego */}
         <Text style={styles.sectionTitle}>Selecciona tipo de juego</Text>
         <View style={styles.toggle}>
-          {['1 vs 1', '2 vs 2'].map(t => (
+          {['Singles', 'Dobles'].map(t => (
             <TouchableOpacity
               key={t}
               style={[styles.toggleBtn, tipoJuego === t && styles.toggleBtnActive]}
@@ -325,6 +326,26 @@ export function CrearPartidoScreen({ navigation, route }) {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Formato de sets — solo Amistoso */}
+        {tipo !== 'Rankeado' && (
+          <>
+            <Text style={styles.sectionTitle}>Formato de partido</Text>
+            <View style={styles.toggle}>
+              {[3, 5].map(n => (
+                <TouchableOpacity
+                  key={n}
+                  style={[styles.toggleBtn, numSets === n && styles.toggleBtnActive]}
+                  onPress={() => setNumSets(n)}
+                >
+                  <Text style={[styles.toggleText, numSets === n && styles.toggleTextActive]}>
+                    Mejor de {n}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>

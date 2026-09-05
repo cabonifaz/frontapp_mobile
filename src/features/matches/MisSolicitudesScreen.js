@@ -82,7 +82,8 @@ function ClaseSuccessScreen({ alumno, onPress }) {
   );
 }
 
-export function MisSolicitudesScreen({ navigation }) {
+export function MisSolicitudesScreen({ navigation, route }) {
+  const tipo = route?.params?.tipo ?? 'partidos'; // 'partidos' | 'clases'
   const [datos, setDatos] = useState(null);
   const [loading, setLoading] = useState(true);
   const [retadorAceptado, setRetadorAceptado] = useState(null);
@@ -190,7 +191,7 @@ export function MisSolicitudesScreen({ navigation }) {
         onPress: async () => {
           try {
             setAccionClaseLoading(idClase);
-            await claseService.cancelar(idClase);
+            await claseService.rechazar(idClase);
             setSolicitudesClase(prev => prev.filter(sc => (sc.id_clase ?? sc.id) !== idClase));
           } catch (e) {
             Alert.alert('Error', e.message ?? 'No se pudo rechazar la clase.');
@@ -252,7 +253,7 @@ export function MisSolicitudesScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mis solicitudes</Text>
+        <Text style={styles.headerTitle}>{tipo === 'clases' ? 'Solicitudes de clase' : 'Mis solicitudes'}</Text>
       </View>
 
       {fechas.length > 1 && (
@@ -280,152 +281,162 @@ export function MisSolicitudesScreen({ navigation }) {
       ) : (
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
-          {/* Listado de Partidos Creados (Buscando Oponente) */}
-          {haySeccionPartidos && (
-            partidos.length > 0 ? (
-              partidos.map((p, idx) => {
-                const pId = p.id_partido ?? p.id ?? idx;
+          {/* ── Sección PARTIDOS ── */}
+          {tipo === 'partidos' && (
+            <>
+              {haySeccionPartidos && (
+                partidos.length > 0 ? (
+                  partidos.map((p, idx) => {
+                    const pId = p.id_partido ?? p.id ?? idx;
+                    return (
+                      <View key={pId} style={styles.partidoCard}>
+                        <Image
+                          source={{ uri: p.foto_cancha_url ?? p.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
+                          style={styles.partidoImg}
+                        />
+                        <View style={styles.partidoInfo}>
+                          <Text style={styles.partidoCancha}>{p.nombre_cancha ?? p.cancha ?? 'Cancha'}</Text>
+                          <View style={styles.metaRow}>
+                            <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                            <Text style={styles.metaText}> {formatFecha(p.fecha ?? p.fecha_partido)}</Text>
+                            <Text style={{ width: 10 }} />
+                            <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                            <Text style={styles.metaText}> {p.hora ?? p.hora_partido ?? '--'}</Text>
+                          </View>
+                        </View>
+                        <TouchableOpacity onPress={() => handleCancelarPartido(p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                          <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })
+                ) : (
+                  <View style={styles.emptyCard}>
+                    <Text style={styles.emptyText}>No tienes partidos activos buscando oponente</Text>
+                  </View>
+                )
+              )}
+
+              {solicitudesFiltradas.length > 0 && (
+                <Text style={styles.sectionTitle}>Jugadores retándote</Text>
+              )}
+              {solicitudesFiltradas.map((s, i) => {
+                const idSolicitud = s.id_solicitud ?? s.id ?? String(i);
+                const cargando = accionLoading === idSolicitud;
                 return (
-                  <View key={pId} style={styles.partidoCard}>
+                  <View key={idSolicitud} style={styles.retadorCard}>
                     <Image
-                      source={{ uri: p.foto_cancha_url ?? p.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
-                      style={styles.partidoImg}
+                      source={getAvatarSource(s.foto_perfil_url)}
+                      style={styles.retadorAvatar}
                     />
-                    <View style={styles.partidoInfo}>
-                      <Text style={styles.partidoCancha}>{p.nombre_cancha ?? p.cancha ?? 'Cancha'}</Text>
+                    <View style={styles.retadorInfo}>
+                      <View style={styles.nameRow}>
+                        <Text style={styles.retadorName}>
+                          {s.apellidos ? `${s.nombre ?? ''} ${s.apellidos}`.trim() : (s.nombre ?? s.name ?? 'Jugador')}
+                        </Text>
+                        <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
+                        <Text style={styles.retadorRanking}> {s.ranking ?? '--'}</Text>
+                      </View>
+                      <Text style={styles.retadorClub}>{s.nombre_cancha ?? s.club ?? ''}</Text>
                       <View style={styles.metaRow}>
                         <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                        <Text style={styles.metaText}> {formatFecha(p.fecha ?? p.fecha_partido)}</Text>
+                        <Text style={styles.metaText}> {formatFecha(s.fecha ?? s.date)}</Text>
                         <Text style={{ width: 10 }} />
                         <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                        <Text style={styles.metaText}> {p.hora ?? p.hora_partido ?? '--'}</Text>
+                        <Text style={styles.metaText}> {s.hora ?? s.time ?? '--'}</Text>
                       </View>
                     </View>
-                    <TouchableOpacity onPress={() => handleCancelarPartido(p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
-                    </TouchableOpacity>
+                    <View style={styles.accionesCol}>
+                      <TouchableOpacity
+                        style={[styles.aceptarBtn, cargando && { opacity: 0.5 }]}
+                        onPress={() => handleAceptar(s)}
+                        disabled={cargando}
+                      >
+                        {cargando
+                          ? <ActivityIndicator size="small" color={colors.textPrimary} />
+                          : <Text style={styles.aceptarText}>Aceptar</Text>
+                        }
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.rechazarBtn, cargando && { opacity: 0.5 }]}
+                        onPress={() => handleRechazar(s)}
+                        disabled={cargando}
+                      >
+                        <Text style={styles.rechazarText}>Rechazar</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 );
-              })
-            ) : (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyText}>No tienes partidos activos buscando oponente</Text>
-              </View>
-            )
+              })}
+
+              {!loading && solicitudesFiltradas.length === 0 && (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyText}>No hay jugadores retándote aún</Text>
+                </View>
+              )}
+            </>
           )}
 
-          {/* Jugadores retándote */}
-          {solicitudesFiltradas.length > 0 && (
-            <Text style={styles.sectionTitle}>Jugadores retándote</Text>
+          {/* ── Sección CLASES ── */}
+          {tipo === 'clases' && (
+            <>
+              {solicitudesClase.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyText}>No tienes solicitudes de clase pendientes</Text>
+                </View>
+              ) : (
+                solicitudesClase.map((sc, i) => {
+                  const idClase = sc.id_clase ?? sc.id ?? String(i);
+                  const cargandoClase = accionClaseLoading === idClase;
+                  const hora = typeof (sc.hora_clase ?? sc.hora) === 'string'
+                    ? (sc.hora_clase ?? sc.hora ?? '--').substring(0, 5)
+                    : '--';
+                  return (
+                    <View key={idClase} style={styles.retadorCard}>
+                      <Image
+                        source={getAvatarSource(sc.foto_alumno ?? sc.foto_perfil_url)}
+                        style={styles.retadorAvatar}
+                      />
+                      <View style={styles.retadorInfo}>
+                        <View style={styles.nameRow}>
+                          <Text style={styles.retadorName}>{sc.nombre_alumno ?? sc.nombre ?? 'Alumno'}</Text>
+                          <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
+                          <Text style={styles.retadorRanking}> {sc.ranking_alumno ?? sc.ranking ?? '--'}</Text>
+                        </View>
+                        <Text style={styles.retadorClub}>{sc.nombre_cancha ?? sc.lugar ?? ''}</Text>
+                        <View style={styles.metaRow}>
+                          <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                          <Text style={styles.metaText}> {formatFecha(sc.fecha_clase ?? sc.fecha)}</Text>
+                          <Text style={{ width: 10 }} />
+                          <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                          <Text style={styles.metaText}> {hora}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.accionesCol}>
+                        <TouchableOpacity
+                          style={[styles.aceptarBtn, cargandoClase && { opacity: 0.5 }]}
+                          onPress={() => handleAceptarClase(sc)}
+                          disabled={cargandoClase}
+                        >
+                          {cargandoClase
+                            ? <ActivityIndicator size="small" color={colors.textPrimary} />
+                            : <Text style={styles.aceptarText}>Aceptar</Text>
+                          }
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.rechazarBtn, cargandoClase && { opacity: 0.5 }]}
+                          onPress={() => handleRechazarClase(sc)}
+                          disabled={cargandoClase}
+                        >
+                          <Text style={styles.rechazarText}>Rechazar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </>
           )}
-          {solicitudesFiltradas.map((s, i) => {
-            const idSolicitud = s.id_solicitud ?? s.id ?? String(i);
-            const cargando = accionLoading === idSolicitud;
-            return (
-              <View key={idSolicitud} style={styles.retadorCard}>
-                <Image
-                  source={getAvatarSource(s.foto_perfil_url)}
-                  style={styles.retadorAvatar}
-                />
-                <View style={styles.retadorInfo}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.retadorName}>
-                      {s.apellidos ? `${s.nombre ?? ''} ${s.apellidos}`.trim() : (s.nombre ?? s.name ?? 'Jugador')}
-                    </Text>
-                    <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
-                    <Text style={styles.retadorRanking}> {s.ranking ?? '--'}</Text>
-                  </View>
-                  <Text style={styles.retadorClub}>{s.nombre_cancha ?? s.club ?? ''}</Text>
-                  <View style={styles.metaRow}>
-                    <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                    <Text style={styles.metaText}> {formatFecha(s.fecha ?? s.date)}</Text>
-                    <Text style={{ width: 10 }} />
-                    <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                    <Text style={styles.metaText}> {s.hora ?? s.time ?? '--'}</Text>
-                  </View>
-                </View>
-                <View style={styles.accionesCol}>
-                  <TouchableOpacity
-                    style={[styles.aceptarBtn, cargando && { opacity: 0.5 }]}
-                    onPress={() => handleAceptar(s)}
-                    disabled={cargando}
-                  >
-                    {cargando
-                      ? <ActivityIndicator size="small" color={colors.textPrimary} />
-                      : <Text style={styles.aceptarText}>Aceptar</Text>
-                    }
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.rechazarBtn, cargando && { opacity: 0.5 }]}
-                    onPress={() => handleRechazar(s)}
-                    disabled={cargando}
-                  >
-                    <Text style={styles.rechazarText}>Rechazar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-
-          {!loading && solicitudesFiltradas.length === 0 && (
-            <View style={styles.emptyCard}>
-              <Text style={styles.emptyText}>No hay jugadores retándote aún</Text>
-            </View>
-          )}
-
-          {/* Solicitudes de clase (solo profesores) */}
-          {solicitudesClase.length > 0 && (
-            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Solicitudes de clase</Text>
-          )}
-          {solicitudesClase.map((sc, i) => {
-            const idClase = sc.id_clase ?? sc.id ?? String(i);
-            const cargandoClase = accionClaseLoading === idClase;
-            const hora = typeof (sc.hora_clase ?? sc.hora) === 'string'
-              ? (sc.hora_clase ?? sc.hora ?? '--').substring(0, 5)
-              : '--';
-            return (
-              <View key={idClase} style={styles.retadorCard}>
-                <Image
-                  source={getAvatarSource(sc.foto_alumno ?? sc.foto_perfil_url)}
-                  style={styles.retadorAvatar}
-                />
-                <View style={styles.retadorInfo}>
-                  <View style={styles.nameRow}>
-                    <Text style={styles.retadorName}>{sc.nombre_alumno ?? sc.nombre ?? 'Alumno'}</Text>
-                    <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
-                    <Text style={styles.retadorRanking}> {sc.ranking_alumno ?? sc.ranking ?? '--'}</Text>
-                  </View>
-                  <Text style={styles.retadorClub}>{sc.nombre_cancha ?? sc.lugar ?? ''}</Text>
-                  <View style={styles.metaRow}>
-                    <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                    <Text style={styles.metaText}> {formatFecha(sc.fecha_clase ?? sc.fecha)}</Text>
-                    <Text style={{ width: 10 }} />
-                    <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                    <Text style={styles.metaText}> {hora}</Text>
-                  </View>
-                </View>
-                <View style={styles.accionesCol}>
-                  <TouchableOpacity
-                    style={[styles.aceptarBtn, cargandoClase && { opacity: 0.5 }]}
-                    onPress={() => handleAceptarClase(sc)}
-                    disabled={cargandoClase}
-                  >
-                    {cargandoClase
-                      ? <ActivityIndicator size="small" color={colors.textPrimary} />
-                      : <Text style={styles.aceptarText}>Aceptar</Text>
-                    }
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.rechazarBtn, cargandoClase && { opacity: 0.5 }]}
-                    onPress={() => handleRechazarClase(sc)}
-                    disabled={cargandoClase}
-                  >
-                    <Text style={styles.rechazarText}>Rechazar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
 
           <View style={{ height: 32 }} />
         </ScrollView>

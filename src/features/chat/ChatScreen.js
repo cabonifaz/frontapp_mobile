@@ -94,11 +94,7 @@ export function ChatScreen({ navigation, route }) {
     }
   }
 
-  const avatarSource = rival?.avatar
-    ? (typeof rival.avatar === 'string'
-        ? { uri: rival.avatar }
-        : rival.avatar)
-    : null;
+  const avatarSource = getAvatarSource(rival?.avatar);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -109,13 +105,7 @@ export function ChatScreen({ navigation, route }) {
         >
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        {avatarSource ? (
-          <Image source={avatarSource} style={styles.headerAvatar} />
-        ) : (
-          <View style={[styles.headerAvatar, styles.headerAvatarPlaceholder]}>
-            <Ionicons name="person" size={20} color={colors.textSecondary} />
-          </View>
-        )}
+        <Image source={avatarSource} style={styles.headerAvatar} />
         <View style={{ flex: 1 }}>
           <Text style={styles.headerName} numberOfLines={1}>{rival?.name ?? 'Chat'}</Text>
           <Text style={styles.headerSub}>{esClase ? 'Clase programada' : 'Partido programado'}</Text>
