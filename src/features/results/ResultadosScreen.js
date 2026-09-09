@@ -59,6 +59,13 @@ function groupByDate(items) {
   return Object.values(map);
 }
 
+function abreviar(nombre) {
+  if (!nombre) return '';
+  const partes = nombre.trim().split(' ');
+  if (partes.length === 1) return partes[0];
+  return `${partes[0][0]}. ${partes.slice(1).join(' ')}`;
+}
+
 function MatchCard({ match, onPress }) {
   const { day, month } = formatDay(match.fecha_partido);
 
@@ -82,7 +89,7 @@ function MatchCard({ match, onPress }) {
         {/* Fila jugador local */}
         <View style={styles.playerRow}>
           <Image source={getAvatarSource(match.foto_local)} style={styles.playerAvatar} />
-          <Text style={styles.playerName} numberOfLines={1}>{match.jugador_local}</Text>
+          <Text style={styles.playerName} numberOfLines={1}>{abreviar(match.jugador_local)}</Text>
           <View style={styles.scoresRow}>
             {sets.map(([l], i) => (
               <View key={i} style={styles.scoreBox}>
@@ -100,7 +107,7 @@ function MatchCard({ match, onPress }) {
         {/* Fila jugador visitante */}
         <View style={styles.playerRow}>
           <Image source={getAvatarSource(match.foto_visitante)} style={styles.playerAvatar} />
-          <Text style={styles.playerName} numberOfLines={1}>{match.jugador_visitante}</Text>
+          <Text style={styles.playerName} numberOfLines={1}>{abreviar(match.jugador_visitante)}</Text>
           <View style={styles.scoresRow}>
             {sets.map(([, v], i) => (
               <View key={i} style={styles.scoreBox}>

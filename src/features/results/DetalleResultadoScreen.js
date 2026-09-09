@@ -70,15 +70,10 @@ export function DetalleResultadoScreen({ navigation, route }) {
   const rankingLocal     = rankingYo;
   const rankingVisitante = rankingRival;
 
-  const sets = soyVisitante ? [
-    [d.set1_visitante ?? match?.set1_visitante, d.set1_local ?? match?.set1_local],
-    [d.set2_visitante ?? match?.set2_visitante, d.set2_local ?? match?.set2_local],
-    [d.set3_visitante ?? match?.set3_visitante, d.set3_local ?? match?.set3_local],
-  ].filter(([l, v]) => l != null || v != null) : [
-    [d.set1_local ?? match?.set1_local, d.set1_visitante ?? match?.set1_visitante],
-    [d.set2_local ?? match?.set2_local, d.set2_visitante ?? match?.set2_visitante],
-    [d.set3_local ?? match?.set3_local, d.set3_visitante ?? match?.set3_visitante],
-  ].filter(([l, v]) => l != null || v != null);
+  const sets = [1, 2, 3, 4, 5].map(n => soyVisitante
+    ? [d[`set${n}_visitante`] ?? match?.[`set${n}_visitante`], d[`set${n}_local`] ?? match?.[`set${n}_local`]]
+    : [d[`set${n}_local`]     ?? match?.[`set${n}_local`],     d[`set${n}_visitante`] ?? match?.[`set${n}_visitante`]]
+  ).filter(([l, v]) => l != null || v != null);
 
   const setsLocal      = soyVisitante ? (d.sets_visitante ?? match?.sets_visitante ?? 0) : (d.sets_local     ?? match?.sets_local     ?? 0);
   const setsVisitante  = soyVisitante ? (d.sets_local     ?? match?.sets_local     ?? 0) : (d.sets_visitante ?? match?.sets_visitante ?? 0);
@@ -146,36 +141,36 @@ export function DetalleResultadoScreen({ navigation, route }) {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
             {activeTab === 'Resultados' ? (
               <>
-                <Text style={styles.sectionTitle}>Resultados</Text>
-
-                {sets.length === 0 ? (
-                  <Text style={styles.noDataText}>Sin resultados registrados</Text>
-                ) : (
-                  sets.map(([l, v], i) => (
-                    <View key={i} style={styles.setRow}>
-                      <Image source={getAvatarSource(fotoLocal)} style={styles.setAvatar} />
-                      <View style={styles.scoreBox}>
-                        <Text style={styles.scoreNum}>{l ?? '-'}</Text>
-                      </View>
-                      <Text style={styles.scoreSep}>:</Text>
-                      <View style={styles.scoreBox}>
-                        <Text style={styles.scoreNum}>{v ?? '-'}</Text>
-                      </View>
-                      <Image source={getAvatarSource(fotoVisitante)} style={styles.setAvatar} />
-                    </View>
-                  ))
-                )}
-
+                {/* Resultado Final primero y prominente */}
                 <Text style={styles.sectionTitle}>Resultado Final</Text>
-                <View style={styles.setRow}>
-                  <View style={[styles.scoreBox, styles.scoreBoxFinal]}>
-                    <Text style={styles.scoreNumFinal}>{setsLocal}</Text>
-                  </View>
-                  <Text style={styles.scoreSep}>:</Text>
-                  <View style={[styles.scoreBox, styles.scoreBoxFinal]}>
-                    <Text style={styles.scoreNumFinal}>{setsVisitante}</Text>
-                  </View>
+                <View style={styles.resultadoFinalRow}>
+                  <Text style={styles.resultadoFinalNum}>{setsLocal}</Text>
+                  <Text style={styles.resultadoFinalSep}> – </Text>
+                  <Text style={styles.resultadoFinalNum}>{setsVisitante}</Text>
                 </View>
+
+                {/* Sets individuales debajo */}
+                {sets.length === 0 ? (
+                  <Text style={styles.noDataText}>Sin sets registrados</Text>
+                ) : (
+                  <>
+                    <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Sets</Text>
+                    {sets.map(([l, v], i) => (
+                      <View key={i} style={styles.setRow}>
+                        <Text style={styles.setLabel}>Set {i + 1}</Text>
+                        <Image source={getAvatarSource(fotoLocal)} style={styles.setAvatar} />
+                        <View style={styles.scoreBox}>
+                          <Text style={styles.scoreNum}>{l ?? '-'}</Text>
+                        </View>
+                        <Text style={styles.scoreSep}>–</Text>
+                        <View style={styles.scoreBox}>
+                          <Text style={styles.scoreNum}>{v ?? '-'}</Text>
+                        </View>
+                        <Image source={getAvatarSource(fotoVisitante)} style={styles.setAvatar} />
+                      </View>
+                    ))}
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -299,25 +294,33 @@ const styles = StyleSheet.create({
     marginBottom: 16, marginTop: 8,
   },
 
+  resultadoFinalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  resultadoFinalNum: { fontSize: 72, fontWeight: 'bold', color: colors.textPrimary },
+  resultadoFinalSep: { fontSize: 48, fontWeight: 'bold', color: colors.textSecondary, marginHorizontal: 4 },
+
   setRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 10,
   },
-  setAvatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#ccc' },
+  setLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, width: 40 },
+  setAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#ccc' },
   scoreBox: {
-    width: 52, height: 52,
+    width: 48, height: 48,
     borderRadius: 10,
     backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scoreBoxFinal: { width: 64, height: 64, borderRadius: 12 },
-  scoreNum: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary },
-  scoreNumFinal: { fontSize: 28, fontWeight: 'bold', color: colors.textPrimary },
-  scoreSep: { fontSize: 24, fontWeight: 'bold', color: colors.textSecondary },
+  scoreNum: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary },
+  scoreSep: { fontSize: 20, fontWeight: 'bold', color: colors.textSecondary },
 
   noDataText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', marginTop: 20 },
 
