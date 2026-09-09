@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginBottom: 10,
   },
-  setLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, width: 40 },
+  setLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, width: 52, marginRight: 4 },
   setAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#ccc' },
   scoreBox: {
     width: 48, height: 48,
