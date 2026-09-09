@@ -10,18 +10,19 @@ import { PrimaryButton } from '../../../components/common';
 import { CircularCropModal } from '../../../components/CircularCropModal';
 import { authService } from '../../../services/authService';
 import { usuarioService } from '../../../services/usuarioService';
-import { DEPORTES, GENEROS, NIVELES_JUEGO, DEPORTE_DEFAULT } from '../../../constants/maestro';
+import { DEPORTES, GENEROS, DEPORTE_DEFAULT } from '../../../constants/maestro';
 import { uploadImage } from '../../../services/cloudinaryService'; // Ajusta la ruta según tu estructura de carpetas
 
 const NIVEL_JUEGO_MAP = {
-  'Principiante': NIVELES_JUEGO.PRINCIPIANTE,
-  'Intermedio':   NIVELES_JUEGO.INTERMEDIO,
-  'Avanzado':     NIVELES_JUEGO.AVANZADO,
+  'Principiante': 1,
+  'Intermedio':   2,
+  'Avanzado':     3,
+  'Elite':        4,
 };
 const GENERO_MAP      = { 'Masculino': GENEROS.MASCULINO, 'Femenino': GENEROS.FEMENINO };
 const DEPORTE_MAP     = { 'fronton': DEPORTES.FRONTON, 'tenis': DEPORTES.TENIS, 'padel': DEPORTES.PADEL };
 const PARTIDOS_MAP    = { '0': 0, '1': 1, '2 o más': 2 };
-const NIVEL_FISICO_MAP = { 'Malo': 1, 'Regular': 2, 'Bueno': 3 };
+const NIVEL_FISICO_MAP = { 'Bajo': 1, 'Normal': 2, 'Bueno': 3 };
 
 // --- Shared sub-components ---
 
@@ -311,7 +312,7 @@ function Step3({ data, setData, onNext, onBack }) {
 
       <RadioGroup
         question="¿Cuál es tu nivel del juego?"
-        options={['Principiante', 'Intermedio', 'Avanzado']}
+        options={['Principiante', 'Intermedio', 'Avanzado', 'Elite']}
         selected={data.nivel}
         onSelect={(v) => setData({ ...data, nivel: v })}
       />
@@ -329,7 +330,7 @@ function Step3({ data, setData, onNext, onBack }) {
       />
       <RadioGroup
         question="¿Cómo es tu nivel físico?"
-        options={['Malo', 'Regular', 'Bueno']}
+        options={['Bajo', 'Normal', 'Bueno']}
         selected={data.nivel_fisico}
         onSelect={(v) => setData({ ...data, nivel_fisico: v })}
       />
@@ -568,7 +569,7 @@ async function handleFinish() {
         const resultado = await usuarioService.cuestionario({
           idDeporte,
           nivelFisico:        NIVEL_FISICO_MAP[data.nivel_fisico] ?? 1,
-          idNivelJuego:       NIVEL_JUEGO_MAP[data.nivel] ?? NIVELES_JUEGO.PRINCIPIANTE,
+          nivelJuego:         NIVEL_JUEGO_MAP[data.nivel] ?? 1,
           partidosSemanales:  PARTIDOS_MAP[data.partidos_semana] ?? 0,
           leccionesSemanales: PARTIDOS_MAP[data.lecciones] ?? 0,
           edad:               parseInt(data.edad),

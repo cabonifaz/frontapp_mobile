@@ -6,11 +6,11 @@ export const usuarioService = {
     return api.get(`/api/Usuario/menu-principal?id_deporte=${idDeporte}`);
   },
 
-  async cuestionario({ idDeporte, nivelFisico, idNivelJuego, partidosSemanales, leccionesSemanales, edad, idGenero }) {
+  async cuestionario({ idDeporte, nivelFisico, nivelJuego, partidosSemanales, leccionesSemanales, edad, idGenero }) {
     return api.post('/api/Usuario/cuestionario', {
       id_deporte:          idDeporte,
       nivel_fisico:        nivelFisico,
-      id_nivel_juego:      idNivelJuego,
+      nivel_juego:         nivelJuego,
       partidos_semanales:  partidosSemanales,
       lecciones_semanales: leccionesSemanales,
       edad,
