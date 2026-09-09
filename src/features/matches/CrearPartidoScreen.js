@@ -339,7 +339,7 @@ export function CrearPartidoScreen({ navigation, route }) {
                   onPress={() => setNumSets(n)}
                 >
                   <Text style={[styles.toggleText, numSets === n && styles.toggleTextActive]}>
-                    Mejor de {n}
+                    {n === 3 ? '2 de 3' : '3 de 5'}
                   </Text>
                 </TouchableOpacity>
               ))}

@@ -62,11 +62,12 @@ function groupByDate(items) {
 function MatchCard({ match, onPress }) {
   const { day, month } = formatDay(match.fecha_partido);
 
-  const sets = [
-    [match.set1_local, match.set1_visitante],
-    [match.set2_local, match.set2_visitante],
-    [match.set3_local, match.set3_visitante],
-  ].filter(([l, v]) => l != null || v != null);
+  const sets = [1, 2, 3, 4, 5]
+    .map(n => [match[`set${n}_local`], match[`set${n}_visitante`]])
+    .filter(([l, v]) => l != null || v != null);
+
+  const localWins = sets.filter(([l, v]) => (l ?? 0) > (v ?? 0)).length;
+  const visitWins = sets.filter(([l, v]) => (v ?? 0) > (l ?? 0)).length;
 
   return (
     <TouchableOpacity style={styles.matchCard} onPress={onPress} activeOpacity={0.75}>
@@ -78,6 +79,11 @@ function MatchCard({ match, onPress }) {
 
       {/* Contenido del partido */}
       <View style={styles.matchContent}>
+        {/* Sets-won summary */}
+        {sets.length > 0 && (
+          <Text style={styles.setsWonLabel}>{localWins} - {visitWins}</Text>
+        )}
+
         {/* Fila jugador local */}
         <View style={styles.playerRow}>
           <Image source={getAvatarSource(match.foto_local)} style={styles.playerAvatar} />
@@ -313,6 +319,13 @@ const styles = StyleSheet.create({
   },
   scoreNum: {
     fontSize: 12, fontWeight: '700', color: colors.textPrimary,
+  },
+
+  setsWonLabel: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 4,
   },
 
   emptyState: { alignItems: 'center', marginTop: 60, gap: 12 },

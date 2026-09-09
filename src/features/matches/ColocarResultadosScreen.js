@@ -65,7 +65,19 @@ function StarRating({ rating, onRate }) {
   );
 }
 
-function ConfirmationView({ scores, rivalName, onReview, onAgree, loading }) {
+function ConfirmationView({ numSets, partido, rivalName, onReview, onAgree, loading }) {
+  // Compute sets from partido object
+  const sets = Array.from({ length: numSets }, (_, i) => {
+    const local = partido[`set${i + 1}_puntos_local`];
+    const visit = partido[`set${i + 1}_puntos_visitante`];
+    if (local == null && visit == null) return null;
+    return { local: local ?? 0, visit: visit ?? 0 };
+  }).filter(Boolean);
+
+  // Compute sets-won totals
+  const localWins = sets.filter(s => s.local > s.visit).length;
+  const visitWins = sets.filter(s => s.visit > s.local).length;
+
   return (
     <View style={styles.confirmContainer}>
       <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -73,13 +85,24 @@ function ConfirmationView({ scores, rivalName, onReview, onAgree, loading }) {
           {rivalName} ha publicado estos resultados, ¿estás de acuerdo con ellos?
         </Text>
 
+        {/* Big sets-won display */}
+        <View style={styles.setsWonRow}>
+          <Text style={styles.setsWonNum}>{localWins}</Text>
+          <Text style={styles.setsWonSep}> - </Text>
+          <Text style={styles.setsWonNum}>{visitWins}</Text>
+        </View>
+
+        {/* Individual sets */}
         <View style={styles.confirmScoreCard}>
-          {scores.map((s, i) => (
+          {sets.map((s, i) => (
             <View key={i} style={styles.confirmScoreRow}>
               <Text style={styles.confirmSetLabel}>Set {i + 1}</Text>
-              <Text style={styles.confirmScoreText}>{s.my || '0'} : {s.rival || '0'}</Text>
+              <Text style={styles.confirmScoreText}>{s.local} : {s.visit}</Text>
             </View>
           ))}
+          {sets.length === 0 && (
+            <Text style={[styles.confirmSetLabel, { textAlign: 'center' }]}>Sin sets registrados</Text>
+          )}
         </View>
       </View>
 
@@ -98,53 +121,69 @@ function ConfirmationView({ scores, rivalName, onReview, onAgree, loading }) {
 export function ColocarResultadosScreen({ navigation, route }) {
   const partido = route?.params?.partido ?? {};
   const idPartido = partido.id_partido ?? partido.id ?? null;
+  const esCreador = partido.esCreador ?? true;
 
-  // 🟢 CORREGIDO: primero intenta leer el objeto anidado que manda DetallePartidoScreen
-  // (partido.rival / partido.yo), y si no viene, cae a los campos planos legacy.
   const rival = {
-    id:      partido.rival?.id     ?? partido.id_rival ?? partido.id_usuario_rival ?? null,
-    name:    partido.rival?.name   ?? partido.name     ?? partido.nombre_rival ?? 'Rival',
-    avatar:  partido.rival?.avatar ?? partido.avatar   ?? partido.foto_rival   ?? null,
-    pts:     partido.rival?.pts    ?? partido.pts      ?? partido.puntos_rival  ?? 0,
-    ranking: partido.rival?.ranking ?? partido.ranking ?? partido.ranking_rival ?? '--',
+    id:      partido.rival?.id      ?? partido.id_rival      ?? partido.id_usuario_rival ?? null,
+    name:    partido.rival?.name    ?? partido.name           ?? partido.nombre_rival     ?? 'Rival',
+    avatar:  partido.rival?.avatar  ?? partido.avatar         ?? partido.foto_rival       ?? null,
+    pts:     partido.rival?.pts     ?? partido.pts            ?? partido.puntos_rival     ?? 0,
+    ranking: partido.rival?.ranking ?? partido.ranking        ?? partido.ranking_rival    ?? '--',
   };
   const yo = {
     name:   partido.yo?.name   ?? partido.nombre_yo ?? 'Tú',
     avatar: partido.yo?.avatar ?? partido.avatar_yo ?? null,
-    pts:    partido.yo?.pts    ?? partido.puntos_yo ?? 0,
+    pts:    partido.yo?.pts    ?? partido.puntos_yo  ?? 0,
   };
 
-  const numSets = partido.num_sets ?? 5;
+  const numSets   = partido.num_sets ?? 5;
+  const setsToWin = Math.ceil(numSets / 2); // 2 for "2 de 3", 3 for "3 de 5"
 
-  const [scores, setScores] = useState(
-    Array.from({ length: numSets }, (_, i) => ({
-      my:    String(partido[`set${i + 1}_puntos_local`]     ?? partido[`set${i + 1}_local`]     ?? ''),
-      rival: String(partido[`set${i + 1}_puntos_visitante`] ?? partido[`set${i + 1}_visitante`] ?? ''),
-    }))
-  );
+  // Set-by-set state
+  const [confirmedSets, setConfirmedSets] = useState([]); // array of { my, rival }
+  const [curMy,   setCurMy]   = useState('');
+  const [curRival, setCurRival] = useState('');
 
-  const [rating, setRating] = useState(0);
+  const [rating,  setRating]  = useState(0);
   const [comment, setComment] = useState('');
 
-  // 🟢 CORREGIDO: si ya existe un resultado publicado (id_resultado no nulo),
-  // saltamos directo a la pantalla de confirmación con los marcadores reales.
-  const [confirmed, setConfirmed] = useState(
-    Boolean(partido.id_resultado)
-  );
+  const [confirmed, setConfirmed] = useState(Boolean(partido.id_resultado));
 
-  const [publicando, setPublicando] = useState(false);
+  const [publicando,  setPublicando]  = useState(false);
   const [confirmando, setConfirmando] = useState(false);
 
-  const [tipoResultado, setTipoResultado] = useState('normal'); // 'normal' | 'walkover' | 'abandono'
-  const [jugadorEspecial, setJugadorEspecial] = useState(null); // 'yo' | 'rival'
+  const [tipoResultado,  setTipoResultado]  = useState('normal');
+  const [jugadorEspecial, setJugadorEspecial] = useState(null);
 
-  const updateScore = (index, side, value) => {
-    setScores(prev => prev.map((s, i) => i === index ? { ...s, [side]: value } : s));
-  };
+  // Derived values for normal set-by-set flow
+  const myWins    = confirmedSets.filter(s => Number(s.my) > Number(s.rival)).length;
+  const rivalWins = confirmedSets.filter(s => Number(s.rival) > Number(s.my)).length;
+  const matchDone = myWins >= setsToWin || rivalWins >= setsToWin;
+  const currentSetNum = confirmedSets.length + 1;
 
-  const canConfirm = tipoResultado === 'normal'
-    ? scores.some(s => s.my !== '' || s.rival !== '')
-    : jugadorEspecial !== null;
+  const canConfirmSet =
+    curMy.trim() !== '' && curRival.trim() !== '' &&
+    !isNaN(Number(curMy)) && !isNaN(Number(curRival));
+
+  function handleConfirmSet() {
+    if (!canConfirmSet || matchDone) return;
+    setConfirmedSets(prev => [...prev, { my: curMy.trim(), rival: curRival.trim() }]);
+    setCurMy('');
+    setCurRival('');
+  }
+
+  // Who controls publishing in normal mode
+  const mostrarFormulario = esCreador || tipoResultado !== 'normal';
+
+  // canPublish logic
+  let canPublish = false;
+  if (tipoResultado === 'walkover') {
+    canPublish = jugadorEspecial !== null;
+  } else if (tipoResultado === 'abandono') {
+    canPublish = jugadorEspecial !== null;
+  } else {
+    canPublish = matchDone;
+  }
 
   async function handlePublicar() {
     try {
@@ -157,22 +196,32 @@ export function ColocarResultadosScreen({ navigation, route }) {
           puntaje_rival: jugadorEspecial === 'yo' ? 15 : 0,
         }));
       } else if (tipoResultado === 'abandono') {
-        sets = scores.map(s =>
-          s.my !== '' && s.rival !== ''
-            ? { mi_puntaje: Number(s.my) || 0, puntaje_rival: Number(s.rival) || 0 }
-            : { mi_puntaje: jugadorEspecial === 'yo' ? 0 : 15, puntaje_rival: jugadorEspecial === 'yo' ? 15 : 0 }
+        // confirmed sets + remaining sets auto-filled against abandoner
+        const played = confirmedSets.map(s => ({
+          mi_puntaje:    Number(s.my)    || 0,
+          puntaje_rival: Number(s.rival) || 0,
+        }));
+        const remaining = Array.from(
+          { length: numSets - confirmedSets.length },
+          () => ({
+            mi_puntaje:    jugadorEspecial === 'yo' ? 0 : 15,
+            puntaje_rival: jugadorEspecial === 'yo' ? 15 : 0,
+          })
         );
+        sets = [...played, ...remaining];
       } else {
-        sets = scores
-          .filter(s => s.my !== '' && s.rival !== '')
-          .map(s => ({ mi_puntaje: Number(s.my) || 0, puntaje_rival: Number(s.rival) || 0 }));
+        // normal: send confirmedSets
+        sets = confirmedSets.map(s => ({
+          mi_puntaje:    Number(s.my)    || 0,
+          puntaje_rival: Number(s.rival) || 0,
+        }));
       }
 
       if (idPartido) {
         await resultadoService.publicar(idPartido, {
-          idRival:          rival.id,
+          idRival:           rival.id,
           calificacionRival: rating,
-          comentario:       comment,
+          comentario:        comment,
           sets,
         });
       }
@@ -180,12 +229,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
       Alert.alert(
         '¡Resultado publicado!',
         'Se ha enviado el resultado. Queda pendiente de la confirmación de tu rival.',
-        [
-          {
-            text: 'Entendido',
-            onPress: () => navigation.goBack(),
-          },
-        ]
+        [{ text: 'Entendido', onPress: () => navigation.goBack() }]
       );
     } catch (e) {
       const mensajeError = e.response?.data?.mensaje || e.message || 'No se pudo publicar el resultado.';
@@ -198,9 +242,14 @@ export function ColocarResultadosScreen({ navigation, route }) {
   async function handleConfirmar(estaDeAcuerdo) {
     try {
       setConfirmando(true);
-      const sets = scores
-        .filter(s => s.my !== '' && s.rival !== '')
-        .map(s => ({ mi_puntaje: Number(s.my) || 0, puntaje_rival: Number(s.rival) || 0 }));
+      // Compute sets from partido object directly
+      const sets = Array.from({ length: numSets }, (_, i) => {
+        const local = partido[`set${i + 1}_puntos_local`];
+        const visit = partido[`set${i + 1}_puntos_visitante`];
+        if (local == null && visit == null) return null;
+        return { mi_puntaje: Number(local) || 0, puntaje_rival: Number(visit) || 0 };
+      }).filter(Boolean);
+
       if (idPartido) {
         await resultadoService.confirmar(idPartido, { estaDeAcuerdo, idRival: rival.id, sets });
       }
@@ -216,7 +265,8 @@ export function ColocarResultadosScreen({ navigation, route }) {
     return (
       <SafeAreaView style={styles.safe}>
         <ConfirmationView
-          scores={scores}
+          numSets={numSets}
+          partido={partido}
           rivalName={rival.name.split(' ')[0]}
           onReview={() => handleConfirmar(false)}
           onAgree={() => handleConfirmar(true)}
@@ -249,7 +299,13 @@ export function ColocarResultadosScreen({ navigation, route }) {
               <TouchableOpacity
                 key={op.key}
                 style={[styles.tipoBtn, tipoResultado === op.key && styles.tipoBtnActive]}
-                onPress={() => { setTipoResultado(op.key); setJugadorEspecial(null); }}
+                onPress={() => {
+                  setTipoResultado(op.key);
+                  setJugadorEspecial(null);
+                  setConfirmedSets([]);
+                  setCurMy('');
+                  setCurRival('');
+                }}
               >
                 <Text style={[styles.tipoBtnText, tipoResultado === op.key && styles.tipoBtnTextActive]}>
                   {op.label}
@@ -257,6 +313,18 @@ export function ColocarResultadosScreen({ navigation, route }) {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Waiting block: challenger in normal mode */}
+          {!mostrarFormulario && (
+            <View style={styles.waitingContainer}>
+              <Ionicons name="time-outline" size={36} color={colors.textSecondary} style={{ marginBottom: 10 }} />
+              <Text style={styles.waitingTitle}>Esperando resultados</Text>
+              <Text style={styles.waitingSubtitle}>
+                Solo {rival.name.split(' ')[0]} puede ingresar los resultados.
+                Cambia a Walkover o Abandono si aplica.
+              </Text>
+            </View>
+          )}
 
           {/* Selector de jugador para walkover / abandono */}
           {tipoResultado !== 'normal' && (
@@ -284,98 +352,152 @@ export function ColocarResultadosScreen({ navigation, route }) {
             </View>
           )}
 
-          {/* Players + scores */}
-          <View style={styles.playersBlock}>
-            <View style={styles.playerCol}>
-              <Image source={fuenteImagen(yo.avatar)} style={styles.avatar} />
-              <Text style={styles.playerName} numberOfLines={1}>{yo.name.split(' ')[0]}</Text>
-              <Text style={styles.playerPts}>{yo.pts} pts</Text>
+          {/* Walkover: show auto-filled scores read-only */}
+          {mostrarFormulario && tipoResultado === 'walkover' && (
+            <View style={styles.playersBlock}>
+              <View style={styles.playerCol}>
+                <Image source={fuenteImagen(yo.avatar)} style={styles.avatar} />
+                <Text style={styles.playerName} numberOfLines={1}>{yo.name.split(' ')[0]}</Text>
+                <Text style={styles.playerPts}>{yo.pts} pts</Text>
+              </View>
+              <View style={styles.scoresCol}>
+                {Array.from({ length: numSets }, (_, i) => ({
+                  my:    jugadorEspecial === 'yo' ? '0' : jugadorEspecial === 'rival' ? '15' : '',
+                  rival: jugadorEspecial === 'rival' ? '0' : jugadorEspecial === 'yo' ? '15' : '',
+                })).map((s, i) => (
+                  <ScoreRow
+                    key={i}
+                    index={i}
+                    myScore={s.my}
+                    rivalScore={s.rival}
+                    readonly
+                  />
+                ))}
+              </View>
+              <View style={styles.playerCol}>
+                <Image source={fuenteImagen(rival.avatar)} style={styles.avatar} />
+                <Text style={styles.playerName} numberOfLines={1}>{rival.name.split(' ')[0]}</Text>
+                <Text style={styles.playerPts}>{rival.pts} pts</Text>
+              </View>
             </View>
+          )}
 
-            <View style={styles.scoresCol}>
-              {tipoResultado === 'walkover'
-                ? Array.from({ length: numSets }, (_, i) => ({
-                    my:    jugadorEspecial === 'yo'    ? '0' : jugadorEspecial === 'rival' ? '15' : '',
-                    rival: jugadorEspecial === 'rival' ? '0' : jugadorEspecial === 'yo'   ? '15' : '',
-                  })).map((s, i) => (
-                    <ScoreRow
-                      key={i}
-                      index={i}
-                      myScore={s.my}
-                      rivalScore={s.rival}
-                      readonly
-                    />
-                  ))
-                : scores.map((s, i) => (
-                    <ScoreRow
-                      key={i}
-                      index={i}
-                      myScore={s.my}
-                      rivalScore={s.rival}
-                      onChangeMyScore={v => updateScore(i, 'my', v)}
-                      onChangeRivalScore={v => updateScore(i, 'rival', v)}
-                    />
-                  ))
-              }
+          {/* Normal / Abandono: set-by-set input */}
+          {mostrarFormulario && tipoResultado !== 'walkover' && (
+            <>
+              {/* Match result summary if sets played */}
+              {confirmedSets.length > 0 && (
+                <View style={styles.matchResultRow}>
+                  <Text style={styles.matchResultText}>{myWins} - {rivalWins}</Text>
+                </View>
+              )}
+
+              {/* Confirmed sets (read-only) */}
+              {confirmedSets.map((s, i) => (
+                <ScoreRow
+                  key={i}
+                  index={i}
+                  myScore={s.my}
+                  rivalScore={s.rival}
+                  readonly
+                />
+              ))}
+
+              {/* Current set input (only if match not done yet) */}
+              {!matchDone && (
+                <>
+                  <View style={styles.playersBlock}>
+                    <View style={styles.playerCol}>
+                      <Image source={fuenteImagen(yo.avatar)} style={styles.avatar} />
+                      <Text style={styles.playerName} numberOfLines={1}>{yo.name.split(' ')[0]}</Text>
+                      <Text style={styles.playerPts}>{yo.pts} pts</Text>
+                    </View>
+                    <View style={styles.scoresCol}>
+                      <ScoreRow
+                        index={confirmedSets.length}
+                        myScore={curMy}
+                        rivalScore={curRival}
+                        onChangeMyScore={setCurMy}
+                        onChangeRivalScore={setCurRival}
+                      />
+                    </View>
+                    <View style={styles.playerCol}>
+                      <Image source={fuenteImagen(rival.avatar)} style={styles.avatar} />
+                      <Text style={styles.playerName} numberOfLines={1}>{rival.name.split(' ')[0]}</Text>
+                      <Text style={styles.playerPts}>{rival.pts} pts</Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.confirmSetBtn, !canConfirmSet && styles.confirmBtnDisabled]}
+                    onPress={handleConfirmSet}
+                    disabled={!canConfirmSet}
+                  >
+                    <Text style={[styles.confirmSetBtnText, !canConfirmSet && styles.confirmBtnTextDisabled]}>
+                      Confirmar Set {currentSetNum}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+
               {tipoResultado === 'abandono' && (
                 <Text style={styles.abandonoNote}>
                   Los sets vacíos se registran 15-0 a favor del jugador que continuó.
                 </Text>
               )}
-            </View>
+            </>
+          )}
 
-            <View style={styles.playerCol}>
-              <Image source={fuenteImagen(rival.avatar)} style={styles.avatar} />
-              <Text style={styles.playerName} numberOfLines={1}>{rival.name.split(' ')[0]}</Text>
-              <Text style={styles.playerPts}>{rival.pts} pts</Text>
-            </View>
-          </View>
+          {/* Rating + Comment: shown after matchDone in normal mode; always for WO/abandono */}
+          {mostrarFormulario && (matchDone || tipoResultado !== 'normal') && (
+            <>
+              <Text style={styles.sectionTitle}>
+                ¿Qué tal fue jugar con {rival.name.split(' ')[0]}?
+              </Text>
+              <StarRating rating={rating} onRate={setRating} />
 
-          {/* Rating */}
-          <Text style={styles.sectionTitle}>
-            ¿Qué tal fue jugar con {rival.name.split(' ')[0]}?
-          </Text>
-          <StarRating rating={rating} onRate={setRating} />
+              <Text style={styles.sectionTitle}>Deja un comentario de tu rival</Text>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="50 palabras como máximo."
+                placeholderTextColor={colors.textSecondary}
+                multiline
+                numberOfLines={4}
+                value={comment}
+                onChangeText={setComment}
+                textAlignVertical="top"
+              />
 
-          {/* Comment */}
-          <Text style={styles.sectionTitle}>Deja un comentario de tu rival</Text>
-          <TextInput
-            style={styles.commentInput}
-            placeholder="50 palabras como máximo."
-            placeholderTextColor={colors.textSecondary}
-            multiline
-            numberOfLines={4}
-            value={comment}
-            onChangeText={setComment}
-            textAlignVertical="top"
-          />
-
-          {/* Photo upload placeholder */}
-          <Text style={styles.sectionTitle}>Sube fotos del encuentro</Text>
-          <View style={styles.photoBox}>
-            <Ionicons name="image-outline" size={32} color={colors.textSecondary} />
-            <Text style={styles.photoBoxText}>Toca para subir fotos</Text>
-          </View>
+              <Text style={styles.sectionTitle}>Sube fotos del encuentro</Text>
+              <View style={styles.photoBox}>
+                <Ionicons name="image-outline" size={32} color={colors.textSecondary} />
+                <Text style={styles.photoBoxText}>Toca para subir fotos</Text>
+              </View>
+            </>
+          )}
 
           <View style={{ height: 100 }} />
         </ScrollView>
 
-        <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={[styles.confirmBtn, !canConfirm && styles.confirmBtnDisabled]}
-            disabled={!canConfirm || publicando}
-            onPress={handlePublicar}
-          >
-            <Ionicons
-              name="stats-chart-outline"
-              size={20}
-              color={canConfirm ? colors.primary : colors.textSecondary}
-            />
-            <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
-              {publicando ? 'Publicando...' : 'Confirmar resultados'}
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Publish button: only shown when mostrarFormulario */}
+        {mostrarFormulario && (
+          <View style={styles.bottomBar}>
+            <TouchableOpacity
+              style={[styles.confirmBtn, !canPublish && styles.confirmBtnDisabled]}
+              disabled={!canPublish || publicando}
+              onPress={handlePublicar}
+            >
+              <Ionicons
+                name="stats-chart-outline"
+                size={20}
+                color={canPublish ? colors.primary : colors.textSecondary}
+              />
+              <Text style={[styles.confirmBtnText, !canPublish && styles.confirmBtnTextDisabled]}>
+                {publicando ? 'Publicando...' : 'Confirmar resultados'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -399,7 +521,7 @@ const styles = StyleSheet.create({
   playersBlock: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 28,
+    marginBottom: 16,
     gap: 8,
   },
   playerCol: { alignItems: 'center', width: 72 },
@@ -424,9 +546,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.textPrimary,
   },
-  scoreInputReadonly: {
-    opacity: 0.6,
-  },
+  scoreInputReadonly: { opacity: 0.6 },
   scoreSeparator: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary },
 
   tipoToggle: {
@@ -472,7 +592,54 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginTop: 4,
+    marginBottom: 16,
     lineHeight: 17,
+  },
+
+  waitingContainer: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  waitingTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  waitingSubtitle: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  matchResultRow: {
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  matchResultText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    letterSpacing: 2,
+  },
+
+  confirmSetBtn: {
+    backgroundColor: colors.accent,
+    borderRadius: 20,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 4,
+  },
+  confirmSetBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.primary,
   },
 
   sectionTitle: {
@@ -480,6 +647,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.textPrimary,
     marginBottom: 12,
+    marginTop: 8,
   },
 
   starsRow: {
@@ -538,7 +706,24 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     textAlign: 'center',
     lineHeight: 28,
-    marginBottom: 32,
+    marginBottom: 20,
+  },
+  setsWonRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  setsWonNum: {
+    fontSize: 56,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  setsWonSep: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: colors.textSecondary,
+    marginHorizontal: 8,
   },
   confirmScoreCard: {
     backgroundColor: colors.surface,

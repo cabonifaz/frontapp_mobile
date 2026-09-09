@@ -233,27 +233,46 @@ export function DetallePartidoScreen({ navigation, route }) {
         </View>
 
         {/* Resultado final (solo cuando está Finalizado) */}
-        {esFinalizado && (
-          <>
-            <Text style={styles.sectionTitle}>Resultado final</Text>
-            <View style={[styles.detailCard, { flexDirection: 'column', gap: 10 }]}>
-              {Array.from({ length: item.num_sets ?? 5 }, (_, i) => i + 1).map(n => {
-                const local = item[`set${n}_puntos_local`];
-                const visit = item[`set${n}_puntos_visitante`];
-                if (local == null && visit == null) return null;
-                return (
-                  <View key={n} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={styles.detailSub}>Set {n}</Text>
-                    <Text style={styles.detailMain}>{local ?? 0}  –  {visit ?? 0}</Text>
+        {esFinalizado && (() => {
+          const numSetsPartido = item.num_sets ?? 5;
+          const setsData = Array.from({ length: numSetsPartido }, (_, i) => {
+            const local = item[`set${i + 1}_puntos_local`];
+            const visit = item[`set${i + 1}_puntos_visitante`];
+            if (local == null && visit == null) return null;
+            return { n: i + 1, local: local ?? 0, visit: visit ?? 0 };
+          }).filter(Boolean);
+
+          // yo = local if esMiCreacion, yo = visitante otherwise
+          const yoSets   = setsData.filter(s => esMiCreacion ? s.local > s.visit : s.visit > s.local).length;
+          const rivalSets = setsData.filter(s => esMiCreacion ? s.visit > s.local : s.local > s.visit).length;
+
+          return (
+            <>
+              <Text style={styles.sectionTitle}>Resultado final</Text>
+
+              {/* Big sets-won display */}
+              <View style={styles.resultadoPrimario}>
+                <Text style={styles.resultadoNum}>{yoSets}</Text>
+                <Text style={styles.resultadoSep}> - </Text>
+                <Text style={styles.resultadoNum}>{rivalSets}</Text>
+              </View>
+
+              {/* Individual sets detail card */}
+              <View style={[styles.detailCard, { flexDirection: 'column', gap: 10 }]}>
+                {setsData.length > 0 ? setsData.map(s => (
+                  <View key={s.n} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.detailSub}>Set {s.n}</Text>
+                    <Text style={styles.detailMain}>
+                      {esMiCreacion ? s.local : s.visit}  –  {esMiCreacion ? s.visit : s.local}
+                    </Text>
                   </View>
-                );
-              })}
-              {Array.from({ length: item.num_sets ?? 5 }, (_, i) => i + 1).every(n => item[`set${n}_puntos_local`] == null) && (
-                <Text style={[styles.detailSub, { textAlign: 'center' }]}>Sin sets registrados</Text>
-              )}
-            </View>
-          </>
-        )}
+                )) : (
+                  <Text style={[styles.detailSub, { textAlign: 'center' }]}>Sin sets registrados</Text>
+                )}
+              </View>
+            </>
+          );
+        })()}
 
         {!esFinalizado && !esBuscando && (
           <Text style={styles.mandatoryNote}>
@@ -287,7 +306,7 @@ export function DetallePartidoScreen({ navigation, route }) {
           <TouchableOpacity
             style={styles.resultadosBtn}
             onPress={() => navigation.navigate('ColocarResultados', {
-              partido: { ...item, ...partido, id_partido: partido.id, yo, rival },
+              partido: { ...item, ...partido, id_partido: partido.id, yo, rival, esCreador: esMiCreacion },
             })}
           >
             <Ionicons name="trophy-outline" size={20} color={colors.primary} />
@@ -410,4 +429,23 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   resultadosBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+
+  resultadoPrimario: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    width: '100%',
+  },
+  resultadoNum: {
+    fontSize: 56,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  resultadoSep: {
+    fontSize: 40,
+    fontWeight: 'bold',
+    color: colors.textSecondary,
+    marginHorizontal: 8,
+  },
 });
