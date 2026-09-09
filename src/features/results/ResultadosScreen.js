@@ -89,15 +89,13 @@ function MatchCard({ match, onPress }) {
                 <Text style={styles.scoreNum}>{l ?? '-'}</Text>
               </View>
             ))}
+            {sets.length > 0 && (
+              <View style={styles.setsWonBox}>
+                <Text style={styles.setsWonNum}>{localWins}</Text>
+              </View>
+            )}
           </View>
         </View>
-
-        {/* Score central entre jugadores */}
-        {sets.length > 0 && (
-          <View style={styles.centerScoreRow}>
-            <Text style={styles.centerScoreText}>{localWins}  –  {visitWins}</Text>
-          </View>
-        )}
 
         {/* Fila jugador visitante */}
         <View style={styles.playerRow}>
@@ -109,6 +107,11 @@ function MatchCard({ match, onPress }) {
                 <Text style={styles.scoreNum}>{v ?? '-'}</Text>
               </View>
             ))}
+            {sets.length > 0 && (
+              <View style={styles.setsWonBox}>
+                <Text style={styles.setsWonNum}>{visitWins}</Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
@@ -323,15 +326,16 @@ const styles = StyleSheet.create({
     fontSize: 12, fontWeight: '700', color: colors.textPrimary,
   },
 
-  centerScoreRow: {
+  setsWonBox: {
+    width: 26, height: 26,
+    borderRadius: 6,
+    backgroundColor: colors.accent,
     alignItems: 'center',
-    marginVertical: 3,
+    justifyContent: 'center',
+    marginLeft: 4,
   },
-  centerScoreText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.textSecondary,
-    letterSpacing: 1,
+  setsWonNum: {
+    fontSize: 12, fontWeight: '800', color: colors.primary,
   },
 
   emptyState: { alignItems: 'center', marginTop: 60, gap: 12 },
