@@ -79,11 +79,6 @@ function MatchCard({ match, onPress }) {
 
       {/* Contenido del partido */}
       <View style={styles.matchContent}>
-        {/* Sets-won summary */}
-        {sets.length > 0 && (
-          <Text style={styles.setsWonLabel}>{localWins} - {visitWins}</Text>
-        )}
-
         {/* Fila jugador local */}
         <View style={styles.playerRow}>
           <Image source={getAvatarSource(match.foto_local)} style={styles.playerAvatar} />
@@ -96,6 +91,13 @@ function MatchCard({ match, onPress }) {
             ))}
           </View>
         </View>
+
+        {/* Score central entre jugadores */}
+        {sets.length > 0 && (
+          <View style={styles.centerScoreRow}>
+            <Text style={styles.centerScoreText}>{localWins}  –  {visitWins}</Text>
+          </View>
+        )}
 
         {/* Fila jugador visitante */}
         <View style={styles.playerRow}>
@@ -321,11 +323,15 @@ const styles = StyleSheet.create({
     fontSize: 12, fontWeight: '700', color: colors.textPrimary,
   },
 
-  setsWonLabel: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-    marginBottom: 4,
+  centerScoreRow: {
+    alignItems: 'center',
+    marginVertical: 3,
+  },
+  centerScoreText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    letterSpacing: 1,
   },
 
   emptyState: { alignItems: 'center', marginTop: 60, gap: 12 },
