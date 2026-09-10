@@ -258,7 +258,7 @@ export function DetallePartidoScreen({ navigation, route }) {
               </View>
 
               {/* Individual sets detail card */}
-              <View style={[styles.detailCard, { flexDirection: 'column', gap: 10 }]}>
+              <View style={[styles.detailCard, { flexDirection: 'column', gap: 10, alignItems: 'stretch' }]}>
                 {setsData.length > 0 ? setsData.map(s => (
                   <View key={s.n} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={styles.detailSub}>Set {s.n}</Text>
