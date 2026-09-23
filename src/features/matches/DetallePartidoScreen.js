@@ -19,6 +19,7 @@ export function DetallePartidoScreen({ navigation, route }) {
   const [cargando, setCargando] = useState(false);
   const [cancelando, setCancelando] = useState(false);
   const [usuarioActualId, setUsuarioActualId] = useState(null);
+  const [respondiendo, setRespondiendo] = useState(false); // NUEVO
 
   const partidoId = itemInicial.id_partido ?? itemInicial.id_encuentro ?? itemInicial.id;
 
@@ -76,7 +77,6 @@ export function DetallePartidoScreen({ navigation, route }) {
       ? Number(usuarioActualId) !== Number(idParticipante)
       : false;
 
-  // Datos "en bruto" de cada rol del partido
   const datosCreador = {
     id:      idCreador,
     name:    item.creador ?? item.nombre_yo ?? 'Creador',
@@ -85,17 +85,14 @@ export function DetallePartidoScreen({ navigation, route }) {
     avatar:  item.foto_perfil_url_creador ?? item.foto_yo ?? null,
   };
 
-  // 🟢 CORREGIDO: id y avatar apuntaban a columnas equivocadas del SP actualizado
   const datosParticipante = {
-    id:      item.id_usuario_rival ?? item.id_rival ?? item.id_usuario, // id_usuario queda como fallback legacy
+    id:      item.id_usuario_rival ?? item.id_rival ?? item.id_usuario,
     name:    item.participante ?? item.rival ?? item.nombre_rival ?? 'Participante',
     ranking: item.ranking_rival ?? '--',
     pts:     item.puntos_rival ?? 0,
-    // foto_perfil_url en el SP corresponde al CREADOR, no al rival: usar el alias correcto
     avatar:  item.foto_perfil_url_rival ?? item.foto_perfil_url_rival_alt ?? item.foto_rival ?? null,
   };
 
-  // "yo" y "rival" dependen de quién está logueado, no de un orden fijo
   const yo    = esMiCreacion ? datosCreador : datosParticipante;
   const rival = esMiCreacion ? datosParticipante : datosCreador;
 
@@ -111,6 +108,12 @@ export function DetallePartidoScreen({ navigation, route }) {
   const estadoPartido = Number(item.estado_partido ?? 0);
   const esBuscando    = estadoPartido === 28; // BUSCANDO: sin rival confirmado
   const esFinalizado  = estadoPartido === 31 || estadoPartido === 32; // 31=Finalizado, 32=Cancelado
+
+  // NUEVO: reto directo a un amigo esperando respuesta
+  const esPendiente = estadoPartido === 29;
+  const soyCreador  = idCreador != null && Number(usuarioActualId) === Number(idCreador);
+  const soyInvitado = esPendiente && !soyCreador;
+  const rivalNombre = String(rival.name ?? '').split(' ')[0];
 
   async function handleCancelar() {
     Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar este partido?', [
@@ -130,6 +133,35 @@ export function DetallePartidoScreen({ navigation, route }) {
         },
       },
     ]);
+  }
+
+  // NUEVO: el amigo invitado acepta o rechaza el reto
+  async function handleResponderReto(aceptar) {
+    const ejecutar = async () => {
+      try {
+        setRespondiendo(true);
+        await partidoService.responderReto(partido.id, aceptar);
+        if (aceptar) {
+          setItem(prev => ({ ...prev, estado_partido: 30 })); // Confirmado
+          Alert.alert('Reto aceptado', `El partido con ${rivalNombre} está confirmado. Coordinen los detalles por el chat.`);
+        } else {
+          navigation.goBack();
+        }
+      } catch (e) {
+        Alert.alert('Error', e.message ?? 'No se pudo responder el reto.');
+      } finally {
+        setRespondiendo(false);
+      }
+    };
+
+    if (aceptar) {
+      ejecutar();
+    } else {
+      Alert.alert('Rechazar reto', '¿Seguro que quieres rechazar este reto?', [
+        { text: 'No', style: 'cancel' },
+        { text: 'Sí, rechazar', style: 'destructive', onPress: ejecutar },
+      ]);
+    }
   }
 
   if (usuarioActualId === null) {
@@ -242,22 +274,19 @@ export function DetallePartidoScreen({ navigation, route }) {
             return { n: i + 1, local: local ?? 0, visit: visit ?? 0 };
           }).filter(Boolean);
 
-          // yo = local if esMiCreacion, yo = visitante otherwise
-          const yoSets   = setsData.filter(s => esMiCreacion ? s.local > s.visit : s.visit > s.local).length;
+          const yoSets    = setsData.filter(s => esMiCreacion ? s.local > s.visit : s.visit > s.local).length;
           const rivalSets = setsData.filter(s => esMiCreacion ? s.visit > s.local : s.local > s.visit).length;
 
           return (
             <>
               <Text style={styles.sectionTitle}>Resultado final</Text>
 
-              {/* Big sets-won display */}
               <View style={styles.resultadoPrimario}>
                 <Text style={styles.resultadoNum}>{yoSets}</Text>
                 <Text style={styles.resultadoSep}> - </Text>
                 <Text style={styles.resultadoNum}>{rivalSets}</Text>
               </View>
 
-              {/* Individual sets detail card */}
               <View style={[styles.detailCard, { flexDirection: 'column', gap: 10, alignItems: 'stretch' }]}>
                 {setsData.length > 0 ? setsData.map(s => (
                   <View key={s.n} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -274,13 +303,46 @@ export function DetallePartidoScreen({ navigation, route }) {
           );
         })()}
 
-        {!esFinalizado && !esBuscando && (
+        {!esFinalizado && !esBuscando && !esPendiente && (
           <Text style={styles.mandatoryNote}>
             Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.
           </Text>
         )}
 
-        {!esBuscando && (
+        {/* NUEVO: reto directo pendiente */}
+        {esPendiente && (
+          <View style={styles.pendienteCard}>
+            <Ionicons name="hourglass-outline" size={20} color={colors.textPrimary} />
+            <Text style={styles.pendienteText}>
+              {soyInvitado
+                ? `${rivalNombre} te retó a un partido amistoso.`
+                : `Esperando que ${rivalNombre} acepte tu reto.`}
+            </Text>
+          </View>
+        )}
+
+        {soyInvitado && (
+          <>
+            <TouchableOpacity
+              style={[styles.resultadosBtn, { marginBottom: 12 }]}
+              onPress={() => handleResponderReto(true)}
+              disabled={respondiendo}
+            >
+              <Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />
+              <Text style={styles.resultadosBtnText}>{respondiendo ? 'Enviando...' : 'Aceptar reto'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cancelBtn}
+              onPress={() => handleResponderReto(false)}
+              disabled={respondiendo}
+            >
+              <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
+              <Text style={styles.cancelBtnText}>Rechazar reto</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {!esBuscando && !esPendiente && (
           <TouchableOpacity
             style={styles.chatBtn}
             onPress={() => {
@@ -295,14 +357,16 @@ export function DetallePartidoScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        {!esFinalizado && (
+        {!esFinalizado && (!esPendiente || soyCreador) && (
           <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
             <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
-            <Text style={styles.cancelBtnText}>{cancelando ? 'Cancelando...' : 'Cancelar partido'}</Text>
+            <Text style={styles.cancelBtnText}>
+              {cancelando ? 'Cancelando...' : esPendiente ? 'Cancelar reto' : 'Cancelar partido'}
+            </Text>
           </TouchableOpacity>
         )}
 
-        {!esFinalizado && !esBuscando && (
+        {!esFinalizado && !esBuscando && !esPendiente && (
           <TouchableOpacity
             style={styles.resultadosBtn}
             onPress={() => navigation.navigate('ColocarResultados', {
@@ -405,6 +469,15 @@ const styles = StyleSheet.create({
     lineHeight: 19, marginBottom: 24,
     alignSelf: 'flex-start',
   },
+
+  // NUEVO
+  pendienteCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.accentLight, borderRadius: 14,
+    padding: 16, marginTop: 8, marginBottom: 16, width: '100%',
+  },
+  pendienteText: { flex: 1, fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+
   chatBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8,
@@ -437,11 +510,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     width: '100%',
   },
-  resultadoNum: {
-    fontSize: 56,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
+  resultadoNum: { fontSize: 56, fontWeight: 'bold', color: colors.textPrimary },
   resultadoSep: {
     fontSize: 40,
     fontWeight: 'bold',

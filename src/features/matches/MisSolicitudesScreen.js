@@ -16,7 +16,7 @@ const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'O
 
 function formatFecha(isoString) {
   if (!isoString) return '--';
-  const cleanIso = isoString.split('T')[0];
+  const cleanIso = String(isoString).split('T')[0];
   const parts = cleanIso.split('-');
   if (parts.length === 3) {
     const year  = parseInt(parts[0], 10);
@@ -32,16 +32,19 @@ function formatFecha(isoString) {
   return `${DIAS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}, ${d.getFullYear()}`;
 }
 
+// HH:mm (el backend devuelve TIME como '10:00:00')
+function formatHora(hora) {
+  if (!hora) return '--';
+  return String(hora).substring(0, 5);
+}
+
 function SuccessScreen({ retador, onPress }) {
   const firstName = (retador.nombre ?? retador.fullName ?? 'el retador').split(' ')[0];
   return (
     <View style={styles.successContainer}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.vsCircle}>
-          <Image
-            source={getAvatarSource(retador.foto_perfil_url)}
-            style={styles.vsAvatar}
-          />
+          <Image source={getAvatarSource(retador.foto_perfil_url)} style={styles.vsAvatar} />
         </View>
         <Text style={styles.successTitle}>
           Has aceptado a{'\n'}{firstName} como retador
@@ -63,10 +66,7 @@ function ClaseSuccessScreen({ alumno, onPress }) {
     <View style={styles.successContainer}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.vsCircle}>
-          <Image
-            source={getAvatarSource(alumno.foto_alumno ?? alumno.foto_perfil_url)}
-            style={styles.vsAvatar}
-          />
+          <Image source={getAvatarSource(alumno.foto_alumno ?? alumno.foto_perfil_url)} style={styles.vsAvatar} />
         </View>
         <Text style={styles.successTitle}>
           ¡Genial!{'\n'}Has aceptado la clase de {firstName}
@@ -82,6 +82,32 @@ function ClaseSuccessScreen({ alumno, onPress }) {
   );
 }
 
+// NUEVO: confirmación al aceptar un reto de amigo
+function RetoAceptadoScreen({ reto, onVerPartido, onVolver }) {
+  const firstName = (reto.nombre_creador ?? 'tu amigo').split(' ')[0];
+  return (
+    <View style={styles.successContainer}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={styles.vsCircle}>
+          <Image source={getAvatarSource(reto.foto_creador)} style={styles.vsAvatar} />
+        </View>
+        <Text style={styles.successTitle}>
+          Aceptaste el reto{'\n'}de {firstName}
+        </Text>
+        <Text style={styles.successSubtitle}>
+          El partido quedó confirmado. Coordinen los detalles por el chat del partido.
+        </Text>
+      </View>
+      <TouchableOpacity style={[styles.accentBtn, { marginBottom: 12 }]} onPress={onVerPartido}>
+        <Text style={styles.accentBtnText}>Ver partido</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.outlineBtn} onPress={onVolver}>
+        <Text style={styles.outlineBtnText}>Ir a mis partidos</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export function MisSolicitudesScreen({ navigation, route }) {
   const tipo = route?.params?.tipo ?? 'partidos'; // 'partidos' | 'clases'
   const [datos, setDatos] = useState(null);
@@ -92,11 +118,17 @@ export function MisSolicitudesScreen({ navigation, route }) {
   const [claseAceptada, setClaseAceptada] = useState(null);
   const [accionClaseLoading, setAccionClaseLoading] = useState(null);
 
+  // NUEVO: retos directos de amigos
+  const [retosAmigos, setRetosAmigos] = useState([]);
+  const [accionRetoLoading, setAccionRetoLoading] = useState(null);
+  const [retoAceptado, setRetoAceptado] = useState(null);
+
   const cargar = useCallback(async () => {
     try {
-      const [res, claseRes] = await Promise.allSettled([
+      const [res, claseRes, retosRes] = await Promise.allSettled([
         solicitudService.misSolicitudes(),
         claseService.solicitudesProfesor(),
+        partidoService.retosRecibidos(),
       ]);
       if (res.status === 'fulfilled') setDatos(res.value);
       else setDatos(null);
@@ -105,6 +137,9 @@ export function MisSolicitudesScreen({ navigation, route }) {
       } else {
         setSolicitudesClase([]);
       }
+      setRetosAmigos(
+        retosRes.status === 'fulfilled' && Array.isArray(retosRes.value) ? retosRes.value : []
+      );
     } catch {
       setDatos(null);
     } finally {
@@ -119,11 +154,8 @@ export function MisSolicitudesScreen({ navigation, route }) {
     }, [cargar])
   );
 
-  // Soportar lista de partidos (partidos) o un único partido por retrocompatibilidad
   const partidos = datos?.partidos ?? (datos?.partido ? [datos.partido] : []);
   const solicitudes = datos?.solicitudes ?? datos?.postulantes ?? [];
-  // Solo mostrar la sección de partidos si el SP la incluye en la respuesta
-  const haySeccionPartidos = datos != null && (datos.partidos !== undefined || datos.partido !== undefined);
 
   const fechas = solicitudes.length > 0
     ? [...new Set(solicitudes.map(s => s.fecha ?? s.date).filter(Boolean))]
@@ -166,6 +198,34 @@ export function MisSolicitudesScreen({ navigation, route }) {
       Alert.alert('Error', e.message ?? 'No se pudo rechazar al retador.');
     } finally {
       setAccionLoading(null);
+    }
+  }
+
+  // NUEVO: aceptar / rechazar reto de amigo
+  async function handleResponderReto(reto, aceptar) {
+    const idPartido = reto.id_partido;
+    const nombre = (reto.nombre_creador ?? 'tu amigo').split(' ')[0];
+
+    const ejecutar = async () => {
+      try {
+        setAccionRetoLoading(idPartido);
+        await partidoService.responderReto(idPartido, aceptar);
+        setRetosAmigos(prev => prev.filter(r => r.id_partido !== idPartido));
+        if (aceptar) setRetoAceptado(reto);
+      } catch (e) {
+        Alert.alert('Error', e.message ?? 'No se pudo responder el reto.');
+      } finally {
+        setAccionRetoLoading(null);
+      }
+    };
+
+    if (aceptar) {
+      ejecutar();
+    } else {
+      Alert.alert('Rechazar reto', `¿Seguro que quieres rechazar el reto de ${nombre}?`, [
+        { text: 'No', style: 'cancel' },
+        { text: 'Sí, rechazar', style: 'destructive', onPress: ejecutar },
+      ]);
     }
   }
 
@@ -223,6 +283,18 @@ export function MisSolicitudesScreen({ navigation, route }) {
         },
       },
     ]);
+  }
+
+  if (retoAceptado) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <RetoAceptadoScreen
+          reto={retoAceptado}
+          onVerPartido={() => navigation.replace('DetallePartido', { partido: { id_partido: retoAceptado.id_partido } })}
+          onVolver={() => navigation.navigate('MainTabs', { screen: 'Partidos' })}
+        />
+      </SafeAreaView>
+    );
   }
 
   if (claseAceptada) {
@@ -284,95 +356,152 @@ export function MisSolicitudesScreen({ navigation, route }) {
           {/* ── Sección PARTIDOS ── */}
           {tipo === 'partidos' && (
             <>
-              {haySeccionPartidos && (
-                partidos.length > 0 ? (
-                  partidos.map((p, idx) => {
-                    const pId = p.id_partido ?? p.id ?? idx;
-                    return (
-                      <View key={pId} style={styles.partidoCard}>
-                        <Image
-                          source={{ uri: p.foto_cancha_url ?? p.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
-                          style={styles.partidoImg}
-                        />
-                        <View style={styles.partidoInfo}>
-                          <Text style={styles.partidoCancha}>{p.nombre_cancha ?? p.cancha ?? 'Cancha'}</Text>
-                          <View style={styles.metaRow}>
-                            <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                            <Text style={styles.metaText}> {formatFecha(p.fecha ?? p.fecha_partido)}</Text>
-                            <Text style={{ width: 10 }} />
-                            <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                            <Text style={styles.metaText}> {p.hora ?? p.hora_partido ?? '--'}</Text>
-                          </View>
+              {/* ── 1. RETOS DE AMIGOS ── */}
+              <Text style={[styles.sectionTitle, { marginTop: 0 }]}>Retos de amigos</Text>
+              <Text style={styles.sectionHint}>Amigos que te retaron directamente a un amistoso.</Text>
+              {retosAmigos.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyText}>No tienes retos de amigos pendientes</Text>
+                </View>
+              ) : (
+                retosAmigos.map(r => {
+                  const cargandoReto = accionRetoLoading === r.id_partido;
+                  return (
+                    <View key={`reto-${r.id_partido}`} style={[styles.retadorCard, styles.retoAmigoCard]}>
+                      <Image source={getAvatarSource(r.foto_creador)} style={styles.retadorAvatar} />
+                      <View style={styles.retadorInfo}>
+                        <View style={styles.nameRow}>
+                          <Text style={styles.retadorName} numberOfLines={1}>{r.nombre_creador ?? 'Amigo'}</Text>
+                          <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
+                          <Text style={styles.retadorRanking}> {r.ranking_creador ?? '--'}</Text>
                         </View>
-                        <TouchableOpacity onPress={() => handleCancelarPartido(p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                          <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
+                        <Text style={styles.retadorClub}>
+                          {r.nombre_cancha ?? ''}{r.num_sets ? `  ·  ${Number(r.num_sets) === 3 ? '2 de 3' : '3 de 5'}` : ''}
+                        </Text>
+                        <View style={styles.metaRow}>
+                          <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                          <Text style={styles.metaText}> {formatFecha(r.fecha)}</Text>
+                          <Text style={{ width: 10 }} />
+                          <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                          <Text style={styles.metaText}> {formatHora(r.hora)}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.accionesCol}>
+                        <TouchableOpacity
+                          style={[styles.aceptarBtn, cargandoReto && { opacity: 0.5 }]}
+                          onPress={() => handleResponderReto(r, true)}
+                          disabled={cargandoReto}
+                        >
+                          {cargandoReto
+                            ? <ActivityIndicator size="small" color={colors.textPrimary} />
+                            : <Text style={styles.aceptarText}>Aceptar</Text>}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.rechazarBtn, cargandoReto && { opacity: 0.5 }]}
+                          onPress={() => handleResponderReto(r, false)}
+                          disabled={cargandoReto}
+                        >
+                          <Text style={styles.rechazarText}>Rechazar</Text>
                         </TouchableOpacity>
                       </View>
-                    );
-                  })
-                ) : (
-                  <View style={styles.emptyCard}>
-                    <Text style={styles.emptyText}>No tienes partidos activos buscando oponente</Text>
-                  </View>
-                )
+                    </View>
+                  );
+                })
               )}
 
-              {solicitudesFiltradas.length > 0 && (
-                <Text style={styles.sectionTitle}>Jugadores retándote</Text>
-              )}
-              {solicitudesFiltradas.map((s, i) => {
-                const idSolicitud = s.id_solicitud ?? s.id ?? String(i);
-                const cargando = accionLoading === idSolicitud;
-                return (
-                  <View key={idSolicitud} style={styles.retadorCard}>
-                    <Image
-                      source={getAvatarSource(s.foto_perfil_url)}
-                      style={styles.retadorAvatar}
-                    />
-                    <View style={styles.retadorInfo}>
-                      <View style={styles.nameRow}>
-                        <Text style={styles.retadorName}>
-                          {s.apellidos ? `${s.nombre ?? ''} ${s.apellidos}`.trim() : (s.nombre ?? s.name ?? 'Jugador')}
-                        </Text>
-                        <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
-                        <Text style={styles.retadorRanking}> {s.ranking ?? '--'}</Text>
-                      </View>
-                      <Text style={styles.retadorClub}>{s.nombre_cancha ?? s.club ?? ''}</Text>
-                      <View style={styles.metaRow}>
-                        <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                        <Text style={styles.metaText}> {formatFecha(s.fecha ?? s.date)}</Text>
-                        <Text style={{ width: 10 }} />
-                        <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                        <Text style={styles.metaText}> {s.hora ?? s.time ?? '--'}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.accionesCol}>
-                      <TouchableOpacity
-                        style={[styles.aceptarBtn, cargando && { opacity: 0.5 }]}
-                        onPress={() => handleAceptar(s)}
-                        disabled={cargando}
-                      >
-                        {cargando
-                          ? <ActivityIndicator size="small" color={colors.textPrimary} />
-                          : <Text style={styles.aceptarText}>Aceptar</Text>
-                        }
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.rechazarBtn, cargando && { opacity: 0.5 }]}
-                        onPress={() => handleRechazar(s)}
-                        disabled={cargando}
-                      >
-                        <Text style={styles.rechazarText}>Rechazar</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })}
-
-              {!loading && solicitudesFiltradas.length === 0 && (
+              {/* ── 2. MIS CONVOCATORIAS ── */}
+              <Text style={styles.sectionTitle}>Mis convocatorias</Text>
+              <Text style={styles.sectionHint}>Partidos que creaste abiertos a cualquier jugador.</Text>
+              {partidos.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyText}>No hay jugadores retándote aún</Text>
+                  <Text style={styles.emptyText}>No tienes convocatorias abiertas</Text>
                 </View>
+              ) : (
+                partidos.map((p, idx) => {
+                  const pId = p.id_partido ?? p.id ?? idx;
+                  return (
+                    <View key={pId} style={styles.partidoCard}>
+                      <Image
+                        source={{ uri: p.foto_cancha_url ?? p.uri ?? 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=200&q=80' }}
+                        style={styles.partidoImg}
+                      />
+                      <View style={styles.partidoInfo}>
+                        <Text style={styles.partidoCancha}>{p.nombre_cancha ?? p.cancha ?? 'Cancha'}</Text>
+                        <View style={styles.metaRow}>
+                          <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                          <Text style={styles.metaText}> {formatFecha(p.fecha ?? p.fecha_partido)}</Text>
+                          <Text style={{ width: 10 }} />
+                          <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                          <Text style={styles.metaText}> {formatHora(p.hora ?? p.hora_partido)}</Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity onPress={() => handleCancelarPartido(p)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                        <Ionicons name="close-circle-outline" size={26} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })
+              )}
+
+              {/* ── 3. JUGADORES RETÁNDOTE (postulantes a mis convocatorias) ── */}
+              <Text style={styles.sectionTitle}>Jugadores retándote</Text>
+              <Text style={styles.sectionHint}>Jugadores que se postularon a tus convocatorias.</Text>
+              {solicitudesFiltradas.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyText}>
+                    {partidos.length === 0 ? 'Crea una convocatoria para recibir retadores' : 'Nadie se ha postulado todavía'}
+                  </Text>
+                </View>
+              ) : (
+                solicitudesFiltradas.map((s, i) => {
+                  const idSolicitud = s.id_solicitud ?? s.id ?? String(i);
+                  const cargando = accionLoading === idSolicitud;
+                  return (
+                    <View key={`${idSolicitud}-${s.id_usuario ?? i}`} style={styles.retadorCard}>
+                      <Image source={getAvatarSource(s.foto_perfil_url)} style={styles.retadorAvatar} />
+                      <View style={styles.retadorInfo}>
+                        <View style={styles.nameRow}>
+                          <Text style={styles.retadorName} numberOfLines={1}>
+                            {s.apellidos ? `${s.nombre ?? ''} ${s.apellidos}`.trim() : (s.nombre ?? s.name ?? 'Jugador')}
+                          </Text>
+                          {s.ranking != null && (
+                            <>
+                              <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
+                              <Text style={styles.retadorRanking}> {s.ranking}</Text>
+                            </>
+                          )}
+                        </View>
+                        <Text style={styles.retadorClub}>{s.nombre_cancha ?? s.club ?? ''}</Text>
+                        <View style={styles.metaRow}>
+                          <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                          <Text style={styles.metaText}> {formatFecha(s.fecha ?? s.date)}</Text>
+                          <Text style={{ width: 10 }} />
+                          <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                          <Text style={styles.metaText}> {formatHora(s.hora ?? s.time)}</Text>
+                        </View>
+                      </View>
+                      <View style={styles.accionesCol}>
+                        <TouchableOpacity
+                          style={[styles.aceptarBtn, cargando && { opacity: 0.5 }]}
+                          onPress={() => handleAceptar(s)}
+                          disabled={cargando}
+                        >
+                          {cargando
+                            ? <ActivityIndicator size="small" color={colors.textPrimary} />
+                            : <Text style={styles.aceptarText}>Aceptar</Text>
+                          }
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.rechazarBtn, cargando && { opacity: 0.5 }]}
+                          onPress={() => handleRechazar(s)}
+                          disabled={cargando}
+                        >
+                          <Text style={styles.rechazarText}>Rechazar</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
               )}
             </>
           )}
@@ -486,17 +615,19 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 14, color: colors.textSecondary },
 
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 12, marginTop: 12 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 2, marginTop: 20 },
+  sectionHint: { fontSize: 13, color: colors.textSecondary, marginBottom: 12 },
 
   retadorCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: colors.surface, borderRadius: 16,
     padding: 14, gap: 12, marginBottom: 12,
   },
+  retoAmigoCard: { backgroundColor: colors.accentLight }, // NUEVO: resalta los retos de amigos
   retadorAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#ccc' },
   retadorInfo: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
-  retadorName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  retadorName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, flexShrink: 1 },
   retadorRanking: { fontSize: 13, fontWeight: '600', color: colors.textPrimary },
   retadorClub: { fontSize: 12, color: colors.textSecondary, marginBottom: 4, fontStyle: 'italic' },
   metaRow: { flexDirection: 'row', alignItems: 'center' },
@@ -526,4 +657,9 @@ const styles = StyleSheet.create({
   successSubtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
   accentBtn: { backgroundColor: colors.accent, borderRadius: 30, paddingVertical: 18, alignItems: 'center' },
   accentBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  outlineBtn: {
+    borderWidth: 1.5, borderColor: colors.textPrimary,
+    borderRadius: 30, paddingVertical: 16, alignItems: 'center',
+  },
+  outlineBtnText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
 });

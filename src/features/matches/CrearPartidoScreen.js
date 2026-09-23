@@ -7,6 +7,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { maestroService } from '../../services/maestroService';
 import { partidoService } from '../../services/partidoService';
+import { amistadService } from '../../services/amistadService';
+import { getAvatarSource } from '../../utils/avatars';
 import { TIPOS_JUEGO, DEPORTE_DEFAULT } from '../../constants/maestro';
 
 const HORAS = [
@@ -40,11 +42,17 @@ const TIPO_JUEGO_MAP = {
   'Dobles':  TIPOS_JUEGO.DOBLES,
 };
 
+// NUEVO: modalidades del amistoso
+const MODALIDADES = [
+  { key: 'abierta', label: 'Convocatoria' },
+  { key: 'amigo',   label: 'Retar a amigo' },
+];
+
 const DAYS = getNextDays(14);
 
 function CanchaModal({ visible, onClose, onSelect, courts, loadingCanchas }) {
   const [search, setSearch] = useState('');
-  
+
   const filtered = courts.filter(c => {
     const nombreCancha = c.name ?? c.nombre ?? '';
     return nombreCancha.toLowerCase().includes(search.toLowerCase());
@@ -110,6 +118,86 @@ function CanchaModal({ visible, onClose, onSelect, courts, loadingCanchas }) {
   );
 }
 
+// NUEVO: selector de amigo para el reto directo
+function AmigoModal({ visible, onClose, onSelect, onIrRanking }) {
+  const [amigos, setAmigos] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (!visible) return;
+    setLoading(true);
+    setSearch('');
+    amistadService.listarAmigos()
+      .then(res => setAmigos(Array.isArray(res) ? res : []))
+      .catch(() => setAmigos([]))
+      .finally(() => setLoading(false));
+  }, [visible]);
+
+  const term = search.trim().toLowerCase();
+  const filtrados = term
+    ? amigos.filter(a => (a.nombre_completo ?? '').toLowerCase().includes(term))
+    : amigos;
+
+  return (
+    <Modal visible={visible} animationType="slide">
+      <SafeAreaView style={styles.modalSafe}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>¿A qué amigo quieres retar?</Text>
+          <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="close" size={24} color={colors.textPrimary} />
+          </TouchableOpacity>
+        </View>
+
+        {amigos.length > 0 && (
+          <View style={styles.searchBar}>
+            <Ionicons name="search" size={18} color={colors.textSecondary} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar amigo"
+              placeholderTextColor={colors.textSecondary}
+              value={search}
+              onChangeText={setSearch}
+              underlineColorAndroid="transparent"
+            />
+          </View>
+        )}
+
+        {loading ? (
+          <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
+        ) : amigos.length === 0 ? (
+          <View style={styles.amigosEmpty}>
+            <Ionicons name="people-outline" size={44} color={colors.textSecondary} />
+            <Text style={styles.amigosEmptyTitle}>Aún no tienes amigos</Text>
+            <Text style={styles.amigosEmptyText}>
+              Envía solicitudes de amistad desde el perfil de los jugadores del ranking.
+            </Text>
+            <TouchableOpacity style={[styles.accentBtn, { paddingHorizontal: 40 }]} onPress={onIrRanking}>
+              <Text style={styles.accentBtnText}>Ir al ranking</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScrollView contentContainerStyle={styles.modalListContent}>
+            {filtrados.map(a => (
+              <TouchableOpacity key={a.id_usuario} style={styles.courtCard} onPress={() => onSelect(a)}>
+                <Image source={getAvatarSource(a.foto_perfil_url)} style={styles.amigoAvatar} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.courtName} numberOfLines={1}>{a.nombre_completo}</Text>
+                  <View style={styles.addressRow}>
+                    <Ionicons name="trophy" size={13} color={colors.textSecondary} />
+                    <Text style={styles.courtAddress}> {a.posicion_ranking ?? 'N/R'}   {Number(a.puntaje_total ?? 0).toFixed(1)} pts</Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
 function SuccessScreen({ onPress }) {
   return (
     <View style={styles.successContainer}>
@@ -129,8 +217,32 @@ function SuccessScreen({ onPress }) {
   );
 }
 
+// NUEVO: confirmación del reto directo
+function RetoEnviadoScreen({ amigo, onPress }) {
+  const firstName = (amigo?.nombre_completo ?? 'tu amigo').split(' ')[0];
+  return (
+    <View style={styles.successContainer}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={styles.successCircle}>
+          <Image source={getAvatarSource(amigo?.foto_perfil_url)} style={styles.successAvatar} />
+        </View>
+        <Text style={styles.successTitle}>{`Reto enviado a\n${firstName}`}</Text>
+        <Text style={styles.successSubtitle}>
+          Cuando {firstName} lo acepte, el partido quedará confirmado y podrán coordinar por el chat.
+        </Text>
+      </View>
+      <TouchableOpacity style={styles.accentBtn} onPress={onPress}>
+        <Text style={styles.accentBtnText}>Ir a mis partidos</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export function CrearPartidoScreen({ navigation, route }) {
   const tipo = route?.params?.tipo ?? 'Rankeado';
+  const amigoInicial = route?.params?.amigo ?? null; // llega desde PlayerProfile o AmigosScreen
+  const esAmistoso = tipo !== 'Rankeado';
+
   const [cancha, setCancha] = useState(null);
   const [fecha, setFecha] = useState(null);
   const [hora, setHora] = useState(null);
@@ -139,6 +251,14 @@ export function CrearPartidoScreen({ navigation, route }) {
   const [showCanchaModal, setShowCanchaModal] = useState(false);
   const [success, setSuccess] = useState(false);
   const [creando, setCreando] = useState(false);
+
+  // NUEVO: modalidad y amigo seleccionado
+  const [modalidad, setModalidad] = useState(amigoInicial ? 'amigo' : 'abierta');
+  const [amigo, setAmigo] = useState(amigoInicial);
+  const [showAmigoModal, setShowAmigoModal] = useState(false);
+  const [retoEnviado, setRetoEnviado] = useState(null);
+
+  const esDirecto = esAmistoso && modalidad === 'amigo';
 
   // --- CANCHAS REALES DESDE LA API ---
   const [canchas, setCanchas] = useState([]);
@@ -157,7 +277,6 @@ export function CrearPartidoScreen({ navigation, route }) {
     }
     fetchCanchas();
   }, []);
-  // ------------------------------------
 
   useEffect(() => {
     if (hora && fecha) {
@@ -167,22 +286,25 @@ export function CrearPartidoScreen({ navigation, route }) {
   }, [fecha]);
 
   const horasDisponibles = getHorasDisponibles(fecha);
-  const canConfirm = !!cancha && !!fecha && !!hora && !creando;
+  const canConfirm = !!cancha && !!fecha && !!hora && !creando && (!esDirecto || !!amigo);
 
   const handleCrear = async () => {
     if (!canConfirm) return;
     try {
       setCreando(true);
       const datos = {
-        id_cancha: cancha.id_maestro ?? cancha.id,   // ID real de la cancha
+        id_cancha: cancha.id_maestro ?? cancha.id,
         fecha: fecha.iso,
         hora,
-        id_tipo_juego: TIPO_JUEGO_MAP[tipoJuego] ?? TIPOS_JUEGO.UNO_VS_UNO,
+        id_tipo_juego: TIPO_JUEGO_MAP[tipoJuego] ?? TIPOS_JUEGO.SINGLES,
         id_deporte: DEPORTE_DEFAULT,
       };
 
       if (tipo === 'Rankeado') {
         await partidoService.crearRankeado(datos);
+      } else if (esDirecto) {
+        await partidoService.crearAmistosoDirecto({ ...datos, num_sets: numSets, id_rival: amigo.id_usuario });
+        setRetoEnviado(amigo);
       } else {
         await partidoService.crearAmistoso({ ...datos, num_sets: numSets });
       }
@@ -193,6 +315,22 @@ export function CrearPartidoScreen({ navigation, route }) {
       setCreando(false);
     }
   };
+
+  const irATab = (index) => navigation.reset({
+    index: 0,
+    routes: [{
+      name: 'MainTabs',
+      state: { index, routes: [{ name: 'Home' }, { name: 'Ranking' }, { name: 'Resultados' }, { name: 'Partidos' }, { name: 'Perfil' }] },
+    }],
+  });
+
+  if (success && retoEnviado) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <RetoEnviadoScreen amigo={retoEnviado} onPress={() => irATab(3)} />
+      </SafeAreaView>
+    );
+  }
 
   if (success) {
     return (
@@ -218,7 +356,7 @@ export function CrearPartidoScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Crear Partido {tipo}</Text>
+        <Text style={styles.headerTitle}>{esDirecto ? 'Retar a un amigo' : `Crear Partido ${tipo}`}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -243,6 +381,47 @@ export function CrearPartidoScreen({ navigation, route }) {
               <Text style={styles.matchmakingText}>Debes ingresar el resultado dentro de 12 horas del partido</Text>
             </View>
           </View>
+        )}
+
+        {/* NUEVO: ¿Con quién? — solo Amistoso */}
+        {esAmistoso && (
+          <>
+            <Text style={styles.sectionTitle}>¿Con quién quieres jugar?</Text>
+            <View style={[styles.toggle, { marginBottom: 12 }]}>
+              {MODALIDADES.map(m => (
+                <TouchableOpacity
+                  key={m.key}
+                  style={[styles.toggleBtn, modalidad === m.key && styles.toggleBtnActive]}
+                  onPress={() => setModalidad(m.key)}
+                >
+                  <Text style={[styles.toggleText, modalidad === m.key && styles.toggleTextActive]}>{m.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {esDirecto ? (
+              <TouchableOpacity style={styles.canchaCard} onPress={() => setShowAmigoModal(true)} activeOpacity={0.8}>
+                {amigo ? (
+                  <Image source={getAvatarSource(amigo.foto_perfil_url)} style={styles.amigoAvatar} />
+                ) : (
+                  <View style={[styles.amigoAvatar, styles.canchaImgPlaceholder]}>
+                    <Ionicons name="person-add-outline" size={24} color={colors.textSecondary} />
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.canchaName}>{amigo ? amigo.nombre_completo : 'Selecciona un amigo'}</Text>
+                  <Text style={styles.canchaHint}>
+                    {amigo ? 'Toca para cambiar' : 'Solo él recibirá el reto'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.mandatoryNote}>
+                Cualquier jugador podrá postularse y tú eliges a quién aceptar.
+              </Text>
+            )}
+          </>
         )}
 
         {/* Selector de Cancha */}
@@ -328,7 +507,7 @@ export function CrearPartidoScreen({ navigation, route }) {
         </View>
 
         {/* Formato de sets — solo Amistoso */}
-        {tipo !== 'Rankeado' && (
+        {esAmistoso && (
           <>
             <Text style={styles.sectionTitle}>Formato de partido</Text>
             <View style={styles.toggle}>
@@ -361,7 +540,7 @@ export function CrearPartidoScreen({ navigation, route }) {
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
-              Confirmar
+              {esDirecto ? 'Enviar reto' : 'Confirmar'}
             </Text>
           )}
         </TouchableOpacity>
@@ -373,6 +552,13 @@ export function CrearPartidoScreen({ navigation, route }) {
         onSelect={c => { setCancha(c); setShowCanchaModal(false); }}
         courts={canchas}
         loadingCanchas={loadingCanchas}
+      />
+
+      <AmigoModal
+        visible={showAmigoModal}
+        onClose={() => setShowAmigoModal(false)}
+        onSelect={a => { setAmigo(a); setShowAmigoModal(false); }}
+        onIrRanking={() => { setShowAmigoModal(false); irATab(1); }}
       />
     </SafeAreaView>
   );
@@ -400,12 +586,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     gap: 10,
   },
-  matchmakingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
+  matchmakingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
   matchmakingTitle: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   matchmakingRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   matchmakingText: { fontSize: 13, color: colors.textSecondary, flex: 1, lineHeight: 18 },
@@ -428,19 +609,11 @@ const styles = StyleSheet.create({
   canchaName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
   canchaHint: { fontSize: 13, color: colors.textSecondary },
 
-  mandatoryNote: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 19,
-    marginBottom: 24,
-  },
+  amigoAvatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#ccc' },
 
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 12,
-  },
+  mandatoryNote: { fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginBottom: 24 },
+
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
 
   hScroll: { marginHorizontal: -20, marginBottom: 24 },
   hChipRow: { paddingHorizontal: 20, gap: 10 },
@@ -478,12 +651,7 @@ const styles = StyleSheet.create({
     padding: 4,
     marginBottom: 24,
   },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderRadius: 28,
-  },
+  toggleBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 28 },
   toggleBtnActive: { backgroundColor: colors.accent },
   toggleText: { fontSize: 15, fontWeight: '600', color: colors.textSecondary },
   toggleTextActive: { color: colors.primary, fontWeight: '700' },
@@ -501,7 +669,7 @@ const styles = StyleSheet.create({
   confirmBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
   confirmBtnTextDisabled: { color: colors.textSecondary },
 
-  // Modal cancha
+  // Modales
   modalSafe: { flex: 1, backgroundColor: colors.background },
   modalHeader: {
     flexDirection: 'row',
@@ -540,13 +708,12 @@ const styles = StyleSheet.create({
   addressRow: { flexDirection: 'row', alignItems: 'center' },
   courtAddress: { fontSize: 13, color: colors.textSecondary },
 
+  amigosEmpty: { alignItems: 'center', marginTop: 60, paddingHorizontal: 32, gap: 10 },
+  amigosEmptyTitle: { fontSize: 18, fontWeight: '700', color: colors.textPrimary },
+  amigosEmptyText: { fontSize: 14, color: colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 12 },
+
   // Success
-  successContainer: {
-    flex: 1,
-    paddingHorizontal: 32,
-    paddingBottom: 40,
-    paddingTop: 20,
-  },
+  successContainer: { flex: 1, paddingHorizontal: 32, paddingBottom: 40, paddingTop: 20 },
   successCircle: {
     width: 160,
     height: 160,
@@ -556,6 +723,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 32,
   },
+  successAvatar: { width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: '#FFFFFF' },
   successTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -564,17 +732,7 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     marginBottom: 12,
   },
-  successSubtitle: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  accentBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 30,
-    paddingVertical: 18,
-    alignItems: 'center',
-  },
+  successSubtitle: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+  accentBtn: { backgroundColor: colors.accent, borderRadius: 30, paddingVertical: 18, alignItems: 'center' },
   accentBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
 });

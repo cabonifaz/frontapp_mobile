@@ -9,6 +9,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { usuarioService } from '../../services/usuarioService';
 import { resultadoService } from '../../services/resultadoService';
+import { amistadService } from '../../services/amistadService'; // NUEVO
 
 const SCREEN_W   = Dimensions.get('window').width;
 const COVER_H    = 220;
@@ -18,7 +19,7 @@ const TABS = ['Estadísticas', 'Detalles', 'Resultados'];
 // Cover por defecto (esta sí es una imagen remota real, se queda igual)
 const COVER_DEFAULT = 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80';
 
-// NUEVO: mismo mapeo de avatares locales que usa SharedHeader.js.
+// Mismo mapeo de avatares locales que usa SharedHeader.js.
 // Los nombres deben coincidir EXACTO con lo que graba sp_auth_registrar.
 const AVATARES = {
   'avatar_femenino_1.png': require('../../../assets/avatar_femenino_1.png'),
@@ -32,19 +33,14 @@ const AVATARES = {
 
 const AVATAR_DEFAULT = require('../../../assets/avatar_general.png');
 
-// NUEVO: resuelve el source correcto para <Image>, sea URL remota, avatar local o fallback
+// Resuelve el source correcto para <Image>, sea URL remota, avatar local o fallback
 function resolverFoto(fotoPerfil) {
-  // 1. Foto real subida por el usuario (Cloudinary, Facebook, Google, etc.)
   if (fotoPerfil && /^https?:\/\//i.test(fotoPerfil)) {
     return { uri: fotoPerfil };
   }
-
-  // 2. Avatar por defecto asignado por el backend al crear la cuenta
   if (fotoPerfil && AVATARES[fotoPerfil]) {
     return AVATARES[fotoPerfil];
   }
-
-  // 3. Fallback de seguridad
   return AVATAR_DEFAULT;
 }
 
@@ -190,21 +186,21 @@ export function ProfileScreen({ navigation }) {
   const [resultados, setResultados] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [loadingRes, setLoadingRes] = useState(false);
+  const [solicitudesAmistad, setSolicitudesAmistad] = useState(0); // NUEVO
 
-  // CAMBIO 1: useFocusEffect en vez de useEffect, para recargar cada vez que la pantalla recibe foco
   useFocusEffect(
     useCallback(() => {
-      let isMounted = true; // Previene "Memory Leaks" si el usuario sale rápido
+      let isMounted = true;
 
       const cargarDatos = async () => {
         setLoading(true);
         setLoadingRes(true);
 
         try {
-          // Promise.all ejecuta ambas consultas al mismo tiempo
-          const [resPerfil, resResultados] = await Promise.all([
+          const [resPerfil, resResultados, resSolicitudes] = await Promise.all([
             usuarioService.perfil().catch(() => null),
-            resultadoService.listar().catch(() => [])
+            resultadoService.listar().catch(() => []),
+            amistadService.solicitudesRecibidas().catch(() => []), // NUEVO
           ]);
 
           if (isMounted) {
@@ -230,9 +226,10 @@ export function ProfileScreen({ navigation }) {
             }
 
             setResultados(Array.isArray(resResultados) ? resResultados : []);
+            setSolicitudesAmistad(Array.isArray(resSolicitudes) ? resSolicitudes.length : 0); // NUEVO
           }
         } catch (error) {
-          console.error("Error cargando perfil:", error);
+          console.error('Error cargando perfil:', error);
         } finally {
           if (isMounted) {
             setLoading(false);
@@ -244,7 +241,7 @@ export function ProfileScreen({ navigation }) {
       cargarDatos();
 
       return () => {
-        isMounted = false; // Se ejecuta al perder el foco / desmontar
+        isMounted = false;
       };
     }, [])
   );
@@ -286,11 +283,7 @@ export function ProfileScreen({ navigation }) {
         <View style={styles.sheet}>
 
           <View style={styles.avatarWrap}>
-            {/* CORREGIDO: ahora usa resolverFoto() en vez de tratar todo como URL remota */}
-            <Image
-              source={resolverFoto(p.avatar)}
-              style={styles.avatar}
-            />
+            <Image source={resolverFoto(p.avatar)} style={styles.avatar} />
             <TouchableOpacity
               style={styles.editBtn}
               onPress={() => navigation.navigate('EditProfile', { profile: p })}
@@ -306,6 +299,23 @@ export function ProfileScreen({ navigation }) {
 
           <Text style={styles.name}>{p.nombre ?? 'Mi perfil'}</Text>
           <Text style={styles.ptsText}>{Number(p.pts ?? 0).toFixed(1)} pts</Text>
+
+          {/* NUEVO: Amigos y Solicitudes de amistad */}
+          <View style={styles.socialRow}>
+            <TouchableOpacity style={styles.socialBtn} onPress={() => navigation.navigate('Amigos')}>
+              <Ionicons name="people-outline" size={18} color={colors.textPrimary} />
+              <Text style={styles.socialBtnText}>Amigos</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.socialBtn} onPress={() => navigation.navigate('SolicitudesAmistad')}>
+              <Ionicons name="person-add-outline" size={18} color={colors.textPrimary} />
+              <Text style={styles.socialBtnText}>Solicitudes</Text>
+              {solicitudesAmistad > 0 && (
+                <View style={styles.socialBadge}>
+                  <Text style={styles.socialBadgeText}>{solicitudesAmistad > 9 ? '9+' : solicitudesAmistad}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
 
           <View style={styles.tabBar}>
             {TABS.map(tab => (
@@ -382,7 +392,21 @@ const styles = StyleSheet.create({
   rankBadgeText: { fontSize: 16, fontWeight: 'bold', color: colors.primary },
 
   name:    { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 4 },
-  ptsText: { fontSize: 15, color: colors.textSecondary, marginBottom: 20 },
+  ptsText: { fontSize: 15, color: colors.textSecondary, marginBottom: 14 },
+
+  // NUEVO: botones sociales
+  socialRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  socialBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1.5, borderColor: colors.textPrimary, borderRadius: 20,
+    paddingHorizontal: 16, paddingVertical: 8,
+  },
+  socialBtnText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  socialBadge: {
+    minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4, marginLeft: 2,
+    backgroundColor: colors.notification, alignItems: 'center', justifyContent: 'center',
+  },
+  socialBadgeText: { color: '#FFFFFF', fontSize: 10, fontWeight: 'bold' },
 
   tabBar: {
     flexDirection: 'row',

@@ -30,6 +30,9 @@ import { EditProfileScreen } from '../features/profile/EditProfileScreen';
 import { PlayerProfileScreen } from '../features/profile/PlayerProfileScreen';
 import { SettingsScreen } from '../features/profile/SettingsScreen';
 import { ChatScreen } from '../features/chat/ChatScreen';
+// NUEVO: amistades
+import { AmigosScreen } from '../features/friends/AmigosScreen';
+import { SolicitudesAmistadScreen } from '../features/friends/SolicitudesAmistadScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -102,7 +105,7 @@ export function AppNavigator() {
         <Stack.Screen name="DetallePartido" component={DetallePartidoScreen} />
         <Stack.Screen name="DetalleResultado" component={DetalleResultadoScreen} />
         <Stack.Screen name="ColocarResultados" component={ColocarResultadosScreen} />
-        
+
         {/* AQUÍ ESTABLECEMOS QUE 'MatchChat' USE LA PANTALLA COMPLETA DE CHAT */}
         <Stack.Screen name="MatchChat" component={ChatScreen} />
 
@@ -113,6 +116,10 @@ export function AppNavigator() {
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="PlayerProfile" component={PlayerProfileScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
+
+        {/* NUEVO: amistades */}
+        <Stack.Screen name="Amigos" component={AmigosScreen} />
+        <Stack.Screen name="SolicitudesAmistad" component={SolicitudesAmistadScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

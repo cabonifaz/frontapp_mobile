@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ImageBackground, Dimensions, SafeAreaView, ActivityIndicator,
+  Image, ImageBackground, Dimensions, SafeAreaView, ActivityIndicator, Alert,
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { rankingService } from '../../services/rankingService';
+import { amistadService } from '../../services/amistadService';
+import { getAvatarSource } from '../../utils/avatars';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H  = 220;
@@ -14,7 +16,6 @@ const AVATAR_SIZE = 126;
 const TABS = ['Estadísticas', 'Detalles'];
 
 const COVER_DEFAULT = 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80';
-const AVATAR_DEFAULT = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSxUzKngXZcLOT11hp0FMnpwDtCusZVoIm2kCLfXtUfDg&s=10';
 
 function NivelRing({ percent, size = 72 }) {
   const sw = 7;
@@ -98,6 +99,56 @@ function DetallesTab({ p }) {
   );
 }
 
+// NUEVO: acciones de amistad según el estado de la relación
+function AmistadAcciones({ estado, cargando, nombre, onAgregar, onCancelar, onAceptar, onRechazar, onEliminar }) {
+  if (!estado || estado === 'MISMO_USUARIO') return null;
+
+  if (cargando) {
+    return (
+      <View style={styles.amistadRow}>
+        <ActivityIndicator size="small" color={colors.textPrimary} />
+      </View>
+    );
+  }
+
+  if (estado === 'PENDIENTE_RECIBIDA') {
+    return (
+      <View style={styles.amistadRecibida}>
+        <Text style={styles.amistadRecibidaText}>{nombre} te envió una solicitud de amistad</Text>
+        <View style={styles.amistadRow}>
+          <TouchableOpacity style={[styles.amistadBtn, styles.amistadBtnFilled]} onPress={onAceptar}>
+            <Ionicons name="checkmark" size={16} color={colors.primary} />
+            <Text style={styles.amistadBtnTextFilled}>Aceptar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.amistadBtn} onPress={onRechazar}>
+            <Text style={styles.amistadBtnText}>Rechazar</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  const config = {
+    NINGUNA:           { icon: 'person-add-outline', label: 'Agregar amigo',    onPress: onAgregar },
+    PENDIENTE_ENVIADA: { icon: 'time-outline',       label: 'Solicitud enviada', onPress: onCancelar },
+    AMIGOS:            { icon: 'people',             label: 'Amigos',           onPress: onEliminar },
+  }[estado];
+
+  if (!config) return null;
+
+  return (
+    <View style={styles.amistadRow}>
+      <TouchableOpacity
+        style={[styles.amistadBtn, estado === 'AMIGOS' && styles.amistadBtnAmigos]}
+        onPress={config.onPress}
+      >
+        <Ionicons name={config.icon} size={16} color={colors.textPrimary} />
+        <Text style={styles.amistadBtnText}>{config.label}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 function buildBasicProfile(basicData) {
   return {
     nombre:             basicData.nombre   ?? 'Jugador',
@@ -119,11 +170,29 @@ function buildBasicProfile(basicData) {
 export function PlayerProfileScreen({ navigation, route }) {
   const [activeTab, setActiveTab] = useState('Estadísticas');
   const basicData = route.params?.player ?? {};
+  const idUsuario = basicData.id_usuario ?? null;
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // NUEVO: estado de amistad
+  const [estadoAmistad, setEstadoAmistad] = useState(null);
+  const [idAmistad, setIdAmistad] = useState(null);
+  const [accionAmistad, setAccionAmistad] = useState(false);
+
+  const refrescarAmistad = useCallback(async () => {
+    if (!idUsuario) return;
+    try {
+      const res = await amistadService.estado(idUsuario);
+      setEstadoAmistad(res?.estado ?? null);
+      setIdAmistad(res?.idAmistad ?? null);
+    } catch {
+      setEstadoAmistad(null);
+    }
+  }, [idUsuario]);
+
   useEffect(() => {
-    const idUsuario = basicData.id_usuario ?? null;
+    refrescarAmistad();
+
     if (!idUsuario) {
       setProfile(buildBasicProfile(basicData));
       setLoading(false);
@@ -155,6 +224,55 @@ export function PlayerProfileScreen({ navigation, route }) {
       .finally(() => setLoading(false));
   }, []);
 
+  const p = profile ?? {};
+  const firstName = String(p.nombre ?? 'Jugador').split(' ')[0];
+
+  async function ejecutarAccion(fn) {
+    try {
+      setAccionAmistad(true);
+      await fn();
+      await refrescarAmistad();
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'No se pudo completar la acción.');
+      await refrescarAmistad();
+    } finally {
+      setAccionAmistad(false);
+    }
+  }
+
+  const onAgregar = () => ejecutarAccion(async () => {
+    const res = await amistadService.enviarSolicitud(idUsuario);
+    if (res?.estado === 'AMIGOS') {
+      Alert.alert('¡Ahora son amigos!', `${firstName} también te había enviado una solicitud.`);
+    }
+  });
+
+  const onCancelar = () => Alert.alert('Cancelar solicitud', `¿Quieres cancelar la solicitud enviada a ${firstName}?`, [
+    { text: 'No', style: 'cancel' },
+    { text: 'Sí, cancelar', style: 'destructive', onPress: () => ejecutarAccion(() => amistadService.eliminar(idUsuario)) },
+  ]);
+
+  const onAceptar  = () => ejecutarAccion(() => amistadService.responder(idAmistad, true));
+  const onRechazar = () => ejecutarAccion(() => amistadService.responder(idAmistad, false));
+
+  const onEliminar = () => Alert.alert('Eliminar amigo', `¿Quieres eliminar a ${firstName} de tus amigos?`, [
+    { text: 'Cancelar', style: 'cancel' },
+    { text: 'Eliminar', style: 'destructive', onPress: () => ejecutarAccion(() => amistadService.eliminar(idUsuario)) },
+  ]);
+
+  function retarAmistoso() {
+    navigation.navigate('CrearPartido', {
+      tipo: 'Amistoso',
+      amigo: {
+        id_usuario:       idUsuario,
+        nombre_completo:  p.nombre,
+        foto_perfil_url:  p.avatar,
+        posicion_ranking: p.ranking,
+        puntaje_total:    p.pts,
+      },
+    });
+  }
+
   if (loading) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
@@ -163,7 +281,8 @@ export function PlayerProfileScreen({ navigation, route }) {
     );
   }
 
-  const p = profile ?? {};
+  const sonAmigos = estadoAmistad === 'AMIGOS';
+  const esMiPerfil = estadoAmistad === 'MISMO_USUARIO';
 
   return (
     <View style={styles.root}>
@@ -184,10 +303,7 @@ export function PlayerProfileScreen({ navigation, route }) {
         <View style={styles.sheet}>
 
           <View style={styles.avatarWrap}>
-            <Image
-              source={p.avatar ? { uri: p.avatar } : { uri: AVATAR_DEFAULT }}
-              style={styles.avatar}
-            />
+            <Image source={getAvatarSource(p.avatar)} style={styles.avatar} />
           </View>
 
           <View style={styles.rankBadge}>
@@ -197,6 +313,17 @@ export function PlayerProfileScreen({ navigation, route }) {
 
           <Text style={styles.name}>{p.nombre ?? 'Jugador'}</Text>
           <Text style={styles.ptsText}>{Number(p.pts ?? 0).toFixed(1)} pts</Text>
+
+          <AmistadAcciones
+            estado={estadoAmistad}
+            cargando={accionAmistad}
+            nombre={firstName}
+            onAgregar={onAgregar}
+            onCancelar={onCancelar}
+            onAceptar={onAceptar}
+            onRechazar={onRechazar}
+            onEliminar={onEliminar}
+          />
 
           <View style={styles.tabBar}>
             {TABS.map(tab => (
@@ -210,14 +337,32 @@ export function PlayerProfileScreen({ navigation, route }) {
           {activeTab === 'Estadísticas' && <EstadisticasTab p={p} />}
           {activeTab === 'Detalles'     && <DetallesTab     p={p} />}
 
-          <TouchableOpacity
-            style={styles.retarBtn}
-            onPress={() => navigation.navigate('RankedMatch')}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="tennisball-outline" size={20} color={colors.primary} />
-            <Text style={styles.retarBtnText}>Buscar partido para retar</Text>
-          </TouchableOpacity>
+          {!esMiPerfil && (
+            sonAmigos ? (
+              <>
+                <TouchableOpacity style={styles.retarBtn} onPress={retarAmistoso} activeOpacity={0.85}>
+                  <MaterialCommunityIcons name="tennis" size={20} color={colors.primary} />
+                  <Text style={styles.retarBtnText}>Retar a un amistoso</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.secondaryBtn}
+                  onPress={() => navigation.navigate('RankedMatch')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.secondaryBtnText}>Buscar partido rankeado</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={styles.retarBtn}
+                onPress={() => navigation.navigate('RankedMatch')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="tennisball-outline" size={20} color={colors.primary} />
+                <Text style={styles.retarBtnText}>Buscar partido para retar</Text>
+              </TouchableOpacity>
+            )
+          )}
 
           <View style={{ height: 40 }} />
         </View>
@@ -262,7 +407,26 @@ const styles = StyleSheet.create({
   },
   rankBadgeText: { fontSize: 16, fontWeight: 'bold', color: colors.primary },
   name: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 4 },
-  ptsText: { fontSize: 15, color: colors.textSecondary, marginBottom: 20 },
+  ptsText: { fontSize: 15, color: colors.textSecondary, marginBottom: 16 },
+
+  // Amistad
+  amistadRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 20, minHeight: 38 },
+  amistadBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1.5, borderColor: colors.textPrimary, borderRadius: 20,
+    paddingHorizontal: 18, paddingVertical: 8,
+  },
+  amistadBtnAmigos: { borderColor: colors.border, backgroundColor: colors.surface },
+  amistadBtnFilled: { backgroundColor: colors.accent, borderColor: colors.accent },
+  amistadBtnText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  amistadBtnTextFilled: { fontSize: 14, fontWeight: '700', color: colors.primary },
+  amistadRecibida: {
+    width: '100%', alignItems: 'center',
+    backgroundColor: colors.accentLight, borderRadius: 16,
+    paddingTop: 14, paddingHorizontal: 14, marginBottom: 20,
+  },
+  amistadRecibidaText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary, marginBottom: 10, textAlign: 'center' },
+
   tabBar: {
     flexDirection: 'row',
     borderBottomWidth: 1, borderBottomColor: colors.border,
@@ -308,4 +472,11 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   retarBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  secondaryBtn: {
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: colors.textPrimary,
+    borderRadius: 30, paddingVertical: 16,
+    width: '100%', marginTop: 12,
+  },
+  secondaryBtnText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
 });

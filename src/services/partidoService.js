@@ -28,6 +28,21 @@ export const partidoService = {
     return api.post('/api/PartidoAmistoso/crear', datos);
   },
 
+  // NUEVO: amistoso directo contra un amigo. datos incluye id_rival
+  async crearAmistosoDirecto(datos) {
+    return api.post('/api/PartidoAmistoso/crear-directo', datos);
+  },
+
+  // NUEVO: retos directos que me enviaron mis amigos
+  async retosRecibidos(idDeporte = DEPORTE_DEFAULT) {
+    return api.get(`/api/Partido/retos-recibidos?id_deporte=${idDeporte}`);
+  },
+
+  // NUEVO: aceptar / rechazar un reto directo
+  async responderReto(idPartido, aceptar) {
+    return api.post(`/api/Partido/${idPartido}/responder-reto`, { aceptar });
+  },
+
   async postular(idPartido) {
     return api.post(`/api/Partido/postular/${idPartido}`);
   },
