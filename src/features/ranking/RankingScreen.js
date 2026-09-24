@@ -1,97 +1,162 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
-  TextInput, Image, Modal, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  SafeAreaView, ActivityIndicator, Linking, RefreshControl,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
-import { TEMPORADAS, FILTERS, PLAYER_DATA } from '../../data/rankingData';
-import { rankingService } from '../../services/rankingService';
 import { useUsuario } from '../../hooks/useUsuario';
+import { ligaService } from '../../services/ligaService';
+import { TIPOS_JUEGO } from '../../constants/maestro';
+import { SponsorLogo, formatMoneda, formatRangoFechas } from './ligaUtils';
 
-function Podium({ players, onPress }) {
-  if (!players || players.length < 3) return null;
-  const top3 = players.slice(0, 3);
-  const order = [top3[1], top3[0], top3[2]];
-  const stepHeights = [54, 80, 36];
-  const avatarSizes = [64, 72, 64];
-  const badgeColors = ['#888888', colors.accent, '#CD7F32'];
+const MODALIDADES = [
+  { key: 'singles', label: 'Singles', idTipoJuego: TIPOS_JUEGO.SINGLES },
+  { key: 'dobles',  label: 'Dobles',  idTipoJuego: TIPOS_JUEGO.DOBLES },
+];
 
-  return (
-    <View style={styles.podiumCard}>
-      <View style={styles.podiumStepsRow}>
-        {order.map((p, i) => (
-          <TouchableOpacity key={p.name} style={styles.podiumCol} onPress={() => onPress(p)} activeOpacity={0.75}>
-            <View style={styles.podiumAvatarWrap}>
-              <Image source={{ uri: p.avatar }} style={[styles.podiumAvatar, { width: avatarSizes[i], height: avatarSizes[i], borderRadius: avatarSizes[i] / 2 }]} />
-              <View style={[styles.posBadge, { backgroundColor: badgeColors[i] }]}>
-                <Text style={styles.posBadgeText}>{p.pos}</Text>
-              </View>
-            </View>
-            <View style={[styles.podiumStep, { height: stepHeights[i] }]} />
-          </TouchableOpacity>
-        ))}
+function EstadoInscripcion({ liga }) {
+  const estado = liga.mi_estado_inscripcion;
+  if (estado === 'INSC_ACTIVA') {
+    return (
+      <View style={[styles.miEstado, styles.miEstadoActivo]}>
+        <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
+        <Text style={styles.miEstadoTextoOscuro}>
+          {liga.mi_posicion ? `Vas ${liga.mi_posicion}° · ${liga.mis_puntos ?? 0} pts` : 'Inscrito'}
+        </Text>
       </View>
-      <View style={styles.podiumNamesRow}>
-        {order.map((p) => (
-          <TouchableOpacity key={p.name + '_name'} style={styles.podiumNameCol} onPress={() => onPress(p)} activeOpacity={0.75}>
-            <Text style={styles.podiumName} numberOfLines={1}>{p.name}</Text>
-            <Text style={styles.podiumPts}>{p.pts} pts</Text>
-          </TouchableOpacity>
-        ))}
+    );
+  }
+  if (estado === 'INSC_PENDIENTE_PAGO') {
+    return (
+      <View style={styles.miEstado}>
+        <Ionicons name="time-outline" size={14} color="#FFFFFF" />
+        <Text style={styles.miEstadoTexto}>Pago en validación</Text>
+      </View>
+    );
+  }
+  const nivel = liga.mi_nivel;
+  if (nivel != null && (nivel < liga.nivel_min || nivel > liga.nivel_max)) {
+    return (
+      <View style={styles.miEstado}>
+        <Ionicons name="lock-closed-outline" size={13} color="rgba(255,255,255,0.7)" />
+        <Text style={[styles.miEstadoTexto, { color: 'rgba(255,255,255,0.7)' }]}>Tu nivel es {nivel}</Text>
+      </View>
+    );
+  }
+  return null;
+}
+
+function SponsorLiga({ liga }) {
+  if (!liga.auspiciador_nombre) return null;
+  const web = liga.auspiciador_sitio_web;
+  return (
+    <TouchableOpacity
+      style={[styles.ligaSponsor, liga.auspiciador_color ? { backgroundColor: liga.auspiciador_color } : null]}
+      activeOpacity={web ? 0.7 : 1}
+      onPress={() => web && Linking.openURL(web).catch(() => {})}
+    >
+      <SponsorLogo nombre={liga.auspiciador_nombre} logoUrl={liga.auspiciador_logo_url} size={34} />
+      <View style={{ flex: 1 }}>
+        <Text style={styles.ligaSponsorLabel}>Presentado por</Text>
+        <Text style={styles.ligaSponsorNombre} numberOfLines={1}>{liga.auspiciador_nombre}</Text>
+      </View>
+      {web ? <Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.7)" /> : null}
+    </TouchableOpacity>
+  );
+}
+
+function LigaCard({ liga, onPress }) {
+  const cupo = liga.cupo_maximo ? `${liga.inscritos}/${liga.cupo_maximo}` : `${liga.inscritos}`;
+  return (
+    <TouchableOpacity style={styles.ligaCard} activeOpacity={0.85} onPress={onPress}>
+      <SponsorLiga liga={liga} />
+      <View style={styles.ligaTop}>
+        <View style={styles.nivelBlock}>
+          <Text style={styles.nivelLabel}>Nivel</Text>
+          <Text style={styles.nivelRango} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+            {liga.nivel_min}–{liga.nivel_max}
+          </Text>
+        </View>
+
+        <View style={styles.ligaInfo}>
+          <Text style={styles.ligaNombre} numberOfLines={2}>{liga.nombre_oficial}</Text>
+          <View style={styles.ligaMetaRow}>
+            <Ionicons name="calendar-outline" size={13} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.ligaMeta}>{formatRangoFechas(liga.fecha_inicio, liga.fecha_fin)}</Text>
+          </View>
+          <View style={styles.ligaMetaRow}>
+            <Ionicons name="people-outline" size={13} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.ligaMeta}>{cupo} jugadores</Text>
+            <Text style={styles.ligaMetaSep} />
+            <Ionicons name="ticket-outline" size={13} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.ligaMeta}>{formatMoneda(liga.cuota_inscripcion, liga.moneda)}</Text>
+          </View>
+          <EstadoInscripcion liga={liga} />
+        </View>
+
+        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.5)" />
+      </View>
+
+      {liga.premio ? (
+        <View style={styles.premioRow}>
+          <Ionicons name="trophy" size={13} color={colors.accent} />
+          <Text style={styles.premioText} numberOfLines={1}>Premio: {liga.premio}</Text>
+        </View>
+      ) : null}
+    </TouchableOpacity>
+  );
+}
+
+function ProximamenteCard({ titulo, subtitulo }) {
+  return (
+    <View style={styles.proxCard}>
+      <View style={styles.proxNivel}>
+        <Ionicons name="lock-closed" size={18} color={colors.textSecondary} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.proxTitulo}>{titulo}</Text>
+        {subtitulo ? <Text style={styles.proxSub}>{subtitulo}</Text> : null}
+      </View>
+      <View style={styles.proxBadge}>
+        <Text style={styles.proxBadgeText}>Próximamente</Text>
       </View>
     </View>
   );
 }
 
-function PlayerRow({ player, onPress }) {
-  return (
-    <TouchableOpacity style={styles.playerRow} onPress={onPress} activeOpacity={0.75}>
-      <Text style={styles.playerPos}>{player.pos}</Text>
-      <Image source={{ uri: player.avatar }} style={styles.playerAvatar} />
-      <View>
-        <Text style={styles.playerName}>{player.name}</Text>
-        <Text style={styles.playerPts}>{player.pts} pts</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
 export function RankingScreen({ navigation }) {
   const usuario = useUsuario();
-  const [filter, setFilter] = useState('General');
-  const [temporada, setTemporada] = useState('Verano 2024');
-  const [showModal, setShowModal] = useState(false);
-  const [tempSelected, setTempSelected] = useState('Verano 2024');
-  const [allPlayers, setAllPlayers] = useState(PLAYER_DATA[filter]);
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [modalidad, setModalidad] = useState('singles');
+  const [ligas, setLigas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refrescando, setRefrescando] = useState(false);
 
-  useEffect(() => {
-    const filtroGenero = filter === 'Masculino' ? 'Masculino'
-      : filter === 'Femenino' ? 'Femenino' : null;
-    setLoading(true);
-    setSearch('');
-    rankingService.listar({ filtroGenero, tamanoPagina: 10 })
-      .then(data => {
-        const normalized = (Array.isArray(data) ? data : []).map((p, index) => ({
-          name:       p.nombre_completo  ?? p.nombre_usuario ?? p.name ?? 'N/A',
-          avatar:     p.foto_perfil_url  ?? p.avatar ?? null,
-          pts:        p.puntos           ?? p.puntaje_total  ?? p.pts ?? 0,
-          pos:        index + 1,
-          id_usuario: p.id_usuario,
-        }));
-        setAllPlayers(normalized.length ? normalized : PLAYER_DATA[filter]);
-      })
-      .catch(() => setAllPlayers(PLAYER_DATA[filter]))
-      .finally(() => setLoading(false));
-  }, [filter]);
+  const idTipoJuego = MODALIDADES.find(m => m.key === modalidad)?.idTipoJuego;
 
-  const term = search.trim().toLowerCase();
-  const players = term
-    ? allPlayers.filter(p => p.name.toLowerCase().includes(term))
-    : allPlayers;
+  const cargar = useCallback(async () => {
+    try {
+      const res = await ligaService.listar({ idTipoJuego });
+      setLigas(Array.isArray(res) ? res : []);
+    } catch {
+      setLigas([]);
+    } finally {
+      setLoading(false);
+      setRefrescando(false);
+    }
+  }, [idTipoJuego]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      cargar();
+    }, [cargar])
+  );
+
+  const activas = ligas.filter(l => l.estado_liga !== 'LIGA_PROXIMAMENTE');
+  const proximas = ligas.filter(l => l.estado_liga === 'LIGA_PROXIMAMENTE');
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -105,103 +170,65 @@ export function RankingScreen({ navigation }) {
         fotoPerfil={usuario?.foto_perfil_url}
       />
       <View style={styles.sheet}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-
-          <View style={styles.titleRow}>
-            <Text style={styles.pageTitle}>Ranking</Text>
-            <TouchableOpacity style={styles.tempBtn} onPress={() => { setTempSelected(temporada); setShowModal(true); }}>
-              <Text style={styles.tempText}>{temporada}</Text>
-              <Ionicons name="chevron-down" size={16} color={colors.textPrimary} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.searchBar}>
-            <Ionicons name="search" size={18} color="#0D1C27" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Buscar jugador"
-              placeholderTextColor="#9E9E9E"
-              underlineColorAndroid="transparent"
-              value={search}
-              onChangeText={setSearch}
-              autoCapitalize="none"
-            />
-            {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="close-circle" size={18} color="#9E9E9E" />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.filterRow}>
-            {FILTERS.map((f) => (
-              <TouchableOpacity
-                key={f}
-                style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
-                onPress={() => setFilter(f)}
-              >
-                <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {loading ? (
-            <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
-          ) : players.length === 0 ? (
-            <Text style={styles.emptyText}>{term ? `Sin resultados para "${search}"` : 'No hay jugadores en el ranking aún'}</Text>
-          ) : (
-            <>
-              {!term && players.length >= 3 && (
-                <Podium
-                  players={players}
-                  onPress={(p) => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts, ranking: p.pos, avatar: p.avatar, id_usuario: p.id_usuario } })}
-                />
-              )}
-              {(term ? players : players.length >= 3 ? players.slice(3) : players).map((p) => (
-                <PlayerRow
-                  key={p.id_usuario ?? p.pos}
-                  player={p}
-                  onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts, ranking: p.pos, avatar: p.avatar, id_usuario: p.id_usuario } })}
-                />
-              ))}
-            </>
-          )}
-
-          <View style={{ height: 32 }} />
-        </ScrollView>
-      </View>
-
-      <Modal visible={showModal} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecciona la temporada</Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
-                <Ionicons name="close" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-            </View>
-            {TEMPORADAS.map((t) => (
-              <TouchableOpacity
-                key={t}
-                style={[styles.modalOption, tempSelected === t && styles.modalOptionActive]}
-                onPress={() => setTempSelected(t)}
-              >
-                <View style={[styles.radioOuter, tempSelected === t && styles.radioOuterActive]}>
-                  {tempSelected === t && <View style={styles.radioInner} />}
-                </View>
-                <Text style={styles.modalOptionText}>{t}</Text>
-              </TouchableOpacity>
-            ))}
-            <View style={{ flex: 1 }} />
-            <TouchableOpacity
-              style={styles.filterApplyBtn}
-              onPress={() => { setTemporada(tempSelected); setShowModal(false); }}
-            >
-              <Text style={styles.filterApplyText}>Filtrar</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.titleRow}>
+          <Text style={styles.pageTitle}>Ranking</Text>
+          <TouchableOpacity style={styles.generalBtn} onPress={() => navigation.navigate('RankingGeneral')}>
+            <Ionicons name="podium-outline" size={16} color={colors.textPrimary} />
+            <Text style={styles.generalBtnText}>Ranking general</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+
+        <View style={styles.toggle}>
+          {MODALIDADES.map(m => (
+            <TouchableOpacity
+              key={m.key}
+              style={[styles.toggleBtn, modalidad === m.key && styles.toggleBtnActive]}
+              onPress={() => setModalidad(m.key)}
+            >
+              <Text style={[styles.toggleText, modalidad === m.key && styles.toggleTextActive]}>{m.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {loading ? (
+          <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
+        ) : (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refrescando} onRefresh={() => { setRefrescando(true); cargar(); }} />
+            }
+          >
+            {activas.length === 0 && proximas.length === 0 ? (
+              <ProximamenteCard
+                titulo={modalidad === 'dobles' ? 'Ranking de dobles' : 'Ligas de singles'}
+                subtitulo="Estamos preparando las primeras ligas."
+              />
+            ) : (
+              <>
+                {activas.length > 0 && (
+                  <Text style={styles.sectionHint}>Elige la liga de tu nivel, inscríbete y reta a los demás jugadores.</Text>
+                )}
+                {activas.map(l => (
+                  <LigaCard
+                    key={l.id_liga}
+                    liga={l}
+                    onPress={() => navigation.navigate('LigaDetalle', { idLiga: l.id_liga, nombre: l.nombre_oficial })}
+                  />
+                ))}
+                {proximas.map(l => (
+                  <ProximamenteCard
+                    key={l.id_liga}
+                    titulo={l.nombre_oficial}
+                    subtitulo={`Nivel ${l.nivel_min}–${l.nivel_max}`}
+                  />
+                ))}
+              </>
+            )}
+            <View style={{ height: 32 }} />
+          </ScrollView>
+        )}
+      </View>
     </SafeAreaView>
   );
 }
@@ -214,143 +241,81 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 22,
     overflow: 'hidden',
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   pageTitle: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary },
-  tempBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  tempText: { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 28,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 10,
-    marginBottom: 16,
+  generalBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderWidth: 1.5, borderColor: colors.textPrimary, borderRadius: 18,
+    paddingHorizontal: 12, paddingVertical: 6,
   },
-  searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
-  filterRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  filterBtn: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  filterBtnActive: { backgroundColor: colors.dark, borderColor: colors.dark },
-  filterText: { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
-  filterTextActive: { color: '#FFFFFF' },
+  generalBtnText: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
 
-  // Podium
-  podiumCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    paddingTop: 20,
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-    marginBottom: 16,
+  toggle: {
+    flexDirection: 'row', backgroundColor: colors.surface,
+    borderRadius: 30, padding: 4, marginBottom: 14,
   },
-  podiumStepsRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  podiumCol: { flex: 1, alignItems: 'center' },
-  podiumAvatarWrap: { marginBottom: 6, alignItems: 'center' },
-  podiumAvatar: { backgroundColor: '#ccc' },
-  posBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  posBadgeText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  podiumStep: {
-    width: '100%',
-    backgroundColor: '#DCDCDC',
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-  },
-  podiumNamesRow: { flexDirection: 'row', gap: 4, marginTop: 8 },
-  podiumNameCol: { flex: 1, alignItems: 'center' },
-  podiumName: { fontSize: 12, fontWeight: '600', color: colors.textPrimary, textAlign: 'center' },
-  podiumPts: { fontSize: 11, color: colors.textSecondary },
+  toggleBtn: { flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 28 },
+  toggleBtnActive: { backgroundColor: colors.accent },
+  toggleText: { fontSize: 15, fontWeight: '600', color: colors.textSecondary },
+  toggleTextActive: { color: colors.primary, fontWeight: '700' },
 
-  // Player list
-  playerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    gap: 14,
-  },
-  emptyText: { textAlign: 'center', color: colors.textSecondary, marginTop: 40, fontSize: 15 },
-  playerPos: { fontSize: 16, fontWeight: 'bold', color: colors.textPrimary, width: 22 },
-  playerAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: '#ccc' },
-  playerName: { fontSize: 15, fontWeight: '600', color: colors.textPrimary },
-  playerPts: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+  sectionHint: { fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginBottom: 12 },
 
-  // Temporada modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  modalSheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    minHeight: '55%',
+  // Tarjeta de liga
+  ligaCard: {
+    backgroundColor: colors.dark, borderRadius: 18,
+    marginBottom: 14, overflow: 'hidden',
   },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 20,
+  ligaTop: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+  nivelBlock: {
+    width: 84, alignItems: 'center', justifyContent: 'center',
+    borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.12)', paddingRight: 10,
   },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: colors.textPrimary },
-  modalOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    backgroundColor: colors.surface,
-    borderRadius: 14,
-    marginBottom: 10,
+  nivelLabel: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
+  nivelRango: { fontSize: 26, fontWeight: '900', color: colors.accent, letterSpacing: -0.5, textAlign: 'center', width: '100%' },
+  ligaInfo: { flex: 1, gap: 5 },
+  ligaNombre: { fontSize: 15, fontWeight: '800', color: '#FFFFFF', marginBottom: 2 },
+  ligaMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  ligaMeta: { fontSize: 12, color: 'rgba(255,255,255,0.75)' },
+  ligaMetaSep: { width: 8 },
+  miEstado: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 12,
+    paddingHorizontal: 9, paddingVertical: 4, marginTop: 4,
   },
-  modalOptionActive: { backgroundColor: colors.surface },
-  radioOuter: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    borderWidth: 2,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  miEstadoActivo: { backgroundColor: colors.accent },
+  miEstadoTexto: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+  miEstadoTextoOscuro: { fontSize: 12, fontWeight: '700', color: colors.primary },
+  // Auspiciador propio de cada liga (franja superior de la tarjeta)
+  ligaSponsor: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)',
   },
-  radioOuterActive: { borderColor: colors.primary },
-  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
-  modalOptionText: { fontSize: 15, color: colors.textPrimary },
-  filterApplyBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 30,
-    paddingVertical: 18,
-    alignItems: 'center',
-    marginTop: 16,
+  ligaSponsorLabel: { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
+  ligaSponsorNombre: { fontSize: 15, color: '#FFFFFF', fontWeight: '800' },
+  premioRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingBottom: 14, marginTop: -4,
   },
-  filterApplyText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  premioText: { flex: 1, fontSize: 12, fontWeight: '700', color: colors.accent },
+
+  // Próximamente
+  proxCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.border,
+    borderRadius: 18, padding: 16, marginBottom: 12,
+  },
+  proxNivel: {
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  proxTitulo: { fontSize: 15, fontWeight: '700', color: colors.textSecondary },
+  proxSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  proxBadge: { backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 },
+  proxBadgeText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
 });

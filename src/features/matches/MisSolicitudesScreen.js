@@ -357,11 +357,11 @@ export function MisSolicitudesScreen({ navigation, route }) {
           {tipo === 'partidos' && (
             <>
               {/* ── 1. RETOS DE AMIGOS ── */}
-              <Text style={[styles.sectionTitle, { marginTop: 0 }]}>Retos de amigos</Text>
-              <Text style={styles.sectionHint}>Amigos que te retaron directamente a un amistoso.</Text>
+              <Text style={[styles.sectionTitle, { marginTop: 0 }]}>Retos recibidos</Text>
+              <Text style={styles.sectionHint}>Amigos y rivales de tu liga que te retaron directamente.</Text>
               {retosAmigos.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyText}>No tienes retos de amigos pendientes</Text>
+                  <Text style={styles.emptyText}>No tienes retos pendientes</Text>
                 </View>
               ) : (
                 retosAmigos.map(r => {
@@ -374,6 +374,11 @@ export function MisSolicitudesScreen({ navigation, route }) {
                           <Text style={styles.retadorName} numberOfLines={1}>{r.nombre_creador ?? 'Amigo'}</Text>
                           <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
                           <Text style={styles.retadorRanking}> {r.ranking_creador ?? '--'}</Text>
+                        </View>
+                        <View style={[styles.tipoRetoChip, r.id_liga ? styles.tipoRetoLiga : null]}>
+                          <Text style={[styles.tipoRetoText, r.id_liga ? styles.tipoRetoTextLiga : null]} numberOfLines={1}>
+                            {r.id_liga ? (r.nombre_liga ?? 'Liga') : 'Amistoso'}
+                          </Text>
                         </View>
                         <Text style={styles.retadorClub}>
                           {r.nombre_cancha ?? ''}{r.num_sets ? `  ·  ${Number(r.num_sets) === 3 ? '2 de 3' : '3 de 5'}` : ''}
@@ -623,7 +628,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, borderRadius: 16,
     padding: 14, gap: 12, marginBottom: 12,
   },
-  retoAmigoCard: { backgroundColor: colors.accentLight }, // NUEVO: resalta los retos de amigos
+  retoAmigoCard: { backgroundColor: colors.accentLight }, // resalta los retos recibidos
+  tipoRetoChip: {
+    alignSelf: 'flex-start', backgroundColor: colors.background, borderRadius: 8,
+    paddingHorizontal: 7, paddingVertical: 2, marginBottom: 4, maxWidth: '100%',
+  },
+  tipoRetoLiga: { backgroundColor: colors.dark },
+  tipoRetoText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
+  tipoRetoTextLiga: { color: colors.accent },
   retadorAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#ccc' },
   retadorInfo: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },

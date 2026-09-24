@@ -4,6 +4,7 @@ import {
   SafeAreaView, Image, ImageBackground, Dimensions, ScrollView, Alert, ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants';
 import { partidoService } from '../../services/partidoService';
 import { authService } from '../../services/authService';
@@ -14,6 +15,7 @@ const COVER_H = 200;
 const AVATAR_SIZE = 90;
 
 export function DetallePartidoScreen({ navigation, route }) {
+  const insets = useSafeAreaInsets();
   const itemInicial = route?.params?.partido ?? {};
   const [item, setItem] = useState(itemInicial);
   const [cargando, setCargando] = useState(false);
@@ -114,6 +116,13 @@ export function DetallePartidoScreen({ navigation, route }) {
   const soyCreador  = idCreador != null && Number(usuarioActualId) === Number(idCreador);
   const soyInvitado = esPendiente && !soyCreador;
   const rivalNombre = String(rival.name ?? '').split(' ')[0];
+  // NUEVO: tipo de partido (liga / rankeado antiguo / amistoso)
+  const esLiga      = Number(item.es_liga ?? 0) === 1 || item.id_liga != null;
+  const codigoTipo  = item.tipo_reto_codigo ?? '';
+  const esRankeado  = codigoTipo === 'TIPO_RANKEADO' || String(item.tipo_reto ?? '').toLowerCase().includes('rank');
+  const esRetoLiga  = esLiga || esRankeado;
+  const numSets     = Number(item.num_sets ?? 5);
+  const formatoSets = numSets === 3 ? '2 de 3 sets' : '3 de 5 sets';
 
   async function handleCancelar() {
     Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar este partido?', [
@@ -177,7 +186,7 @@ export function DetallePartidoScreen({ navigation, route }) {
       {/* Cover */}
       <ImageBackground source={{ uri: partido.coverUri }} style={styles.cover}>
         <SafeAreaView>
-          <View style={styles.coverHeader}>
+          <View style={[styles.coverHeader, { marginTop: insets.top + 8 }]}>
             <TouchableOpacity
               style={styles.backBtn}
               onPress={() => navigation.goBack()}
@@ -192,6 +201,24 @@ export function DetallePartidoScreen({ navigation, route }) {
       {/* Sheet */}
       <ScrollView style={styles.sheet} contentContainerStyle={styles.sheetContent}>
         {cargando && <ActivityIndicator size="small" color={colors.primary} style={{ marginBottom: 12 }} />}
+
+        {/* NUEVO: tipo de partido */}
+        {esLiga ? (
+          <View style={styles.tipoLiga}>
+            <Ionicons name="trophy" size={18} color={colors.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.tipoLigaLabel}>Partido de liga · {formatoSets}</Text>
+              <Text style={styles.tipoLigaNombre} numberOfLines={2}>{item.nombre_liga ?? 'Liga de ranking'}</Text>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.tipoAmistoso}>
+            <Ionicons name={esRankeado ? 'ribbon-outline' : 'happy-outline'} size={16} color={colors.textPrimary} />
+            <Text style={styles.tipoAmistosoText}>
+              {esRankeado ? 'Rankeado' : 'Amistoso'} · {formatoSets}
+            </Text>
+          </View>
+        )}
 
         {/* Dos jugadores */}
         <View style={styles.playersRow}>
@@ -305,7 +332,9 @@ export function DetallePartidoScreen({ navigation, route }) {
 
         {!esFinalizado && !esBuscando && !esPendiente && (
           <Text style={styles.mandatoryNote}>
-            Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.
+            {esLiga
+              ? 'Resultado a 3 de 5 sets. Suma o resta puntos de liga: 3-0 ±3, 3-1 ±2, 3-2 ±1. Colócalo hasta 12 hrs luego del encuentro.'
+              : 'Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.'}
           </Text>
         )}
 
@@ -315,7 +344,7 @@ export function DetallePartidoScreen({ navigation, route }) {
             <Ionicons name="hourglass-outline" size={20} color={colors.textPrimary} />
             <Text style={styles.pendienteText}>
               {soyInvitado
-                ? `${rivalNombre} te retó a un partido amistoso.`
+                ? `${rivalNombre} te retó a un partido ${esRetoLiga ? 'de liga' : 'amistoso'}.`
                 : `Esperando que ${rivalNombre} acepte tu reto.`}
             </Text>
           </View>
@@ -390,7 +419,6 @@ const styles = StyleSheet.create({
   coverHeader: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginTop: 8,
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
@@ -470,7 +498,21 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
 
-  // NUEVO
+  // NUEVO: etiqueta de tipo de partido
+  tipoLiga: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, width: '100%',
+    backgroundColor: colors.dark, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 20,
+  },
+  tipoLigaLabel: { fontSize: 11, fontWeight: '700', color: colors.accent },
+  tipoLigaNombre: { fontSize: 14, fontWeight: '800', color: '#FFFFFF', marginTop: 2 },
+  tipoAmistoso: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center',
+    backgroundColor: colors.surface, borderRadius: 14,
+    paddingHorizontal: 12, paddingVertical: 6, marginBottom: 20,
+  },
+  tipoAmistosoText: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
+
   pendienteCard: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: colors.accentLight, borderRadius: 14,

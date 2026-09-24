@@ -25,6 +25,9 @@ const AVATARES_LOCALES = {
 function fuenteAvatar(foto) {
   if (foto && (foto.startsWith('http://') || foto.startsWith('https://'))) return { uri: foto };
   if (foto && AVATARES_LOCALES[foto]) return AVATARES_LOCALES[foto];
+  // También acepta el nombre con extensión (ej. 'avatar_general.png')
+  const sinExt = foto ? String(foto).replace(/\.png$/i, '') : null;
+  if (sinExt && AVATARES_LOCALES[sinExt]) return AVATARES_LOCALES[sinExt];
   return AVATARES_LOCALES.avatar_general;
 }
 
@@ -46,8 +49,42 @@ function groupByDate(items) {
   return Object.values(map);
 }
 
+// NUEVO: tipo de partido según los datos de sp_gestion_listar_encuentros
+function tipoDePartido(item) {
+  if (item.categoria_tab === 'CLASE') return { clave: 'CLASE' };
+  const esLiga = Number(item.es_liga ?? 0) === 1 || item.id_liga != null;
+  if (esLiga) return { clave: 'LIGA', texto: item.nombre_liga ?? 'Partido de liga' };
+  const codigo = item.tipo_reto_codigo ?? '';
+  const nombre = String(item.tipo_reto ?? '').toLowerCase();
+  if (codigo === 'TIPO_RANKEADO' || nombre.includes('rank')) return { clave: 'RANKEADO', texto: 'Rankeado' };
+  return { clave: 'AMISTOSO', texto: 'Amistoso' };
+}
+
+function TipoChip({ tipo, numSets }) {
+  if (tipo.clave === 'CLASE') return null;
+  const sets = Number(numSets) === 3 ? '2 de 3' : Number(numSets) === 5 ? '3 de 5' : null;
+
+  if (tipo.clave === 'LIGA') {
+    return (
+      <View style={[styles.tipoChip, styles.tipoChipLiga]}>
+        <Ionicons name="trophy" size={11} color={colors.accent} />
+        <Text style={[styles.tipoChipText, styles.tipoChipTextLiga]} numberOfLines={1}>{tipo.texto}</Text>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.tipoChip}>
+      <Ionicons name={tipo.clave === 'RANKEADO' ? 'ribbon-outline' : 'happy-outline'} size={11} color={colors.textSecondary} />
+      <Text style={styles.tipoChipText} numberOfLines={1}>
+        {tipo.texto}{sets ? ` · ${sets}` : ''}
+      </Text>
+    </View>
+  );
+}
+
 function AppointmentCard({ item, onPress }) {
   const esClase     = item.categoria_tab === 'CLASE';
+  const tipo        = tipoDePartido(item);
   const nombreRival = item.nombre_rival ?? item.rival ?? item.participante ?? null;
   const fotoRival   = item.foto_perfil_url_rival ?? item.foto_rival ?? item.foto_perfil_url ?? null;
   const rankingRival = item.ranking_rival ?? item.ranking ?? null;
@@ -59,7 +96,7 @@ function AppointmentCard({ item, onPress }) {
 
   let statusBg = '#FFF3E0'; // Naranja claro (Pendiente por defecto)
   let statusTxt = '#E65100';
-  
+
   const st = estadoStr.toLowerCase();
 
   if (st.includes('confirmado') || st.includes('aceptad') || st === '2') {
@@ -77,7 +114,11 @@ function AppointmentCard({ item, onPress }) {
   if (estadoStr === '4') etiquetaVisual = 'Cancelado';
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
+    <TouchableOpacity
+      style={[styles.card, tipo.clave === 'LIGA' && styles.cardLiga]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
       {/* Icono de clase o Avatar de rival */}
       {esClase ? (
         <View style={styles.cardIconWrap}>
@@ -88,12 +129,15 @@ function AppointmentCard({ item, onPress }) {
       )}
 
       <View style={styles.cardInfo}>
+        {/* NUEVO: tipo de partido */}
+        <TipoChip tipo={tipo} numSets={item.num_sets} />
+
         {/* Cabecera Info: Nombre + Badge Estado */}
         <View style={styles.cardHeaderInfo}>
           <View style={{ flex: 1 }}>
             <View style={styles.nameRow}>
               <Text style={styles.cardName} numberOfLines={1}>
-                {nombreRival ?? item.tipo_reto ?? 'Partido'}
+                {nombreRival ?? (esClase ? 'Clase' : 'Buscando rival')}
               </Text>
               {rankingRival != null && (
                 <View style={styles.rankRow}>
@@ -105,7 +149,7 @@ function AppointmentCard({ item, onPress }) {
             <Text style={styles.cardClub} numberOfLines={1}>{item.lugar ?? item.nombre_cancha ?? ''}</Text>
           </View>
 
-          {/* Badge de estado único en la esquina superior derecha */}
+          {/* Badge de estado */}
           <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
             <Text style={[styles.statusText, { color: statusTxt }]}>{etiquetaVisual}</Text>
           </View>
@@ -117,7 +161,7 @@ function AppointmentCard({ item, onPress }) {
           <Text style={styles.cardMeta}> {formatSectionDate(item.fecha_partido)}</Text>
           <Text style={{ width: 8 }} />
           <Ionicons name="time-outline" size={12} color={colors.textSecondary} />
-          <Text style={styles.cardMeta}> {(item.hora_partido ?? '').substring(0, 5)}</Text>
+          <Text style={styles.cardMeta}> {String(item.hora_partido ?? '').substring(0, 5)}</Text>
         </View>
       </View>
 
@@ -135,7 +179,7 @@ function Section({ data, onPressItem }) {
           <Text style={styles.sectionLabel}>{section.section}</Text>
           {section.items.map((item, i) => (
             <AppointmentCard
-              key={item.id_encuentro ?? i}
+              key={`${item.categoria_tab}-${item.id_encuentro ?? i}`}
               item={item}
               onPress={onPressItem ? () => onPressItem(item) : null}
             />
@@ -298,6 +342,8 @@ const styles = StyleSheet.create({
     borderRadius: 16, padding: 14, marginBottom: 12,
     alignItems: 'center', gap: 12,
   },
+  // NUEVO: partidos de liga resaltados con borde amarillo
+  cardLiga: { borderLeftWidth: 4, borderLeftColor: colors.accent, paddingLeft: 12 },
   cardAvatar: {
     width: 52, height: 52, borderRadius: 26, backgroundColor: '#ccc',
   },
@@ -307,10 +353,19 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   cardInfo: { flex: 1 },
-  cardHeaderInfo: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'flex-start' 
+  // NUEVO: etiqueta de tipo de partido
+  tipoChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', maxWidth: '100%',
+    backgroundColor: colors.background, borderRadius: 8,
+    paddingHorizontal: 7, paddingVertical: 2, marginBottom: 5,
+  },
+  tipoChipLiga: { backgroundColor: colors.dark },
+  tipoChipText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, flexShrink: 1 },
+  tipoChipTextLiga: { color: '#FFFFFF' },
+  cardHeaderInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start'
   },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 3 },
   cardName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, flexShrink: 1 },

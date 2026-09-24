@@ -10,14 +10,14 @@ import { partidoService } from '../../services/partidoService';
 import { DEPORTE_DEFAULT } from '../../constants/maestro';
 import { getAvatarSource } from '../../utils/avatars';
 
-const TABS = ['Rankeado', 'Amistoso'];
+// Los partidos rankeados ahora se juegan dentro de las LIGAS (pestaña Ranking).
+// Esta pantalla queda solo para amistosos.
 
 // Persiste los IDs retados durante la sesión (se limpia solo al cerrar la app)
 const retadosEnSesion = new Set();
 const FILTER_KEYS = ['cancha', 'fecha', 'hora', 'partido'];
 const FILTER_LABELS = { cancha: 'Cancha', fecha: 'Fecha', hora: 'Hora', partido: 'Partido' };
 
-// --- Funciones de ayuda para limpiar los datos del backend ---
 function formatFecha(fecha) {
   if (!fecha) return 'Sin fecha';
   if (fecha.includes('T')) {
@@ -31,21 +31,14 @@ function formatHora(hora) {
   if (!hora) return 'Sin hora';
   if (hora.split(':').length >= 2) {
     const partes = hora.split(':');
-    return `${partes[0]}:${partes[1]}`; // Toma solo HH:mm
+    return `${partes[0]}:${partes[1]}`;
   }
   return hora;
 }
-// -----------------------------------------------------------
 
 function getFilteredPlayers(filters, base) {
   return base.filter(p => {
-    // TODO: Los filtros visuales están desactivados temporalmente porque los formatos
-    // de fecha/cancha del backend no coinciden con los valores de los modales estáticos.
-    // Reactivar una vez que los modales usen datos reales del backend.
-    // if (filters.cancha && p.club !== filters.cancha) return false;
-    // if (filters.fecha && p.date !== filters.fecha) return false;
-    // if (filters.hora && p.time !== filters.hora) return false;
-    // if (filters.partido && p.matchType !== filters.partido) return false;
+    // TODO: filtros visuales desactivados hasta que los modales usen datos reales del backend.
     return true;
   });
 }
@@ -70,8 +63,12 @@ function PlayerCard({ player, onPress, onRetarPress, yaRetado }) {
       <View style={styles.cardInfo}>
         <View style={styles.nameRow}>
           <Text style={styles.playerName}>{player.name}</Text>
-          <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
-          <Text style={styles.playerRanking}> {player.ranking}</Text>
+          {player.ranking != null && (
+            <>
+              <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
+              <Text style={styles.playerRanking}> {player.ranking}</Text>
+            </>
+          )}
         </View>
         <Text style={styles.playerClub} numberOfLines={1}>{player.club}</Text>
         <View style={styles.dateRow}>
@@ -83,7 +80,6 @@ function PlayerCard({ player, onPress, onRetarPress, yaRetado }) {
         </View>
       </View>
       <View style={styles.cardRight}>
-        <Text style={styles.timeAgo}>Hace 15 min.</Text>
         {yaRetado ? (
           <View style={[styles.retarBtn, styles.retadoBtn]}>
             <Text style={styles.retadoText}>Retado</Text>
@@ -215,9 +211,7 @@ function PartidoModal({ visible, onClose, onAdd }) {
   );
 }
 
-export function BuscarPartidoScreen({ navigation, route }) {
-  const initialTab = route?.params?.tab || 'Rankeado';
-  const [activeTab, setActiveTab] = useState(initialTab);
+export function BuscarPartidoScreen({ navigation }) {
   const [filters, setFilters] = useState({ cancha: null, fecha: null, hora: null, partido: null });
   const [openModal, setOpenModal] = useState(null);
   const [basePlayers, setBasePlayers] = useState([]);
@@ -228,16 +222,11 @@ export function BuscarPartidoScreen({ navigation, route }) {
   const hasFilters = Object.values(filters).some(Boolean);
 
   useEffect(() => {
-    setBasePlayers([]);
     setLoading(true);
-    const call = activeTab === 'Rankeado'
-      ? partidoService.buscarRankeado({ idDeporte: DEPORTE_DEFAULT })
-      : partidoService.buscarAmistoso({ idDeporte: DEPORTE_DEFAULT });
-
-    call
+    partidoService.buscarAmistoso({ idDeporte: DEPORTE_DEFAULT })
       .then(res => {
         if (Array.isArray(res) && res.length) {
-          const normalized = res.map(p => ({
+          setBasePlayers(res.map(p => ({
             id:         p.id_partido,
             id_partido: p.id_partido,
             id_usuario: p.id_usuario,
@@ -248,13 +237,14 @@ export function BuscarPartidoScreen({ navigation, route }) {
             club:       p.cancha ?? p.nombre_cancha ?? p.ubicacion ?? 'Cancha no especificada',
             date:       formatFecha(p.fecha_partido ?? p.date),
             time:       formatHora(p.hora_partido ?? p.time),
-          }));
-          setBasePlayers(normalized);
+          })));
+        } else {
+          setBasePlayers([]);
         }
       })
-      .catch(() => {})
+      .catch(() => setBasePlayers([]))
       .finally(() => setLoading(false));
-  }, [activeTab]);
+  }, []);
 
   function applyFilter(key, value) {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -265,15 +255,15 @@ export function BuscarPartidoScreen({ navigation, route }) {
     setFilters(prev => ({ ...prev, [key]: null }));
   }
 
-  function switchTab(tab) {
-    setActiveTab(tab);
-    setFilters({ cancha: null, fecha: null, hora: null, partido: null });
-    setOpenModal(null);
+  function irALigas() {
+    navigation.reset({
+      index: 0,
+      routes: [{
+        name: 'MainTabs',
+        state: { index: 1, routes: [{ name: 'Home' }, { name: 'Ranking' }, { name: 'Resultados' }, { name: 'Partidos' }, { name: 'Perfil' }] },
+      }],
+    });
   }
-
-  const btnText = activeTab === 'Rankeado'
-    ? 'Crear Partido Rankeado'
-    : hasFilters ? 'Buscar Partido Amistoso' : 'Crear Partido Amistoso';
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -281,38 +271,33 @@ export function BuscarPartidoScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Buscar partido</Text>
-      </View>
-
-      <View style={styles.tabRow}>
-        {TABS.map(tab => (
-          <TouchableOpacity key={tab} style={styles.tabItem} onPress={() => switchTab(tab)}>
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
-            {activeTab === tab && <View style={styles.tabIndicator} />}
-          </TouchableOpacity>
-        ))}
+        <Text style={styles.headerTitle}>Buscar partido amistoso</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        <Text style={styles.pageTitle}>
-          Partidos {activeTab === 'Rankeado' ? 'rankeados' : 'amistosos'}
-        </Text>
+        {/* Aviso: los rankeados ahora son ligas */}
+        <TouchableOpacity style={styles.ligasAviso} onPress={irALigas} activeOpacity={0.85}>
+          <Ionicons name="trophy" size={20} color={colors.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.ligasAvisoTitulo}>¿Buscas partidos rankeados?</Text>
+            <Text style={styles.ligasAvisoTexto}>Ahora se juegan en las ligas de la pestaña Ranking.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
+        </TouchableOpacity>
+
+        <Text style={styles.pageTitle}>Partidos amistosos</Text>
         <View style={styles.countRow}>
           <View style={styles.greenDot} />
           <Text style={styles.countText}>
-            {players.length > 0
-              ? `${players.length} ${activeTab === 'Rankeado' ? 'jugadores de tu nivel' : 'buscando partido'}`
-              : 'Sin partidos disponibles'}
+            {players.length > 0 ? `${players.length} buscando partido` : 'Sin partidos disponibles'}
           </Text>
         </View>
 
-        {activeTab === 'Amistoso' && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow} style={styles.chipScroll}>
-            {FILTER_KEYS.map(key => (
-              <FilterChip key={key} label={FILTER_LABELS[key]} active={!!filters[key]} onPress={() => setOpenModal(key)} onRemove={() => removeFilter(key)} />
-            ))}
-          </ScrollView>
-        )}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow} style={styles.chipScroll}>
+          {FILTER_KEYS.map(key => (
+            <FilterChip key={key} label={FILTER_LABELS[key]} active={!!filters[key]} onPress={() => setOpenModal(key)} onRemove={() => removeFilter(key)} />
+          ))}
+        </ScrollView>
 
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
@@ -327,7 +312,7 @@ export function BuscarPartidoScreen({ navigation, route }) {
               key={p.id}
               player={p}
               yaRetado={retadosIds.includes(p.id)}
-              onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name ?? p.nombre_usuario, pts: p.pts ?? p.puntaje_total, ranking: p.ranking ?? p.posicion_ranking, avatar: p.avatar ?? p.foto_perfil_url, id_usuario: p.id_usuario ?? p.id_jugador } })}
+              onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts, ranking: p.ranking, avatar: p.avatar, id_usuario: p.id_usuario } })}
               onRetarPress={() => {
                 navigation.navigate('RetarJugador', {
                   player: p,
@@ -343,9 +328,9 @@ export function BuscarPartidoScreen({ navigation, route }) {
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.bottomBtn} onPress={() => navigation.navigate('CrearPartido', { tipo: activeTab })}>
+        <TouchableOpacity style={styles.bottomBtn} onPress={() => navigation.navigate('CrearPartido', { tipo: 'Amistoso' })}>
           <Ionicons name="person-add-outline" size={20} color={colors.primary} />
-          <Text style={styles.bottomBtnText}>{btnText}</Text>
+          <Text style={styles.bottomBtnText}>{hasFilters ? 'Buscar Partido Amistoso' : 'Crear Partido Amistoso'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -361,12 +346,13 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 16 },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary },
-  tabRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border },
-  tabItem: { flex: 1, alignItems: 'center', paddingVertical: 14, position: 'relative' },
-  tabText: { fontSize: 16, color: colors.textSecondary, fontWeight: '500' },
-  tabTextActive: { color: colors.textPrimary, fontWeight: '600' },
-  tabIndicator: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, backgroundColor: colors.accent, borderRadius: 2 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 },
+  ligasAviso: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: colors.dark, borderRadius: 16, padding: 14, marginBottom: 20,
+  },
+  ligasAvisoTitulo: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  ligasAvisoTexto: { fontSize: 12, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
   pageTitle: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 6 },
   countRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   greenDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.positive },
@@ -386,8 +372,7 @@ const styles = StyleSheet.create({
   playerClub: { fontSize: 13, color: colors.textSecondary, marginBottom: 5, fontStyle: 'italic' },
   dateRow: { flexDirection: 'row', alignItems: 'center' },
   metaText: { fontSize: 12, color: colors.textSecondary },
-  cardRight: { alignItems: 'flex-end', justifyContent: 'space-between', alignSelf: 'stretch' },
-  timeAgo: { fontSize: 11, color: colors.textSecondary },
+  cardRight: { alignItems: 'flex-end', justifyContent: 'center', alignSelf: 'stretch' },
   retarBtn: { borderWidth: 1.5, borderColor: colors.textPrimary, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 },
   retarText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
   retadoBtn: { borderColor: colors.border, backgroundColor: colors.surface },

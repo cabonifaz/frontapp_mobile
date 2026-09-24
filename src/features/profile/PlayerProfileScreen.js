@@ -349,7 +349,7 @@ export function PlayerProfileScreen({ navigation, route }) {
                   onPress={() => navigation.navigate('RankedMatch')}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.secondaryBtnText}>Buscar partido rankeado</Text>
+                  <Text style={styles.secondaryBtnText}>Ver ligas de ranking</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -358,8 +358,8 @@ export function PlayerProfileScreen({ navigation, route }) {
                 onPress={() => navigation.navigate('RankedMatch')}
                 activeOpacity={0.85}
               >
-                <Ionicons name="tennisball-outline" size={20} color={colors.primary} />
-                <Text style={styles.retarBtnText}>Buscar partido para retar</Text>
+                <Ionicons name="trophy-outline" size={20} color={colors.primary} />
+                <Text style={styles.retarBtnText}>Ver ligas de ranking</Text>
               </TouchableOpacity>
             )
           )}

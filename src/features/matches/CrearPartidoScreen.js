@@ -8,6 +8,7 @@ import { colors } from '../../constants';
 import { maestroService } from '../../services/maestroService';
 import { partidoService } from '../../services/partidoService';
 import { amistadService } from '../../services/amistadService';
+import { ligaService } from '../../services/ligaService';
 import { getAvatarSource } from '../../utils/avatars';
 import { TIPOS_JUEGO, DEPORTE_DEFAULT } from '../../constants/maestro';
 
@@ -241,7 +242,11 @@ function RetoEnviadoScreen({ amigo, onPress }) {
 export function CrearPartidoScreen({ navigation, route }) {
   const tipo = route?.params?.tipo ?? 'Rankeado';
   const amigoInicial = route?.params?.amigo ?? null; // llega desde PlayerProfile o AmigosScreen
-  const esAmistoso = tipo !== 'Rankeado';
+  // NUEVO: reto de liga (llega desde LigaDetalle con { liga, rival })
+  const ligaParam  = route?.params?.liga ?? null;
+  const rivalLiga  = route?.params?.rival ?? null;
+  const esLiga     = !!ligaParam;
+  const esAmistoso = !esLiga && tipo !== 'Rankeado';
 
   const [cancha, setCancha] = useState(null);
   const [fecha, setFecha] = useState(null);
@@ -286,7 +291,14 @@ export function CrearPartidoScreen({ navigation, route }) {
   }, [fecha]);
 
   const horasDisponibles = getHorasDisponibles(fecha);
-  const canConfirm = !!cancha && !!fecha && !!hora && !creando && (!esDirecto || !!amigo);
+  const inicioLiga = ligaParam?.fecha_inicio ? String(ligaParam.fecha_inicio).split('T')[0] : null;
+  const finLiga    = ligaParam?.fecha_fin ? String(ligaParam.fecha_fin).split('T')[0] : null;
+  const diasDisponibles = esLiga
+    ? DAYS.filter(d => (!inicioLiga || d.iso >= inicioLiga) && (!finLiga || d.iso <= finLiga))
+    : DAYS;
+  const canConfirm = !!cancha && !!fecha && !!hora && !creando
+    && (!esDirecto || !!amigo)
+    && (!esLiga || !!rivalLiga);
 
   const handleCrear = async () => {
     if (!canConfirm) return;
@@ -300,7 +312,15 @@ export function CrearPartidoScreen({ navigation, route }) {
         id_deporte: DEPORTE_DEFAULT,
       };
 
-      if (tipo === 'Rankeado') {
+      if (esLiga) {
+        await ligaService.retar(ligaParam.id_liga, {
+          id_rival:  rivalLiga.id_usuario,
+          id_cancha: datos.id_cancha,
+          fecha:     datos.fecha,
+          hora:      datos.hora,
+        });
+        setRetoEnviado(rivalLiga);
+      } else if (tipo === 'Rankeado') {
         await partidoService.crearRankeado(datos);
       } else if (esDirecto) {
         await partidoService.crearAmistosoDirecto({ ...datos, num_sets: numSets, id_rival: amigo.id_usuario });
@@ -356,7 +376,9 @@ export function CrearPartidoScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{esDirecto ? 'Retar a un amigo' : `Crear Partido ${tipo}`}</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {esLiga ? 'Reto de liga' : esDirecto ? 'Retar a un amigo' : `Crear Partido ${tipo}`}
+        </Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -424,6 +446,29 @@ export function CrearPartidoScreen({ navigation, route }) {
           </>
         )}
 
+        {/* NUEVO: reto de liga — rival fijo y reglas */}
+        {esLiga && (
+          <>
+            <View style={styles.ligaCard}>
+              <Ionicons name="trophy" size={16} color={colors.accent} />
+              <Text style={styles.ligaNombre} numberOfLines={2}>{ligaParam.nombre_oficial}</Text>
+            </View>
+            <View style={styles.canchaCard}>
+              <Image source={getAvatarSource(rivalLiga?.foto_perfil_url)} style={styles.amigoAvatar} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.canchaName}>{rivalLiga?.nombre_completo ?? 'Rival'}</Text>
+                <Text style={styles.canchaHint}>
+                  {rivalLiga?.posicion ? `${rivalLiga.posicion}° en la tabla` : 'Rival de liga'}
+                  {rivalLiga?.puntos != null ? ` · ${rivalLiga.puntos} pts` : ''}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.mandatoryNote}>
+              Singles al mejor de 5 sets. El resultado suma o resta puntos de liga (3-0: ±3, 3-1: ±2, 3-2: ±1).
+            </Text>
+          </>
+        )}
+
         {/* Selector de Cancha */}
         <TouchableOpacity style={styles.canchaCard} onPress={() => setShowCanchaModal(true)} activeOpacity={0.8}>
           {cancha && (cancha.foto_url ?? cancha.uri) ? (
@@ -455,7 +500,7 @@ export function CrearPartidoScreen({ navigation, route }) {
           contentContainerStyle={styles.hChipRow}
           style={styles.hScroll}
         >
-          {DAYS.map(d => {
+          {diasDisponibles.map(d => {
             const active = fecha?.key === d.key;
             return (
               <TouchableOpacity
@@ -492,19 +537,23 @@ export function CrearPartidoScreen({ navigation, route }) {
           })}
         </ScrollView>
 
-        {/* Tipo de juego */}
-        <Text style={styles.sectionTitle}>Selecciona tipo de juego</Text>
-        <View style={styles.toggle}>
-          {['Singles', 'Dobles'].map(t => (
-            <TouchableOpacity
-              key={t}
-              style={[styles.toggleBtn, tipoJuego === t && styles.toggleBtnActive]}
-              onPress={() => setTipoJuego(t)}
-            >
-              <Text style={[styles.toggleText, tipoJuego === t && styles.toggleTextActive]}>{t}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Tipo de juego (en liga siempre es singles) */}
+        {!esLiga && (
+          <>
+            <Text style={styles.sectionTitle}>Selecciona tipo de juego</Text>
+            <View style={styles.toggle}>
+              {['Singles', 'Dobles'].map(t => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.toggleBtn, tipoJuego === t && styles.toggleBtnActive]}
+                  onPress={() => setTipoJuego(t)}
+                >
+                  <Text style={[styles.toggleText, tipoJuego === t && styles.toggleTextActive]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
 
         {/* Formato de sets — solo Amistoso */}
         {esAmistoso && (
@@ -540,7 +589,7 @@ export function CrearPartidoScreen({ navigation, route }) {
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
-              {esDirecto ? 'Enviar reto' : 'Confirmar'}
+              {esDirecto || esLiga ? 'Enviar reto' : 'Confirmar'}
             </Text>
           )}
         </TouchableOpacity>
@@ -610,6 +659,13 @@ const styles = StyleSheet.create({
   canchaHint: { fontSize: 13, color: colors.textSecondary },
 
   amigoAvatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#ccc' },
+
+  ligaCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: colors.dark, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 12,
+  },
+  ligaNombre: { flex: 1, fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
 
   mandatoryNote: { fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginBottom: 24 },
 

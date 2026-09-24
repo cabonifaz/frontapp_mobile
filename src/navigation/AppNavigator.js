@@ -33,8 +33,26 @@ import { ChatScreen } from '../features/chat/ChatScreen';
 // NUEVO: amistades
 import { AmigosScreen } from '../features/friends/AmigosScreen';
 import { SolicitudesAmistadScreen } from '../features/friends/SolicitudesAmistadScreen';
+// NUEVO: ligas de ranking
+import { LigaDetalleScreen } from '../features/ranking/LigaDetalleScreen';
+import { RankingGeneralScreen } from '../features/ranking/RankingGeneralScreen';
 
 const Stack = createNativeStackNavigator();
+
+// Los partidos rankeados ahora son las LIGAS. Cualquier botón que aún abra
+// 'RankedMatch' (Home, perfil de jugador, etc.) termina en la pestaña Ranking.
+function IrARankingScreen({ navigation }) {
+  React.useEffect(() => {
+    navigation.reset({
+      index: 0,
+      routes: [{
+        name: 'MainTabs',
+        state: { index: 1, routes: [{ name: 'Home' }, { name: 'Ranking' }, { name: 'Resultados' }, { name: 'Partidos' }, { name: 'Perfil' }] },
+      }],
+    });
+  }, [navigation]);
+  return null;
+}
 const Tab = createBottomTabNavigator();
 
 function MainTabs() {
@@ -97,8 +115,8 @@ export function AppNavigator() {
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} />
-        <Stack.Screen name="FriendlyMatch" component={BuscarPartidoScreen} initialParams={{ tab: 'Amistoso' }} />
-        <Stack.Screen name="RankedMatch" component={BuscarPartidoScreen} initialParams={{ tab: 'Rankeado' }} />
+        <Stack.Screen name="FriendlyMatch" component={BuscarPartidoScreen} />
+        <Stack.Screen name="RankedMatch" component={IrARankingScreen} />
         <Stack.Screen name="CrearPartido" component={CrearPartidoScreen} />
         <Stack.Screen name="RetarJugador" component={RetarScreen} />
         <Stack.Screen name="MisSolicitudes" component={MisSolicitudesScreen} />
@@ -120,6 +138,10 @@ export function AppNavigator() {
         {/* NUEVO: amistades */}
         <Stack.Screen name="Amigos" component={AmigosScreen} />
         <Stack.Screen name="SolicitudesAmistad" component={SolicitudesAmistadScreen} />
+
+        {/* NUEVO: ligas de ranking */}
+        <Stack.Screen name="LigaDetalle" component={LigaDetalleScreen} />
+        <Stack.Screen name="RankingGeneral" component={RankingGeneralScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
