@@ -53,18 +53,22 @@ function SponsorLiga({ liga }) {
   if (!liga.auspiciador_nombre) return null;
   const web = liga.auspiciador_sitio_web;
   return (
-    <TouchableOpacity
-      style={[styles.ligaSponsor, liga.auspiciador_color ? { backgroundColor: liga.auspiciador_color } : null]}
-      activeOpacity={web ? 0.7 : 1}
-      onPress={() => web && Linking.openURL(web).catch(() => {})}
-    >
-      <SponsorLogo nombre={liga.auspiciador_nombre} logoUrl={liga.auspiciador_logo_url} size={34} />
-      <View style={{ flex: 1 }}>
-        <Text style={styles.ligaSponsorLabel}>Presentado por</Text>
-        <Text style={styles.ligaSponsorNombre} numberOfLines={1}>{liga.auspiciador_nombre}</Text>
-      </View>
-      {web ? <Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.7)" /> : null}
-    </TouchableOpacity>
+    <>
+      {/* El color de la marca solo como acento fino, para no competir con la app */}
+      <View style={[styles.ligaAcento, { backgroundColor: liga.auspiciador_color || colors.accent }]} />
+      <TouchableOpacity
+        style={styles.ligaSponsor}
+        activeOpacity={web ? 0.7 : 1}
+        onPress={() => web && Linking.openURL(web).catch(() => {})}
+      >
+        <SponsorLogo nombre={liga.auspiciador_nombre} logoUrl={liga.auspiciador_logo_url} size={40} width={76} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.ligaSponsorLabel}>Presentado por</Text>
+          <Text style={styles.ligaSponsorNombre} numberOfLines={1}>{liga.auspiciador_nombre}</Text>
+        </View>
+        {web ? <Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.5)" /> : null}
+      </TouchableOpacity>
+    </>
   );
 }
 
@@ -290,14 +294,14 @@ const styles = StyleSheet.create({
   miEstadoTexto: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
   miEstadoTextoOscuro: { fontSize: 12, fontWeight: '700', color: colors.primary },
   // Auspiciador propio de cada liga (franja superior de la tarjeta)
+  ligaAcento: { height: 3 },
   ligaSponsor: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 16, paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12,
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.08)',
   },
-  ligaSponsorLabel: { fontSize: 10, color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
-  ligaSponsorNombre: { fontSize: 15, color: '#FFFFFF', fontWeight: '800' },
+  ligaSponsorLabel: { fontSize: 10, color: 'rgba(255,255,255,0.55)', fontWeight: '600', letterSpacing: 0.3 },
+  ligaSponsorNombre: { fontSize: 15, color: '#FFFFFF', fontWeight: '800', marginTop: 1 },
   premioRow: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 16, paddingBottom: 14, marginTop: -4,

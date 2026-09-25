@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "avo-sports",
+    "name": "Ranked",
     "slug": "avo-sports",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -11,19 +11,25 @@
       "bundleIdentifier": "com.chris_13.avosports",
       "infoPlist": {
         "SKAdNetworkItems": [
-          { "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork" },
-          { "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork" }
+          {
+            "SKAdNetworkIdentifier": "v9wttpbfk9.skadnetwork"
+          },
+          {
+            "SKAdNetworkIdentifier": "n38lu8286q.skadnetwork"
+          }
         ]
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#0D111D",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "permissions": ["android.permission.INTERNET"],
+      "permissions": [
+        "android.permission.INTERNET"
+      ],
       "package": "com.chris_13.avosports",
       "usesCleartextTraffic": true
     },
@@ -38,7 +44,7 @@
         {
           "appID": "902257072548724",
           "clientToken": "c53f61d4e31311f60a7ac8ca12b37d27",
-          "displayName": "AvoSports",
+          "displayName": "Ranked",
           "scheme": "fb902257072548724"
         }
       ],

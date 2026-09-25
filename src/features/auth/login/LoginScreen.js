@@ -3,9 +3,10 @@ import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { MaterialCommunityIcons, Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { colors } from '../../../constants';
+import { RankedLogo } from '../../../components/common';
 import { authService } from '../../../services/authService';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
@@ -91,7 +92,6 @@ export function LoginScreen({ navigation }) {
   async function handleFacebookLogin() {
     try {
       setLoading(true);
-      // Llama a la función centralizada que limpia credenciales y fuerza inicio web
       const data = await authService.iniciarSesionFacebook();
       if (data) {
         navigation.replace('MainTabs');
@@ -132,9 +132,9 @@ export function LoginScreen({ navigation }) {
       <DiagonalBackground />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          {/* Marca: Ranked */}
           <View style={styles.brand}>
-            <MaterialCommunityIcons name="tennis" size={52} color="#FFFFFF" style={{ marginBottom: 12 }} />
-            <Text style={styles.brandName}>Avosports</Text>
+            <RankedLogo size={42} />
             <Text style={styles.brandTagline}>
               Encuentra compañeros de juego,{'\n'}desafía a otros jugadores y{'\n'}asciende en el ranking.
             </Text>
@@ -157,10 +157,10 @@ export function LoginScreen({ navigation }) {
 
           <Text style={styles.socialLabel}>O continúa con</Text>
           <View style={styles.socialRow}>
-            <TouchableOpacity 
-              style={[styles.socialBox, { backgroundColor: '#FFFFFF' }, loading && { opacity: 0.5 }]} 
-              activeOpacity={0.8} 
-              onPress={handleGoogleLogin} 
+            <TouchableOpacity
+              style={[styles.socialBox, { backgroundColor: '#FFFFFF' }, loading && { opacity: 0.5 }]}
+              activeOpacity={0.8}
+              onPress={handleGoogleLogin}
               disabled={loading}
             >
               <GoogleIcon size={30} />
@@ -186,8 +186,7 @@ const styles = StyleSheet.create({
   band4: { position: 'absolute', width: 200, height: 1600, backgroundColor: 'rgba(255,255,255,0.02)', transform: [{ rotate: '32deg' }], top: 100, left: 780 },
   container: { flexGrow: 1, paddingHorizontal: 28, paddingTop: 80, paddingBottom: 48 },
   brand: { marginBottom: 44 },
-  brandName: { fontSize: 36, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 12 },
-  brandTagline: { fontSize: 15, color: '#FFFFFF', lineHeight: 23 },
+  brandTagline: { fontSize: 15, color: '#FFFFFF', lineHeight: 23, marginTop: 18 },
   fieldGroup: { marginBottom: 28 },
   fieldLabel: { fontSize: 13, color: '#FFFFFF', marginBottom: 10 },
   fieldRow: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#FFFFFF', paddingBottom: 10 },

@@ -99,6 +99,31 @@ function DetallesTab({ p }) {
   );
 }
 
+// NUEVO: calificación como jugador y, si aplica, como profesor
+function Calificaciones({ p }) {
+  const fmt = (v) => (v != null ? Number(v).toFixed(1) : '—');
+  return (
+    <View style={styles.califRow}>
+      <View style={styles.califChip}>
+        <Ionicons name="star" size={14} color={colors.accent} />
+        <Text style={styles.califValor}>{fmt(p.califJugador)}</Text>
+        <Text style={styles.califTexto}>
+          {p.totalCalifJugador > 0 ? `jugador · ${p.totalCalifJugador}` : 'sin calificaciones'}
+        </Text>
+      </View>
+      {p.esProfesor && (
+        <View style={styles.califChip}>
+          <Ionicons name="school" size={14} color={colors.accent} />
+          <Text style={styles.califValor}>{fmt(p.califProfesor)}</Text>
+          <Text style={styles.califTexto}>
+            {p.totalCalifProfesor > 0 ? `profesor · ${p.totalCalifProfesor}` : 'profesor'}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 // NUEVO: acciones de amistad según el estado de la relación
 function AmistadAcciones({ estado, cargando, nombre, onAgregar, onCancelar, onAceptar, onRechazar, onEliminar }) {
   if (!estado || estado === 'MISMO_USUARIO') return null;
@@ -218,6 +243,12 @@ export function PlayerProfileScreen({ navigation, route }) {
           victoriasRankeadas: res.victorias_rankeadas      ?? 0,
           deporte:            res.deporte_nombre           ?? res.deporte       ?? 'Frontón',
           sobreMi:            res.bio_profesor             ?? res.descripcion   ?? null,
+          // NUEVO: calificaciones
+          califJugador:       res.calificacion_jugador ?? null,
+          totalCalifJugador:  res.total_calificaciones_jugador ?? 0,
+          califProfesor:      res.calificacion_profesor ?? null,
+          totalCalifProfesor: res.total_calificaciones_profesor ?? 0,
+          esProfesor:         Number(res.es_profesor ?? 0) === 1,
         });
       })
       .catch(() => setProfile(buildBasicProfile(basicData)))
@@ -314,6 +345,9 @@ export function PlayerProfileScreen({ navigation, route }) {
           <Text style={styles.name}>{p.nombre ?? 'Jugador'}</Text>
           <Text style={styles.ptsText}>{Number(p.pts ?? 0).toFixed(1)} pts</Text>
 
+          {/* NUEVO: calificaciones */}
+          <Calificaciones p={p} />
+
           <AmistadAcciones
             estado={estadoAmistad}
             cargando={accionAmistad}
@@ -407,7 +441,16 @@ const styles = StyleSheet.create({
   },
   rankBadgeText: { fontSize: 16, fontWeight: 'bold', color: colors.primary },
   name: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 4 },
-  ptsText: { fontSize: 15, color: colors.textSecondary, marginBottom: 16 },
+  ptsText: { fontSize: 15, color: colors.textSecondary, marginBottom: 10 },
+
+  // NUEVO: calificaciones
+  califRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap', justifyContent: 'center' },
+  califChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: colors.surface, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5,
+  },
+  califValor: { fontSize: 14, fontWeight: '800', color: colors.textPrimary },
+  califTexto: { fontSize: 12, color: colors.textSecondary },
 
   // Amistad
   amistadRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginBottom: 20, minHeight: 38 },

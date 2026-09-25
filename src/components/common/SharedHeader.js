@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
+import { useUsuario } from '../../hooks/useUsuario';
 
 export const HEADER_BG = colors.dark;
 
@@ -16,52 +17,43 @@ const AVATARES = {
   'avatar_general.png': require('../../../assets/avatar_general.png'),
 };
 
+function formatCalif(valor) {
+  return valor != null ? Number(valor).toFixed(1) : '—';
+}
+
 export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, puntos, fotoPerfil, genero }) {
+  // Las calificaciones SIEMPRE salen del hook (menú principal), no del prop:
+  // algunas pantallas pasan en `calificacion` el promedio de profesor (0),
+  // lo que mostraba "0.0" aunque el jugador tuviera calificaciones.
+  const usuario = useUsuario();
+  const esProfesor = usuario?.esProfesor ?? false;
+  const califJugador = usuario ? usuario.calificacion : null;
 
   const obtenerFoto = () => {
-    // 1. Si el usuario ya subió una foto real a internet
     if (fotoPerfil && fotoPerfil.startsWith('http')) return { uri: fotoPerfil };
-    
-    // 2. Si la base de datos guardó el nombre exacto del archivo
     if (fotoPerfil && AVATARES[fotoPerfil]) return AVATARES[fotoPerfil];
-    
+
     const cantidadLetras = nombre ? nombre.length : 0;
-    
     const masculinos = [
       AVATARES['avatar_masculino_1.png'],
       AVATARES['avatar_masculino_2.png'],
-      AVATARES['avatar_masculino_3.png']
+      AVATARES['avatar_masculino_3.png'],
     ];
-    
     const femeninos = [
       AVATARES['avatar_femenino_1.png'],
       AVATARES['avatar_femenino_2.png'],
-      AVATARES['avatar_femenino_3.png']
+      AVATARES['avatar_femenino_3.png'],
     ];
-
-    // Normalizamos el texto
     const gen = genero ? String(genero).trim().toLowerCase() : '';
-
-    if (gen === 'm' || gen === 'masculino' || gen === 'hombre' || gen === '1') {
-      return masculinos[cantidadLetras % 3];
-    }
-    
-    if (gen === 'f' || gen === 'femenino' || gen === 'mujer' || gen === '2') {
-      return femeninos[cantidadLetras % 3];
-    }
-    
-    // CORRECCIÓN: Si la BD aún no manda el género, por defecto usamos los MASCULINOS 
-    // para evitar que te muestre un avatar de mujer por error.
+    if (gen === 'm' || gen === 'masculino' || gen === 'hombre' || gen === '1') return masculinos[cantidadLetras % 3];
+    if (gen === 'f' || gen === 'femenino' || gen === 'mujer' || gen === '2') return femeninos[cantidadLetras % 3];
     return masculinos[cantidadLetras % 3];
   };
 
   return (
     <View style={styles.header}>
       <View style={styles.left}>
-        <Image
-          source={obtenerFoto()}
-          style={styles.avatar}
-        />
+        <Image source={obtenerFoto()} style={styles.avatar} />
         <View>
           <Text style={styles.sport}>{deporte ?? 'Frontón'}</Text>
           <Text style={styles.name}>Hola {nombre ?? '...'}</Text>
@@ -69,8 +61,17 @@ export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, pu
             <Ionicons name="trophy" size={14} color="#DDDDDD" />
             <Text style={styles.statText}> {ranking ?? 'N/R'}</Text>
             <Text style={{ width: 12 }} />
+            {/* Calificación como jugador */}
             <Ionicons name="star" size={14} color="#DDDDDD" />
-            <Text style={styles.statText}> {calificacion != null ? Number(calificacion).toFixed(1) : '0.0'}</Text>
+            <Text style={styles.statText}> {formatCalif(califJugador)}</Text>
+            {/* NUEVO: calificación como profesor */}
+            {esProfesor && (
+              <>
+                <Text style={{ width: 12 }} />
+                <Ionicons name="school" size={14} color="#DDDDDD" />
+                <Text style={styles.statText}> {formatCalif(usuario?.calificacionProfesor)}</Text>
+              </>
+            )}
           </View>
         </View>
       </View>
@@ -95,57 +96,18 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 28,
   },
-  left: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  avatar: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#333',
-  },
-  sport: {
-    fontSize: 12,
-    color: '#DDDDDD',
-    marginBottom: 2,
-  },
-  name: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statText: {
-    fontSize: 13,
-    color: '#DDDDDD',
-  },
-  rightBadge: {
-    alignItems: 'center',
-  },
+  left: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatar: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#333' },
+  sport: { fontSize: 12, color: '#DDDDDD', marginBottom: 2 },
+  name: { fontSize: 20, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 4 },
+  statsRow: { flexDirection: 'row', alignItems: 'center' },
+  statText: { fontSize: 13, color: '#DDDDDD' },
+  rightBadge: { alignItems: 'center' },
   levelCircle: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    borderWidth: 3,
-    borderColor: colors.accent,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 62, height: 62, borderRadius: 31,
+    borderWidth: 3, borderColor: colors.accent, backgroundColor: '#FFFFFF',
+    alignItems: 'center', justifyContent: 'center',
   },
-  levelNum: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  ptsLabel: {
-    fontSize: 11,
-    color: '#DDDDDD',
-    marginTop: 4,
-  },
+  levelNum: { fontSize: 22, fontWeight: 'bold', color: colors.primary },
+  ptsLabel: { fontSize: 11, color: '#DDDDDD', marginTop: 4 },
 });

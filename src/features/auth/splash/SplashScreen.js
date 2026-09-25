@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { RankedLogo, RANKED_LIME } from '../../../components/common/RankedLogo';
 import { authService } from '../../../services/authService';
 
 const BG = '#0D1C27';
@@ -18,11 +18,10 @@ export function SplashScreen({ navigation }) {
       <View style={styles.band2} />
       <View style={styles.band3} />
       <View style={styles.center}>
-        <MaterialCommunityIcons name="tennis" size={72} color="#FFFFFF" style={styles.icon} />
-        <Text style={styles.name}>Avosports</Text>
+        <RankedLogo size={52} />
         <Text style={styles.tagline}>Desafía. Compite. Asciende.</Text>
       </View>
-      <ActivityIndicator size="large" color="#FFFFFF" style={styles.loader} />
+      <ActivityIndicator size="large" color={RANKED_LIME} style={styles.loader} />
     </View>
   );
 }
@@ -47,9 +46,7 @@ const styles = StyleSheet.create({
   },
 
   center: { alignItems: 'center' },
-  icon: { marginBottom: 16 },
-  name: { fontSize: 40, fontWeight: 'bold', color: '#FFFFFF', marginBottom: 8 },
-  tagline: { fontSize: 15, color: 'rgba(255,255,255,0.55)', letterSpacing: 0.5 },
+  tagline: { fontSize: 15, color: 'rgba(255,255,255,0.55)', letterSpacing: 0.5, marginTop: 18 },
 
   loader: { position: 'absolute', bottom: 80 },
 });

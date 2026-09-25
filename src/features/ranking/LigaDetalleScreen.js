@@ -408,7 +408,7 @@ export function LigaDetalleScreen({ navigation, route }) {
         </Text>
         {liga.auspiciador_nombre ? (
           <View style={styles.headerSponsor}>
-            <SponsorLogo nombre={liga.auspiciador_nombre} logoUrl={liga.auspiciador_logo_url} size={22} dark />
+            <SponsorLogo nombre={liga.auspiciador_nombre} logoUrl={liga.auspiciador_logo_url} size={30} width={56} dark />
             <Text style={styles.headerSponsorText} numberOfLines={1}>Presentado por {liga.auspiciador_nombre}</Text>
           </View>
         ) : null}

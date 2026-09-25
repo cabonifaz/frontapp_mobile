@@ -11,7 +11,11 @@ import { CircularCropModal } from '../../../components/CircularCropModal';
 import { authService } from '../../../services/authService';
 import { usuarioService } from '../../../services/usuarioService';
 import { DEPORTES, GENEROS, DEPORTE_DEFAULT } from '../../../constants/maestro';
-import { uploadImage } from '../../../services/cloudinaryService'; // Ajusta la ruta según tu estructura de carpetas
+import { uploadImage } from '../../../services/cloudinaryService';
+
+// NUEVO: edad mínima para usar la app (la base de datos también lo valida: CFG_EDAD_MINIMA)
+const EDAD_MIN = 18;
+const EDAD_MAX = 90;
 
 const NIVEL_JUEGO_MAP = {
   'Principiante': 1,
@@ -19,7 +23,16 @@ const NIVEL_JUEGO_MAP = {
   'Avanzado':     3,
   'Elite':        4,
 };
-const GENERO_MAP      = { 'Masculino': GENEROS.MASCULINO, 'Femenino': GENEROS.FEMENINO };
+
+// NUEVO: "Prefiero no decirlo" se envía sin género (NULL): avatar general y
+// solo aparece en el ranking General (no en los filtros Masculino/Femenino).
+const GENERO_OPCIONES = ['Masculino', 'Femenino', 'Prefiero no decirlo'];
+const GENERO_MAP = {
+  'Masculino':           GENEROS.MASCULINO,
+  'Femenino':            GENEROS.FEMENINO,
+  'Prefiero no decirlo': null,
+};
+
 const DEPORTE_MAP     = { 'fronton': DEPORTES.FRONTON, 'tenis': DEPORTES.TENIS, 'padel': DEPORTES.PADEL };
 const PARTIDOS_MAP    = { '0': 0, '1': 1, '2 o más': 2 };
 const NIVEL_FISICO_MAP = { 'Bajo': 1, 'Normal': 2, 'Bueno': 3 };
@@ -54,24 +67,49 @@ function UnderlineField({ label, value, onChangeText, placeholder, keyboardType 
   );
 }
 
+// Desplegable pequeño y desplazable. Se abre DENTRO del formulario (no flotando
+// encima): en Android, lo que sobresale del contenedor no recibe el desplazamiento.
+const ALTO_OPCION = 44;
+const OPCIONES_VISIBLES = 4;
+
 function DropdownField({ label, value, options, onSelect }) {
   const [open, setOpen] = useState(false);
+  const listaRef = React.useRef(null);
+
+  // Al abrir, lleva la lista a la opción ya elegida
+  function alAbrir() {
+    const nuevo = !open;
+    setOpen(nuevo);
+    if (nuevo && value) {
+      const idx = options.indexOf(value);
+      if (idx > 0) {
+        setTimeout(() => listaRef.current?.scrollTo({ y: idx * ALTO_OPCION, animated: false }), 0);
+      }
+    }
+  }
+
   return (
-    <View style={[styles.fieldGroup, open && { zIndex: 100 }]}>
+    <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TouchableOpacity
         style={styles.dropdownTrigger}
-        onPress={() => setOpen(!open)}
+        onPress={alAbrir}
         activeOpacity={0.7}
       >
-        <Text style={[styles.dropdownValue, !value && { color: colors.textSecondary }]}>
+        <Text style={[styles.dropdownValue, !value && { color: colors.textSecondary }]} numberOfLines={1}>
           {value || label}
         </Text>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textSecondary} />
       </TouchableOpacity>
       {open && (
         <View style={styles.dropdownList}>
-          <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }}>
+          <ScrollView
+            ref={listaRef}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
+            style={{ maxHeight: ALTO_OPCION * OPCIONES_VISIBLES }}
+          >
             {options.map((opt) => (
               <TouchableOpacity
                 key={opt}
@@ -126,12 +164,13 @@ function CheckboxRow({ label, checked, onToggle }) {
 
 // --- Step 1: Información básica ---
 function Step1({ data, setData, onNext, loading }) {
-  // CORRECCIÓN 1: Rango de edad dinámico de 13 a 80 años (68 elementos)
-  const edades = Array.from({ length: 68 }, (_, i) => String(i + 13));
+  // NUEVO: solo mayores de edad (18 a 90 años)
+  const edades = Array.from({ length: EDAD_MAX - EDAD_MIN + 1 }, (_, i) => String(i + EDAD_MIN));
   const canContinue = data.terminos && data.nombre && data.apellido && data.correo && data.contrasena && data.genero && data.edad;
 
   return (
     <ScrollView
+      nestedScrollEnabled
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
@@ -152,11 +191,11 @@ function Step1({ data, setData, onNext, loading }) {
       />
 
       <View style={styles.halfRow}>
-        <View style={{ flex: 1, marginRight: 8 }}>
+        <View style={{ flex: 1.3, marginRight: 8 }}>
           <DropdownField
             label="Género"
             value={data.genero}
-            options={['Masculino', 'Femenino']}
+            options={GENERO_OPCIONES}
             onSelect={(v) => setData({ ...data, genero: v })}
           />
         </View>
@@ -169,6 +208,7 @@ function Step1({ data, setData, onNext, loading }) {
           />
         </View>
       </View>
+      <Text style={styles.edadHint}>Debes tener {EDAD_MIN} años o más para registrarte.</Text>
 
       <UnderlineField
         label="Correo"
@@ -211,7 +251,7 @@ function Step1({ data, setData, onNext, loading }) {
       />
 
       <CheckboxRow
-        label="Acepto los términos y condiciones de Avosports"
+        label="Acepto los términos y condiciones de Ranked"
         checked={data.terminos}
         onToggle={() => setData({ ...data, terminos: !data.terminos })}
       />
@@ -494,19 +534,29 @@ export function RegisterScreen({ navigation }) {
     es_profesor: false, logros: '',
   });
 
-async function handleNextStep1() {
+  async function handleNextStep1() {
     if (!data.nombre || !data.apellido || !data.correo || !data.contrasena) {
       Alert.alert('Campos requeridos', 'Completa todos los campos obligatorios.');
+      return;
+    }
+    // NUEVO: género y edad obligatorios; edad mínima 18
+    if (!data.genero) {
+      Alert.alert('Género', 'Selecciona una opción de género (puedes elegir "Prefiero no decirlo").');
+      return;
+    }
+    const edadNum = parseInt(data.edad, 10);
+    if (!edadNum || edadNum < EDAD_MIN) {
+      Alert.alert('Edad', `Debes tener ${EDAD_MIN} años o más para registrarte.`);
       return;
     }
     if (!data.terminos) {
       Alert.alert('Términos y condiciones', 'Debes aceptar los términos y condiciones para continuar.');
       return;
     }
-    
-    // CORRECCIÓN 2: Limpiamos espacios y pasamos a minúsculas para evitar duplicados "invisibles"
+
+    // Limpiamos espacios y pasamos a minúsculas para evitar duplicados "invisibles"
     const correoLimpio = data.correo.trim().toLowerCase();
-    
+
     try {
       setLoading(true);
       const disponible = await authService.verificarCorreo(correoLimpio);
@@ -514,21 +564,21 @@ async function handleNextStep1() {
         Alert.alert('Correo en uso', 'Este correo ya está registrado. Intenta con otro o inicia sesión.');
         return;
       }
-      
-      // Actualizamos el estado con el correo limpio antes de avanzar
+
       setData({ ...data, correo: correoLimpio });
       setStep(2);
     } catch (e) {
-      // CORRECCIÓN 3: Quitamos el setStep(2) de aquí. Si hay error de red, NO DEBE AVANZAR.
+      // Si hay error de red, NO debe avanzar
       Alert.alert('Error de conexión', 'No pudimos verificar el correo. Revisa tu internet e intenta de nuevo.');
     } finally {
       setLoading(false);
     }
   }
 
-async function handleFinish() {
+  async function handleFinish() {
     try {
       setLoading(true);
+      const idGenero = GENERO_MAP[data.genero] ?? null;   // null = "Prefiero no decirlo"
 
       // 1. Crear cuenta
       try {
@@ -536,7 +586,7 @@ async function handleFinish() {
           ...data,
           apellidos: data.apellido,
           telefono:  data.celular || null,
-          id_genero: GENERO_MAP[data.genero] ?? null,
+          id_genero: idGenero,
         });
       } catch (e) {
         Alert.alert('Error al registrarse', e.message);
@@ -557,7 +607,6 @@ async function handleFinish() {
           const fotoUrl = await uploadImage(fotoUri, fotoCropParams);
           await usuarioService.actualizarFoto(fotoUrl);
         } catch (e) {
-          // Si falla la foto, podemos avisar o continuar sin interrumpir todo el registro
           console.log('No se pudo subir la foto de perfil:', e.message);
         }
       }
@@ -572,8 +621,8 @@ async function handleFinish() {
           nivelJuego:         NIVEL_JUEGO_MAP[data.nivel] ?? 1,
           partidosSemanales:  PARTIDOS_MAP[data.partidos_semana] ?? 0,
           leccionesSemanales: PARTIDOS_MAP[data.lecciones] ?? 0,
-          edad:               parseInt(data.edad),
-          idGenero:           GENERO_MAP[data.genero],
+          edad:               parseInt(data.edad, 10),
+          idGenero,
         });
         nivelCalculado = resultado.nivelCalculado ?? 1;
         setPuntajeObtenido(resultado.puntajeInicial ?? null);
@@ -720,6 +769,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
+  // NUEVO
+  edadHint: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: -8,
+    marginBottom: 16,
+  },
+
   // Underline input
   fieldGroup: {
     marginBottom: 16,
@@ -757,26 +814,18 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   dropdownList: {
-    position: 'absolute',
-    top: 58,
-    left: 0,
-    right: 0,
+    marginTop: 6,
     backgroundColor: colors.background,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    zIndex: 1000,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
+    overflow: 'hidden',
   },
   dropdownItem: {
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 13,
     paddingHorizontal: 14,
     borderBottomWidth: 1,
     borderBottomColor: colors.surface,
@@ -787,7 +836,7 @@ const styles = StyleSheet.create({
   },
   halfRow: {
     flexDirection: 'row',
-    overflow: 'visible',
+    alignItems: 'flex-start',
   },
 
   // Checkbox
@@ -1020,10 +1069,10 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
   modalOption: {
+    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.surface,

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 import { colors } from '../../constants';
 
@@ -55,15 +55,24 @@ export const MOTIVOS_BLOQUEO = {
   FUERA_DE_RANGO:    { corto: 'Fuera de rango',  largo: 'Solo puedes retar a jugadores cercanos a tu posición en la tabla.' },
 };
 
-// Logo del auspiciador; si no hay logo, muestra sus iniciales
-export function SponsorLogo({ nombre, logoUrl, size = 28, dark = false }) {
-  if (logoUrl) {
+// Logo del auspiciador dentro de un recuadro blanco.
+// - size: alto del recuadro; width: ancho (para logos horizontales, por defecto = size)
+// - Si no hay logo o la imagen no carga, muestra las iniciales de la marca.
+export function SponsorLogo({ nombre, logoUrl, size = 28, width, dark = false }) {
+  const [fallo, setFallo] = useState(false);
+  useEffect(() => { setFallo(false); }, [logoUrl]);
+  const ancho = width ?? size;
+
+  if (logoUrl && !fallo) {
     return (
-      <Image
-        source={{ uri: logoUrl }}
-        style={{ width: size, height: size, borderRadius: 6, backgroundColor: '#FFFFFF' }}
-        resizeMode="contain"
-      />
+      <View style={[stylesLogo.tile, { width: ancho, height: size, padding: Math.max(3, Math.round(size * 0.1)) }]}>
+        <Image
+          source={{ uri: logoUrl }}
+          style={{ width: '100%', height: '100%' }}
+          resizeMode="contain"
+          onError={() => setFallo(true)}
+        />
+      </View>
     );
   }
   const iniciales = String(nombre ?? '?')
@@ -76,7 +85,7 @@ export function SponsorLogo({ nombre, logoUrl, size = 28, dark = false }) {
     <View
       style={[
         stylesLogo.fallback,
-        { width: size, height: size, backgroundColor: dark ? 'rgba(255,255,255,0.15)' : colors.dark },
+        { width: ancho, height: size, backgroundColor: dark ? 'rgba(255,255,255,0.15)' : colors.dark },
       ]}
     >
       <Text style={[stylesLogo.fallbackText, { fontSize: size * 0.38 }]}>{iniciales}</Text>
@@ -85,6 +94,7 @@ export function SponsorLogo({ nombre, logoUrl, size = 28, dark = false }) {
 }
 
 const stylesLogo = StyleSheet.create({
-  fallback: { borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  tile: { borderRadius: 8, backgroundColor: '#FFFFFF', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  fallback: { borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   fallbackText: { color: '#FFFFFF', fontWeight: '800' },
 });

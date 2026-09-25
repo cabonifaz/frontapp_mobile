@@ -403,7 +403,9 @@ export function DetallePartidoScreen({ navigation, route }) {
             })}
           >
             <Ionicons name="trophy-outline" size={20} color={colors.primary} />
-            <Text style={styles.resultadosBtnText}>Colocar resultados</Text>
+            <Text style={styles.resultadosBtnText}>
+              {item.id_resultado ? 'Ver resultado publicado' : 'Colocar resultados'}
+            </Text>
           </TouchableOpacity>
         )}
 

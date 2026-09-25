@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Image, Modal, TextInput, ActivityIndicator,
+  SafeAreaView, Image, Modal, TextInput, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { maestroService } from '../../services/maestroService';
+import { resumenHorario, MAX_HORAS_CLASE } from './horasClase';
 
 const HORAS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
@@ -34,6 +35,22 @@ function getNextDays(n = 14) {
 }
 
 const DAYS = getNextDays(14);
+const idx = (h) => HORAS.indexOf(h);
+
+// NUEVO: la selección siempre es un bloque de horas consecutivas y ordenadas
+function siguienteSeleccion(actual, h) {
+  const sel = [...actual].sort((a, b) => idx(a) - idx(b));
+  if (sel.includes(h)) {
+    // Quitar solo desde los extremos; tocar una hora del medio reinicia en esa hora
+    if (h === sel[0]) return sel.slice(1);
+    if (h === sel[sel.length - 1]) return sel.slice(0, -1);
+    return [h];
+  }
+  if (!sel.length) return [h];
+  if (idx(h) === idx(sel[0]) - 1) return [h, ...sel];
+  if (idx(h) === idx(sel[sel.length - 1]) + 1) return [...sel, h];
+  return [h]; // no es contigua: empieza un bloque nuevo
+}
 
 function CanchaModal({ visible, onClose, onSelect }) {
   const [search, setSearch] = useState('');
@@ -119,22 +136,17 @@ export function TomarClaseScreen({ navigation }) {
   const [showCanchaModal, setShowCanchaModal] = useState(false);
 
   const canSearch = !!cancha && !!fecha && horas.length > 0;
+  const horario = resumenHorario(horas);
 
   useEffect(() => {
     if (horas.length > 0 && fecha) {
       const disponibles = getHorasDisponibles(fecha);
-      const validas = horas.filter(h => disponibles.includes(h));
-      if (validas.length !== horas.length) setHoras(validas);
+      // Si alguna hora ya pasó (hoy), se reinicia la selección para no dejar huecos
+      if (horas.some(h => !disponibles.includes(h))) setHoras([]);
     }
   }, [fecha]);
 
   const horasDisponibles = getHorasDisponibles(fecha);
-
-  function toggleHora(h) {
-    setHoras(prev =>
-      prev.includes(h) ? prev.filter(x => x !== h) : [...prev, h]
-    );
-  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -193,13 +205,16 @@ export function TomarClaseScreen({ navigation }) {
           })}
         </ScrollView>
 
-        {/* Horas — selección múltiple */}
-        <Text style={styles.sectionTitle}>Selecciona horas disponibles</Text>
+        {/* Horas — bloque consecutivo */}
+        <Text style={styles.sectionTitle}>Selecciona el horario de la clase</Text>
+        <Text style={styles.horasHint}>
+          Elige hasta {MAX_HORAS_CLASE} horas seguidas.
+        </Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.hChipRow}
-          style={styles.hScroll}
+          style={[styles.hScroll, { marginBottom: 12 }]}
         >
           {horasDisponibles.map(h => {
             const active = horas.includes(h);
@@ -207,13 +222,32 @@ export function TomarClaseScreen({ navigation }) {
               <TouchableOpacity
                 key={h}
                 style={[styles.horaChip, active && styles.horaChipActive]}
-                onPress={() => toggleHora(h)}
+                onPress={() => {
+                  const siguiente = siguienteSeleccion(horas, h);
+                  if (siguiente.length > MAX_HORAS_CLASE) {
+                    Alert.alert(
+                      'Máximo de horas',
+                      `Una clase puede durar como máximo ${MAX_HORAS_CLASE} horas. Si quieres más práctica, reserva otra clase en otro horario.`
+                    );
+                    return;
+                  }
+                  setHoras(siguiente);
+                }}
               >
                 <Text style={[styles.horaChipText, active && styles.horaChipTextActive]}>{h}</Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
+
+        {horario && (
+          <View style={styles.horarioResumen}>
+            <Ionicons name="time" size={18} color={colors.primary} />
+            <Text style={styles.horarioResumenText}>
+              {horario.texto}  ·  {horario.duracionTexto}
+            </Text>
+          </View>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -222,7 +256,11 @@ export function TomarClaseScreen({ navigation }) {
         <TouchableOpacity
           style={[styles.searchBtn, !canSearch && styles.searchBtnDisabled]}
           disabled={!canSearch}
-          onPress={() => navigation.navigate('ProfesoresDisponibles', { cancha, fecha, horas })}
+          onPress={() => navigation.navigate('ProfesoresDisponibles', {
+            cancha,
+            fecha,
+            horas: [...horas].sort((a, b) => idx(a) - idx(b)),
+          })}
         >
           <Text style={[styles.searchBtnText, !canSearch && styles.searchBtnTextDisabled]}>
             Buscar profesores
@@ -243,59 +281,34 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
 
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
-    gap: 16,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, gap: 16,
   },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary },
 
   content: { paddingHorizontal: 20, paddingTop: 20 },
 
   canchaCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    gap: 14,
-    marginBottom: 14,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderRadius: 16,
+    padding: 14, gap: 14, marginBottom: 14,
   },
   canchaImg: { width: 70, height: 70, borderRadius: 10, backgroundColor: '#ccc' },
-  canchaImgPlaceholder: {
-    backgroundColor: '#E0E0E0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  canchaImgPlaceholder: { backgroundColor: '#E0E0E0', alignItems: 'center', justifyContent: 'center' },
   canchaName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 },
   canchaHint: { fontSize: 13, color: colors.textSecondary },
 
-  mandatoryNote: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    lineHeight: 19,
-    marginBottom: 24,
-  },
+  mandatoryNote: { fontSize: 13, color: colors.textSecondary, lineHeight: 19, marginBottom: 24 },
 
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: 12,
-  },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.textPrimary, marginBottom: 12 },
+  horasHint: { fontSize: 12, color: colors.textSecondary, marginTop: -8, marginBottom: 12 },
 
   hScroll: { marginHorizontal: -20, marginBottom: 24 },
   hChipRow: { paddingHorizontal: 20, gap: 10 },
 
   dateChip: {
-    width: 68,
-    height: 72,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 68, height: 72, backgroundColor: colors.surface,
+    borderRadius: 12, alignItems: 'center', justifyContent: 'center',
   },
   dateChipActive: { backgroundColor: colors.dark },
   dateChipNum: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary },
@@ -304,24 +317,23 @@ const styles = StyleSheet.create({
   dateChipMonthActive: { color: '#FFFFFF' },
 
   horaChip: {
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    backgroundColor: colors.surface,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 18, paddingVertical: 12,
+    backgroundColor: colors.surface, borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center',
   },
   horaChipActive: { backgroundColor: colors.dark },
   horaChipText: { fontSize: 14, color: colors.textPrimary, fontWeight: '500' },
   horaChipTextActive: { color: '#FFFFFF', fontWeight: '600' },
 
-  bottomBar: { paddingHorizontal: 20, paddingVertical: 16 },
-  searchBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: 30,
-    paddingVertical: 18,
-    alignItems: 'center',
+  horarioResumen: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
+    backgroundColor: colors.accent, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 8,
   },
+  horarioResumenText: { fontSize: 14, fontWeight: '800', color: colors.primary },
+
+  bottomBar: { paddingHorizontal: 20, paddingVertical: 16 },
+  searchBtn: { backgroundColor: colors.accent, borderRadius: 30, paddingVertical: 18, alignItems: 'center' },
   searchBtnDisabled: { backgroundColor: colors.surface },
   searchBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
   searchBtnTextDisabled: { color: colors.textSecondary },
@@ -329,35 +341,21 @@ const styles = StyleSheet.create({
   // Modal cancha
   modalSafe: { flex: 1, backgroundColor: colors.background },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 20,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20,
   },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: colors.textPrimary, flex: 1, paddingRight: 12 },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 28,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 10,
-    marginHorizontal: 20,
-    marginBottom: 16,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: colors.surface, borderRadius: 28,
+    paddingHorizontal: 16, paddingVertical: 12, gap: 10,
+    marginHorizontal: 20, marginBottom: 16,
   },
   searchInput: { flex: 1, fontSize: 15, color: colors.textPrimary },
   courtCard: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    alignItems: 'center',
-    gap: 14,
+    flexDirection: 'row', backgroundColor: colors.surface,
+    borderRadius: 16, padding: 14, marginHorizontal: 20, marginBottom: 12,
+    alignItems: 'center', gap: 14,
   },
   courtImg: { width: 80, height: 80, borderRadius: 10, backgroundColor: '#ccc' },
   courtName: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 },

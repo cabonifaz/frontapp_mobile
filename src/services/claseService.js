@@ -2,8 +2,15 @@ import api from './api';
 import { DEPORTE_DEFAULT } from '../constants/maestro';
 
 export const claseService = {
-  async profesoresDisponibles({ idDeporte = DEPORTE_DEFAULT, idCancha, fecha, hora }) {
-    const params = new URLSearchParams({ id_deporte: idDeporte, id_cancha: idCancha, fecha, hora });
+  // NUEVO: duracionMinutos para descartar profesores con cruce de horario
+  async profesoresDisponibles({ idDeporte = DEPORTE_DEFAULT, idCancha, fecha, hora, duracionMinutos = 60 }) {
+    const params = new URLSearchParams({
+      id_deporte: idDeporte,
+      id_cancha: idCancha,
+      fecha,
+      hora,
+      duracion_minutos: duracionMinutos,
+    });
     return api.get(`/api/Clase/profesores-disponibles?${params}`);
   },
 
@@ -22,6 +29,7 @@ export const claseService = {
     return api.post(`/api/Clase/${idClase}/aceptar`);
   },
 
+  // Devuelve { exito, mensaje, puntosGanados, nuevoPuntajeTotal }
   async completar(idClase) {
     return api.post(`/api/Clase/${idClase}/completar`);
   },
