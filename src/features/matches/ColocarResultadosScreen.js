@@ -187,7 +187,10 @@ export function ColocarResultadosScreen({ navigation, route }) {
     avatar: partido.yo?.avatar ?? partido.avatar_yo ?? null,
     pts:    partido.yo?.pts    ?? partido.puntos_yo  ?? 0,
   };
-  const rivalFirst = String(rival.name).split(' ')[0];
+  // En dobles el "rival" es una pareja ("Eva y Fito"): se muestra completo
+  const esDoblesPartido = !!partido.esDobles || Number(partido.es_dobles ?? 0) === 1;
+  const rivalFirst = esDoblesPartido ? String(rival.name) : String(rival.name).split(' ')[0];
+  const yoFirst    = esDoblesPartido ? String(yo.name) : String(yo.name).split(' ')[0];
 
   const numSets   = partido.num_sets ?? 5;
   const setsToWin = Math.ceil(numSets / 2); // 2 para "2 de 3", 3 para "3 de 5"
@@ -213,8 +216,14 @@ export function ColocarResultadosScreen({ navigation, route }) {
   const viajes        = Number(partido.viajes_revision ?? 0);
 
   // Si el SP aún no envía estos datos, se asume que el creador publicó (comportamiento anterior)
-  const yoSoyLocal  = userId != null && idLocal != null ? Number(idLocal) === userId : esCreador;
-  const yoSoyEditor = userId != null && idEditor != null ? Number(idEditor) === userId : esCreador;
+  // En dobles (y en singles con el SP actualizado) la base de datos indica si MI LADO
+  // es el local y si MI LADO hizo la última edición.
+  const yoSoyLocal  = partido.soy_equipo_local != null
+    ? Number(partido.soy_equipo_local) === 1
+    : (userId != null && idLocal != null ? Number(idLocal) === userId : esCreador);
+  const yoSoyEditor = partido.soy_equipo_editor != null
+    ? Number(partido.soy_equipo_editor) === 1
+    : (userId != null && idEditor != null ? Number(idEditor) === userId : esCreador);
 
   // Sets existentes desde MI punto de vista (se ignoran sets 0-0 no jugados)
   const setsExistentes = Array.from({ length: numSets }, (_, i) => {
@@ -452,7 +461,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
               <Ionicons name="time-outline" size={36} color={colors.textSecondary} style={{ marginBottom: 10 }} />
               <Text style={styles.waitingTitle}>Esperando resultados</Text>
               <Text style={styles.waitingSubtitle}>
-                Solo {rivalFirst} puede ingresar los resultados.
+                {esDoblesPartido ? `Solo ${rivalFirst} pueden` : `Solo ${rivalFirst} puede`} ingresar los resultados.
                 Cambia a Walkover o Abandono si aplica.
               </Text>
             </View>
@@ -466,7 +475,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
               </Text>
               <View style={styles.jugadorBtns}>
                 {[
-                  { key: 'yo',    display: yo.name.split(' ')[0],    avatar: yo.avatar },
+                  { key: 'yo',    display: yoFirst,    avatar: yo.avatar },
                   { key: 'rival', display: rivalFirst,               avatar: rival.avatar },
                 ].map(j => (
                   <TouchableOpacity
@@ -489,7 +498,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
             <View style={styles.playersBlock}>
               <View style={styles.playerCol}>
                 <Image source={fuenteImagen(yo.avatar)} style={styles.avatar} />
-                <Text style={styles.playerName} numberOfLines={1}>{yo.name.split(' ')[0]}</Text>
+                <Text style={styles.playerName} numberOfLines={1}>{yoFirst}</Text>
                 <Text style={styles.playerPts}>{yo.pts} pts</Text>
               </View>
               <View style={styles.scoresCol}>
@@ -537,7 +546,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
                   <View style={styles.playersBlock}>
                     <View style={styles.playerCol}>
                       <Image source={fuenteImagen(yo.avatar)} style={styles.avatar} />
-                      <Text style={styles.playerName} numberOfLines={1}>{yo.name.split(' ')[0]}</Text>
+                      <Text style={styles.playerName} numberOfLines={1}>{yoFirst}</Text>
                       <Text style={styles.playerPts}>{yo.pts} pts</Text>
                     </View>
                     <View style={styles.scoresCol}>

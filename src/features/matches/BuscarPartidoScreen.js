@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { COURTS, DATES, HOURS, MATCH_TYPES } from '../../data/buscarPartidoData';
 import { partidoService } from '../../services/partidoService';
+import { doblesService, esDobles } from '../../services/doblesService';
 import { DEPORTE_DEFAULT } from '../../constants/maestro';
 import { getAvatarSource } from '../../utils/avatars';
 
@@ -15,7 +16,7 @@ import { getAvatarSource } from '../../utils/avatars';
 
 // Persiste los IDs retados durante la sesión (se limpia solo al cerrar la app)
 const retadosEnSesion = new Set();
-const FILTER_KEYS = ['cancha', 'fecha', 'hora', 'partido'];
+const FILTER_KEYS = ['cancha', 'fecha', 'hora'];
 const FILTER_LABELS = { cancha: 'Cancha', fecha: 'Fecha', hora: 'Hora', partido: 'Partido' };
 
 function formatFecha(fecha) {
@@ -59,11 +60,24 @@ function FilterChip({ label, active, onPress, onRemove }) {
 function PlayerCard({ player, onPress, onRetarPress, yaRetado }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
-      <Image source={getAvatarSource(player.avatar)} style={styles.cardAvatar} />
+      {player.es_dobles ? (
+        <View style={styles.parejaAvatares}>
+          <Image source={getAvatarSource(player.avatar)} style={[styles.parejaAvatar, { top: 0, left: 0 }]} />
+          <Image source={getAvatarSource(player.avatar_companero)} style={[styles.parejaAvatar, { bottom: 0, right: 0 }]} />
+        </View>
+      ) : (
+        <Image source={getAvatarSource(player.avatar)} style={styles.cardAvatar} />
+      )}
       <View style={styles.cardInfo}>
+        {player.es_dobles && (
+          <View style={styles.doblesBadge}>
+            <Ionicons name="people" size={11} color={colors.accent} />
+            <Text style={styles.doblesBadgeText}>DOBLES · {Number(player.num_sets) === 3 ? '2 de 3' : '3 de 5'}</Text>
+          </View>
+        )}
         <View style={styles.nameRow}>
-          <Text style={styles.playerName}>{player.name}</Text>
-          {player.ranking != null && (
+          <Text style={styles.playerName} numberOfLines={1}>{player.name}</Text>
+          {!player.es_dobles && player.ranking != null && (
             <>
               <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
               <Text style={styles.playerRanking}> {player.ranking}</Text>
@@ -218,15 +232,50 @@ export function BuscarPartidoScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [retadosIds, setRetadosIds] = useState([...retadosEnSesion]);
 
-  const players = getFilteredPlayers(filters, basePlayers);
+  // NUEVO: Singles y Dobles en pestañas separadas
+  const [modo, setModo] = useState('Singles');
+  const filtrados = getFilteredPlayers(filters, basePlayers);
+  const conteo = {
+    Singles: filtrados.filter(p => !p.es_dobles).length,
+    Dobles:  filtrados.filter(p => p.es_dobles).length,
+  };
+  const players = filtrados.filter(p => (modo === 'Dobles' ? p.es_dobles : !p.es_dobles));
   const hasFilters = Object.values(filters).some(Boolean);
 
   useEffect(() => {
     setLoading(true);
-    partidoService.buscarAmistoso({ idDeporte: DEPORTE_DEFAULT })
-      .then(res => {
+    Promise.all([
+      partidoService.buscarAmistoso({ idDeporte: DEPORTE_DEFAULT }).catch(() => []),
+      doblesService.convocatorias(DEPORTE_DEFAULT).catch(() => []),   // NUEVO: dobles
+    ])
+      .then(([res, dobles]) => {
+        const listaDobles = (Array.isArray(dobles) ? dobles : []).map(p => ({
+          id:                p.id_partido,
+          id_partido:        p.id_partido,
+          id_usuario:        p.id_usuario,
+          id_companero:      p.id_companero,
+          es_dobles:         true,
+          name:              `${String(p.nombre_completo ?? '').split(' ')[0]} y ${String(p.nombre_companero ?? '').split(' ')[0]}`,
+          nombre_completo:   p.nombre_completo,
+          nombre_companero:  p.nombre_companero,
+          avatar:            p.foto_perfil_url ?? null,
+          foto_perfil_url:   p.foto_perfil_url ?? null,
+          avatar_companero:  p.foto_companero ?? null,
+          foto_companero:    p.foto_companero ?? null,
+          num_sets:          p.num_sets,
+          ranking:           null,
+          pts:               null,
+          club:              p.nombre_cancha ?? 'Cancha no especificada',
+          date:              formatFecha(p.fecha_partido),
+          time:              formatHora(p.hora_partido),
+          ya_postulado:      Number(p.ya_postulado ?? 0) === 1,
+        }));
+        const idsDobles = new Set(listaDobles.map(d => d.id_partido));
+
         if (Array.isArray(res) && res.length) {
-          setBasePlayers(res.map(p => ({
+          // Un partido de dobles NUNCA se muestra como singles (se retaría sin compañero)
+          const soloSingles = res.filter(p => !idsDobles.has(p.id_partido) && !esDobles(p));
+          setBasePlayers([...listaDobles, ...soloSingles.map(p => ({
             id:         p.id_partido,
             id_partido: p.id_partido,
             id_usuario: p.id_usuario,
@@ -237,9 +286,9 @@ export function BuscarPartidoScreen({ navigation }) {
             club:       p.cancha ?? p.nombre_cancha ?? p.ubicacion ?? 'Cancha no especificada',
             date:       formatFecha(p.fecha_partido ?? p.date),
             time:       formatHora(p.hora_partido ?? p.time),
-          })));
+          }))]);
         } else {
-          setBasePlayers([]);
+          setBasePlayers(listaDobles);
         }
       })
       .catch(() => setBasePlayers([]))
@@ -286,10 +335,36 @@ export function BuscarPartidoScreen({ navigation }) {
         </TouchableOpacity>
 
         <Text style={styles.pageTitle}>Partidos amistosos</Text>
+
+        {/* NUEVO: Singles | Dobles */}
+        <View style={styles.modoToggle}>
+          {['Singles', 'Dobles'].map(m => (
+            <TouchableOpacity
+              key={m}
+              style={[styles.modoBtn, modo === m && styles.modoBtnActive]}
+              onPress={() => setModo(m)}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={m === 'Dobles' ? 'people' : 'person'}
+                size={15}
+                color={modo === m ? colors.primary : colors.textSecondary}
+              />
+              <Text style={[styles.modoText, modo === m && styles.modoTextActive]}>
+                {m}{conteo[m] > 0 ? ` (${conteo[m]})` : ''}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <View style={styles.countRow}>
           <View style={styles.greenDot} />
           <Text style={styles.countText}>
-            {players.length > 0 ? `${players.length} buscando partido` : 'Sin partidos disponibles'}
+            {players.length === 0
+              ? 'Sin partidos disponibles'
+              : modo === 'Dobles'
+                ? `${players.length} ${players.length === 1 ? 'pareja buscando rivales' : 'parejas buscando rivales'}`
+                : `${players.length} buscando partido`}
           </Text>
         </View>
 
@@ -303,18 +378,23 @@ export function BuscarPartidoScreen({ navigation }) {
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
         ) : players.length === 0 ? (
           <View style={styles.emptyState}>
-            <Ionicons name="tennisball-outline" size={40} color={colors.textSecondary} />
-            <Text style={styles.emptyText}>No hay partidos disponibles</Text>
+            <Ionicons name={modo === 'Dobles' ? 'people-outline' : 'tennisball-outline'} size={40} color={colors.textSecondary} />
+            <Text style={styles.emptyText}>
+              {modo === 'Dobles'
+                ? 'Ninguna pareja está buscando rivales.\nCrea una convocatoria con un amigo.'
+                : 'No hay partidos disponibles'}
+            </Text>
           </View>
         ) : (
           players.map(p => (
             <PlayerCard
               key={p.id}
               player={p}
-              yaRetado={retadosIds.includes(p.id)}
-              onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.name, pts: p.pts, ranking: p.ranking, avatar: p.avatar, id_usuario: p.id_usuario } })}
+              yaRetado={retadosIds.includes(p.id) || !!p.ya_postulado}
+              onPress={() => navigation.navigate('PlayerProfile', { player: { nombre: p.es_dobles ? p.nombre_completo : p.name, pts: p.pts, ranking: p.ranking, avatar: p.avatar, id_usuario: p.id_usuario } })}
               onRetarPress={() => {
-                navigation.navigate('RetarJugador', {
+                navigation.navigate(p.es_dobles ? 'RetarDobles' : 'RetarJugador', {
+                  convocatoria: p,
                   player: p,
                   onRetadoExitoso: () => {
                     retadosEnSesion.add(p.id);
@@ -328,9 +408,14 @@ export function BuscarPartidoScreen({ navigation }) {
       </ScrollView>
 
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.bottomBtn} onPress={() => navigation.navigate('CrearPartido', { tipo: 'Amistoso' })}>
-          <Ionicons name="person-add-outline" size={20} color={colors.primary} />
-          <Text style={styles.bottomBtnText}>{hasFilters ? 'Buscar Partido Amistoso' : 'Crear Partido Amistoso'}</Text>
+        <TouchableOpacity
+          style={styles.bottomBtn}
+          onPress={() => navigation.navigate('CrearPartido', { tipo: 'Amistoso', tipoJuego: modo })}
+        >
+          <Ionicons name={modo === 'Dobles' ? 'people-outline' : 'person-add-outline'} size={20} color={colors.primary} />
+          <Text style={styles.bottomBtnText}>
+            {modo === 'Dobles' ? 'Crear partido de dobles' : hasFilters ? 'Buscar Partido Amistoso' : 'Crear Partido Amistoso'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -365,6 +450,29 @@ const styles = StyleSheet.create({
   chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
   card: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 16, padding: 14, marginBottom: 12, alignItems: 'center', gap: 12 },
   cardAvatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#ccc' },
+  // NUEVO: dobles
+  // NUEVO: selector Singles | Dobles
+  modoToggle: {
+    flexDirection: 'row', backgroundColor: colors.surface,
+    borderRadius: 30, padding: 4, marginBottom: 14,
+  },
+  modoBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, paddingVertical: 10, borderRadius: 26,
+  },
+  modoBtnActive: { backgroundColor: colors.accent },
+  modoText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+  modoTextActive: { color: colors.primary, fontWeight: '800' },
+  parejaAvatares: { width: 56, height: 56 },
+  parejaAvatar: {
+    position: 'absolute', width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#ccc', borderWidth: 2, borderColor: colors.surface,
+  },
+  doblesBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
+    backgroundColor: colors.dark, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2, marginBottom: 4,
+  },
+  doblesBadgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.4 },
   cardInfo: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
   playerName: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
@@ -378,7 +486,7 @@ const styles = StyleSheet.create({
   retadoBtn: { borderColor: colors.border, backgroundColor: colors.surface },
   retadoText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
   emptyState: { alignItems: 'center', marginTop: 48, gap: 12 },
-  emptyText: { fontSize: 15, color: colors.textSecondary },
+  emptyText: { fontSize: 15, color: colors.textSecondary, textAlign: 'center', lineHeight: 22 },
   bottomBar: { paddingHorizontal: 20, paddingVertical: 16 },
   bottomBtn: { backgroundColor: colors.accent, borderRadius: 30, paddingVertical: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   bottomBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },

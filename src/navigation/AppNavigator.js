@@ -19,6 +19,7 @@ import { PartidosScreen } from '../features/matches/PartidosScreen';
 import { BuscarPartidoScreen } from '../features/matches/BuscarPartidoScreen';
 import { CrearPartidoScreen } from '../features/matches/CrearPartidoScreen';
 import { RetarScreen } from '../features/matches/RetarScreen';
+import { RetarDoblesScreen } from '../features/matches/RetarDoblesScreen';
 import { MisSolicitudesScreen } from '../features/matches/MisSolicitudesScreen';
 import { DetallePartidoScreen } from '../features/matches/DetallePartidoScreen';
 import { ColocarResultadosScreen } from '../features/matches/ColocarResultadosScreen';
@@ -119,6 +120,7 @@ export function AppNavigator() {
         <Stack.Screen name="RankedMatch" component={IrARankingScreen} />
         <Stack.Screen name="CrearPartido" component={CrearPartidoScreen} />
         <Stack.Screen name="RetarJugador" component={RetarScreen} />
+        <Stack.Screen name="RetarDobles" component={RetarDoblesScreen} />
         <Stack.Screen name="MisSolicitudes" component={MisSolicitudesScreen} />
         <Stack.Screen name="DetallePartido" component={DetallePartidoScreen} />
         <Stack.Screen name="DetalleResultado" component={DetalleResultadoScreen} />

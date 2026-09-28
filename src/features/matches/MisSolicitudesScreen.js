@@ -9,6 +9,7 @@ import { colors } from '../../constants';
 import { solicitudService } from '../../services/solicitudService';
 import { partidoService } from '../../services/partidoService';
 import { claseService } from '../../services/claseService';
+import { doblesService, primerNombre } from '../../services/doblesService';
 import { getAvatarSource } from '../../utils/avatars';
 
 const DIAS  = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -123,13 +124,21 @@ export function MisSolicitudesScreen({ navigation, route }) {
   const [accionRetoLoading, setAccionRetoLoading] = useState(null);
   const [retoAceptado, setRetoAceptado] = useState(null);
 
+  // NUEVO: dobles (invitaciones y parejas por aprobar)
+  const [doblesPend, setDoblesPend] = useState([]);
+  const [accionDoblesLoading, setAccionDoblesLoading] = useState(null);
+
   const cargar = useCallback(async () => {
     try {
-      const [res, claseRes, retosRes] = await Promise.allSettled([
+      const [res, claseRes, retosRes, doblesRes] = await Promise.allSettled([
         solicitudService.misSolicitudes(),
         claseService.solicitudesProfesor(),
         partidoService.retosRecibidos(),
+        doblesService.pendientes(),
       ]);
+      setDoblesPend(
+        doblesRes.status === 'fulfilled' && Array.isArray(doblesRes.value) ? doblesRes.value : []
+      );
       if (res.status === 'fulfilled') setDatos(res.value);
       else setDatos(null);
       if (claseRes.status === 'fulfilled' && Array.isArray(claseRes.value)) {
@@ -227,6 +236,60 @@ export function MisSolicitudesScreen({ navigation, route }) {
         { text: 'Sí, rechazar', style: 'destructive', onPress: ejecutar },
       ]);
     }
+  }
+
+  // NUEVO: dobles — responder una invitación (compañero, rival o compañero retador)
+  async function handleInvitacionDobles(item, aceptar) {
+    const clave = `inv-${item.id_partido}`;
+    const ejecutar = async () => {
+      try {
+        setAccionDoblesLoading(clave);
+        const res = await doblesService.responderInvitacion(item.id_partido, aceptar);
+        Alert.alert(aceptar ? '¡Listo!' : 'Invitación rechazada', res?.mensaje ?? '');
+        cargar();
+      } catch (e) {
+        Alert.alert('Error', e.message ?? 'No se pudo responder la invitación.');
+      } finally {
+        setAccionDoblesLoading(null);
+      }
+    };
+    if (aceptar) return ejecutar();
+    const aviso = item.rol === 'COMPANERO_RETADOR'
+      ? 'Tu amigo no podrá retar con esta pareja.'
+      : 'El partido se cancelará para todos.';
+    Alert.alert('Rechazar invitación', aviso, [
+      { text: 'No', style: 'cancel' },
+      { text: 'Sí, rechazar', style: 'destructive', onPress: ejecutar },
+    ]);
+  }
+
+  // NUEVO: dobles — aprobar o rechazar a una pareja retadora
+  async function handleParejaDobles(item, aceptar) {
+    const clave = `par-${item.id_partido}-${item.id_lider}`;
+    const ejecutar = async () => {
+      try {
+        setAccionDoblesLoading(clave);
+        const res = await doblesService.responderPareja(item.id_partido, item.id_lider, aceptar);
+        Alert.alert(res?.estado === 'CONFIRMADO' ? '¡Partido confirmado!' : 'Listo', res?.mensaje ?? '');
+        cargar();
+      } catch (e) {
+        Alert.alert('Error', e.message ?? 'No se pudo responder a la pareja.');
+      } finally {
+        setAccionDoblesLoading(null);
+      }
+    };
+    if (aceptar) return ejecutar();
+    Alert.alert('Rechazar pareja', `¿Rechazar el reto de ${primerNombre(item.nombre_retador)} y ${primerNombre(item.nombre_companero_retador)}?`, [
+      { text: 'No', style: 'cancel' },
+      { text: 'Sí, rechazar', style: 'destructive', onPress: ejecutar },
+    ]);
+  }
+
+  function textoInvitacion(item) {
+    const quien = primerNombre(item.nombre_invitador);
+    if (item.rol === 'COMPANERO') return `${quien} te invitó a ser su compañero`;
+    if (item.rol === 'RIVAL') return `${quien} te retó a un partido de dobles`;
+    return `${quien} quiere retar a una pareja contigo`;
   }
 
   async function handleAceptarClase(solicitudClase) {
@@ -356,8 +419,80 @@ export function MisSolicitudesScreen({ navigation, route }) {
           {/* ── Sección PARTIDOS ── */}
           {tipo === 'partidos' && (
             <>
+              {/* ── 0. DOBLES (solo si hay pendientes) ── */}
+              {doblesPend.length > 0 && (
+                <>
+                  <Text style={[styles.sectionTitle, { marginTop: 0 }]}>Dobles</Text>
+                  <Text style={styles.sectionHint}>Invitaciones y parejas que quieren retarte.</Text>
+                  {doblesPend.map(item => {
+                    const esPareja = item.tipo === 'PAREJA';
+                    const clave = esPareja ? `par-${item.id_partido}-${item.id_lider}` : `inv-${item.id_partido}`;
+                    const cargando = accionDoblesLoading === clave;
+                    const yaAprobe = Number(item.ya_aprobe ?? 0) === 1;
+                    const compAprobo = Number(item.companero_aprobo ?? 0) === 1;
+                    return (
+                      <View key={clave} style={[styles.retadorCard, styles.retoAmigoCard]}>
+                        {esPareja ? (
+                          <View style={styles.parejaAvatares}>
+                            <Image source={getAvatarSource(item.foto_retador)} style={[styles.parejaAvatar, { top: 0, left: 0 }]} />
+                            <Image source={getAvatarSource(item.foto_companero_retador)} style={[styles.parejaAvatar, { bottom: 0, right: 0 }]} />
+                          </View>
+                        ) : (
+                          <Image source={getAvatarSource(item.foto_invitador)} style={styles.retadorAvatar} />
+                        )}
+                        <View style={styles.retadorInfo}>
+                          <View style={[styles.tipoRetoChip, styles.tipoRetoLiga]}>
+                            <Text style={[styles.tipoRetoText, styles.tipoRetoTextLiga]}>
+                              DOBLES · {Number(item.num_sets) === 3 ? '2 de 3' : '3 de 5'}
+                            </Text>
+                          </View>
+                          <Text style={styles.retadorName} numberOfLines={2}>
+                            {esPareja
+                              ? `${primerNombre(item.nombre_retador)} y ${primerNombre(item.nombre_companero_retador)} quieren retarlos`
+                              : textoInvitacion(item)}
+                          </Text>
+                          <Text style={styles.retadorClub}>{item.nombre_cancha ?? ''}</Text>
+                          <View style={styles.metaRow}>
+                            <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                            <Text style={styles.metaText}> {formatFecha(item.fecha)}</Text>
+                            <Text style={{ width: 10 }} />
+                            <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                            <Text style={styles.metaText}> {formatHora(item.hora)}</Text>
+                          </View>
+                          {esPareja && (yaAprobe || compAprobo) && (
+                            <Text style={styles.doblesEstado}>
+                              {yaAprobe ? 'Ya aprobaste · falta tu compañero' : 'Tu compañero ya aprobó'}
+                            </Text>
+                          )}
+                        </View>
+                        <View style={styles.accionesCol}>
+                          {!(esPareja && yaAprobe) && (
+                            <TouchableOpacity
+                              style={[styles.aceptarBtn, cargando && { opacity: 0.5 }]}
+                              onPress={() => (esPareja ? handleParejaDobles(item, true) : handleInvitacionDobles(item, true))}
+                              disabled={cargando}
+                            >
+                              {cargando
+                                ? <ActivityIndicator size="small" color={colors.textPrimary} />
+                                : <Text style={styles.aceptarText}>{esPareja ? 'Aprobar' : 'Aceptar'}</Text>}
+                            </TouchableOpacity>
+                          )}
+                          <TouchableOpacity
+                            style={[styles.rechazarBtn, cargando && { opacity: 0.5 }]}
+                            onPress={() => (esPareja ? handleParejaDobles(item, false) : handleInvitacionDobles(item, false))}
+                            disabled={cargando}
+                          >
+                            <Text style={styles.rechazarText}>Rechazar</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+
               {/* ── 1. RETOS DE AMIGOS ── */}
-              <Text style={[styles.sectionTitle, { marginTop: 0 }]}>Retos recibidos</Text>
+              <Text style={[styles.sectionTitle, doblesPend.length === 0 && { marginTop: 0 }]}>Retos recibidos</Text>
               <Text style={styles.sectionHint}>Amigos y rivales de tu liga que te retaron directamente.</Text>
               {retosAmigos.length === 0 ? (
                 <View style={styles.emptyCard}>
@@ -621,6 +756,13 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: colors.textSecondary },
 
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textPrimary, marginBottom: 2, marginTop: 20 },
+  // NUEVO: dobles
+  parejaAvatares: { width: 56, height: 56 },
+  parejaAvatar: {
+    position: 'absolute', width: 38, height: 38, borderRadius: 19,
+    backgroundColor: '#ccc', borderWidth: 2, borderColor: colors.surface,
+  },
+  doblesEstado: { fontSize: 12, fontWeight: '700', color: colors.accent, marginTop: 4 },
   sectionHint: { fontSize: 13, color: colors.textSecondary, marginBottom: 12 },
 
   retadorCard: {

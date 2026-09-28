@@ -9,6 +9,7 @@ import { maestroService } from '../../services/maestroService';
 import { partidoService } from '../../services/partidoService';
 import { amistadService } from '../../services/amistadService';
 import { ligaService } from '../../services/ligaService';
+import { doblesService } from '../../services/doblesService';
 import { getAvatarSource } from '../../utils/avatars';
 import { TIPOS_JUEGO, DEPORTE_DEFAULT } from '../../constants/maestro';
 
@@ -120,7 +121,7 @@ function CanchaModal({ visible, onClose, onSelect, courts, loadingCanchas }) {
 }
 
 // NUEVO: selector de amigo para el reto directo
-function AmigoModal({ visible, onClose, onSelect, onIrRanking }) {
+function AmigoModal({ visible, onClose, onSelect, onIrRanking, titulo = '¿A qué amigo quieres retar?', excluir = [] }) {
   const [amigos, setAmigos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -136,15 +137,16 @@ function AmigoModal({ visible, onClose, onSelect, onIrRanking }) {
   }, [visible]);
 
   const term = search.trim().toLowerCase();
+  const disponibles = amigos.filter(a => !excluir.includes(a.id_usuario));
   const filtrados = term
-    ? amigos.filter(a => (a.nombre_completo ?? '').toLowerCase().includes(term))
-    : amigos;
+    ? disponibles.filter(a => (a.nombre_completo ?? '').toLowerCase().includes(term))
+    : disponibles;
 
   return (
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>¿A qué amigo quieres retar?</Text>
+          <Text style={styles.modalTitle}>{titulo}</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -239,6 +241,44 @@ function RetoEnviadoScreen({ amigo, onPress }) {
   );
 }
 
+// NUEVO: confirmación al crear un partido de dobles
+function DoblesCreadoScreen({ mensaje, onPress }) {
+  return (
+    <View style={styles.successContainer}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={styles.successCircle}>
+          <Ionicons name="people" size={72} color={colors.dark} />
+        </View>
+        <Text style={styles.successTitle}>{'¡Partido de dobles\ncreado!'}</Text>
+        <Text style={styles.successSubtitle}>{mensaje}</Text>
+      </View>
+      <TouchableOpacity style={styles.accentBtn} onPress={onPress}>
+        <Text style={styles.accentBtnText}>Ir a mis solicitudes</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function AmigoSlot({ label, amigo, hint, onPress }) {
+  return (
+    <TouchableOpacity style={styles.canchaCard} onPress={onPress} activeOpacity={0.8}>
+      {amigo ? (
+        <Image source={getAvatarSource(amigo.foto_perfil_url)} style={styles.amigoAvatar} />
+      ) : (
+        <View style={[styles.amigoAvatar, styles.canchaImgPlaceholder]}>
+          <Ionicons name="person-add-outline" size={24} color={colors.textSecondary} />
+        </View>
+      )}
+      <View style={{ flex: 1 }}>
+        <Text style={styles.slotLabel}>{label}</Text>
+        <Text style={styles.canchaName} numberOfLines={1}>{amigo ? amigo.nombre_completo : 'Selecciona un amigo'}</Text>
+        {!!hint && <Text style={styles.canchaHint}>{hint}</Text>}
+      </View>
+      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+    </TouchableOpacity>
+  );
+}
+
 export function CrearPartidoScreen({ navigation, route }) {
   const tipo = route?.params?.tipo ?? 'Rankeado';
   const amigoInicial = route?.params?.amigo ?? null; // llega desde PlayerProfile o AmigosScreen
@@ -251,7 +291,7 @@ export function CrearPartidoScreen({ navigation, route }) {
   const [cancha, setCancha] = useState(null);
   const [fecha, setFecha] = useState(null);
   const [hora, setHora] = useState(null);
-  const [tipoJuego, setTipoJuego] = useState('Singles');
+  const [tipoJuego, setTipoJuego] = useState(route?.params?.tipoJuego === 'Dobles' ? 'Dobles' : 'Singles');
   const [numSets, setNumSets] = useState(5);
   const [showCanchaModal, setShowCanchaModal] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -262,6 +302,14 @@ export function CrearPartidoScreen({ navigation, route }) {
   const [amigo, setAmigo] = useState(amigoInicial);
   const [showAmigoModal, setShowAmigoModal] = useState(false);
   const [retoEnviado, setRetoEnviado] = useState(null);
+
+  // NUEVO: dobles
+  const [companero, setCompanero] = useState(null);
+  const [rival1, setRival1] = useState(null);
+  const [rival2, setRival2] = useState(null);
+  const [modoRivales, setModoRivales] = useState('convocatoria'); // 'convocatoria' | 'directo'
+  const [slotAmigo, setSlotAmigo] = useState(null);                // 'amigo' | 'companero' | 'rival1' | 'rival2'
+  const [doblesCreado, setDoblesCreado] = useState(null);          // mensaje del backend
 
   const esDirecto = esAmistoso && modalidad === 'amigo';
 
@@ -296,8 +344,11 @@ export function CrearPartidoScreen({ navigation, route }) {
   const diasDisponibles = esLiga
     ? DAYS.filter(d => (!inicioLiga || d.iso >= inicioLiga) && (!finLiga || d.iso <= finLiga))
     : DAYS;
+  const esDoblesAmistoso = esAmistoso && tipoJuego === 'Dobles';
   const canConfirm = !!cancha && !!fecha && !!hora && !creando
-    && (!esDirecto || !!amigo)
+    && (esDoblesAmistoso
+          ? (!!companero && (modoRivales === 'convocatoria' || (!!rival1 && !!rival2)))
+          : (!esDirecto || !!amigo))
     && (!esLiga || !!rivalLiga);
 
   const handleCrear = async () => {
@@ -311,6 +362,20 @@ export function CrearPartidoScreen({ navigation, route }) {
         id_tipo_juego: TIPO_JUEGO_MAP[tipoJuego] ?? TIPOS_JUEGO.SINGLES,
         id_deporte: DEPORTE_DEFAULT,
       };
+
+      if (esDoblesAmistoso) {
+        const res = await doblesService.crear({
+          idCompanero: companero.id_usuario,
+          idRival1:    modoRivales === 'directo' ? rival1.id_usuario : null,
+          idRival2:    modoRivales === 'directo' ? rival2.id_usuario : null,
+          idCancha:    datos.id_cancha,
+          fecha:       datos.fecha,
+          hora:        datos.hora,
+          numSets,
+        });
+        setDoblesCreado(res?.mensaje ?? 'Invitaciones enviadas.');
+        return;
+      }
 
       if (esLiga) {
         await ligaService.retar(ligaParam.id_liga, {
@@ -343,6 +408,26 @@ export function CrearPartidoScreen({ navigation, route }) {
       state: { index, routes: [{ name: 'Home' }, { name: 'Ranking' }, { name: 'Resultados' }, { name: 'Partidos' }, { name: 'Perfil' }] },
     }],
   });
+
+  if (doblesCreado) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <DoblesCreadoScreen
+          mensaje={doblesCreado}
+          onPress={() => navigation.reset({
+            index: 1,
+            routes: [
+              {
+                name: 'MainTabs',
+                state: { index: 3, routes: [{ name: 'Home' }, { name: 'Ranking' }, { name: 'Resultados' }, { name: 'Partidos' }, { name: 'Perfil' }] },
+              },
+              { name: 'MisSolicitudes' },
+            ],
+          })}
+        />
+      </SafeAreaView>
+    );
+  }
 
   if (success && retoEnviado) {
     return (
@@ -377,7 +462,7 @@ export function CrearPartidoScreen({ navigation, route }) {
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>
-          {esLiga ? 'Reto de liga' : esDirecto ? 'Retar a un amigo' : `Crear Partido ${tipo}`}
+          {esLiga ? 'Reto de liga' : esDoblesAmistoso ? 'Partido de dobles' : esDirecto ? 'Retar a un amigo' : `Crear Partido ${tipo}`}
         </Text>
       </View>
 
@@ -405,8 +490,67 @@ export function CrearPartidoScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* NUEVO: ¿Con quién? — solo Amistoso */}
+        {/* NUEVO: tipo de juego primero en amistoso (define el resto del formulario) */}
         {esAmistoso && (
+          <>
+            <Text style={styles.sectionTitle}>Selecciona tipo de juego</Text>
+            <View style={[styles.toggle, { marginBottom: 20 }]}>
+              {['Singles', 'Dobles'].map(t => (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.toggleBtn, tipoJuego === t && styles.toggleBtnActive]}
+                  onPress={() => setTipoJuego(t)}
+                >
+                  <Text style={[styles.toggleText, tipoJuego === t && styles.toggleTextActive]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+
+        {/* NUEVO: dobles — compañero y rivales */}
+        {esDoblesAmistoso && (
+          <>
+            <Text style={styles.sectionTitle}>Tu pareja</Text>
+            <AmigoSlot
+              label="COMPAÑERO"
+              amigo={companero}
+              hint={companero ? 'Toca para cambiar' : 'Debe aceptar la invitación'}
+              onPress={() => setSlotAmigo('companero')}
+            />
+
+            <Text style={[styles.sectionTitle, { marginTop: 8 }]}>¿Cómo eliges a los rivales?</Text>
+            <View style={[styles.toggle, { marginBottom: 12 }]}>
+              {[{ key: 'convocatoria', label: 'Convocatoria' }, { key: 'directo', label: 'Elegir rivales' }].map(m => (
+                <TouchableOpacity
+                  key={m.key}
+                  style={[styles.toggleBtn, modoRivales === m.key && styles.toggleBtnActive]}
+                  onPress={() => setModoRivales(m.key)}
+                >
+                  <Text style={[styles.toggleText, modoRivales === m.key && styles.toggleTextActive]}>{m.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {modoRivales === 'directo' ? (
+              <>
+                <AmigoSlot label="RIVAL 1" amigo={rival1} onPress={() => setSlotAmigo('rival1')} />
+                <AmigoSlot label="RIVAL 2" amigo={rival2} onPress={() => setSlotAmigo('rival2')} />
+                <Text style={styles.mandatoryNote}>
+                  Tu compañero y los 2 rivales recibirán la invitación. El partido se confirma cuando los 3 acepten.
+                </Text>
+              </>
+            ) : (
+              <Text style={styles.mandatoryNote}>
+                Cuando tu compañero acepte, la convocatoria se publicará. Otra pareja podrá retarlos
+                y el partido se confirma cuando tú y tu compañero la aprueben.
+              </Text>
+            )}
+          </>
+        )}
+
+        {/* NUEVO: ¿Con quién? — solo Amistoso singles */}
+        {esAmistoso && !esDoblesAmistoso && (
           <>
             <Text style={styles.sectionTitle}>¿Con quién quieres jugar?</Text>
             <View style={[styles.toggle, { marginBottom: 12 }]}>
@@ -537,8 +681,8 @@ export function CrearPartidoScreen({ navigation, route }) {
           })}
         </ScrollView>
 
-        {/* Tipo de juego (en liga siempre es singles) */}
-        {!esLiga && (
+        {/* Tipo de juego — Rankeado (en amistoso va arriba; en liga siempre es singles) */}
+        {!esLiga && !esAmistoso && (
           <>
             <Text style={styles.sectionTitle}>Selecciona tipo de juego</Text>
             <View style={styles.toggle}>
@@ -589,7 +733,7 @@ export function CrearPartidoScreen({ navigation, route }) {
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
-              {esDirecto || esLiga ? 'Enviar reto' : 'Confirmar'}
+              {esDoblesAmistoso ? 'Enviar invitaciones' : esDirecto || esLiga ? 'Enviar reto' : 'Confirmar'}
             </Text>
           )}
         </TouchableOpacity>
@@ -609,12 +753,31 @@ export function CrearPartidoScreen({ navigation, route }) {
         onSelect={a => { setAmigo(a); setShowAmigoModal(false); }}
         onIrRanking={() => { setShowAmigoModal(false); irATab(1); }}
       />
+
+      {/* NUEVO: selección de compañero / rivales para dobles */}
+      <AmigoModal
+        visible={!!slotAmigo}
+        titulo={slotAmigo === 'companero' ? '¿Quién será tu compañero?' : '¿A quién quieres retar?'}
+        excluir={[companero, rival1, rival2]
+          .filter(Boolean)
+          .filter(x => x !== { companero, rival1, rival2 }[slotAmigo])
+          .map(x => x.id_usuario)}
+        onClose={() => setSlotAmigo(null)}
+        onSelect={a => {
+          if (slotAmigo === 'companero') setCompanero(a);
+          if (slotAmigo === 'rival1') setRival1(a);
+          if (slotAmigo === 'rival2') setRival2(a);
+          setSlotAmigo(null);
+        }}
+        onIrRanking={() => { setSlotAmigo(null); irATab(1); }}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
+  slotLabel: { fontSize: 11, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.6, marginBottom: 2 },
 
   header: {
     flexDirection: 'row',

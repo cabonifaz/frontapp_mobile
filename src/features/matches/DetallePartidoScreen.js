@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants';
 import { partidoService } from '../../services/partidoService';
 import { authService } from '../../services/authService';
+import { doblesService, primerNombre } from '../../services/doblesService';
 import { getAvatarSource } from '../../utils/avatars';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -22,6 +23,7 @@ export function DetallePartidoScreen({ navigation, route }) {
   const [cancelando, setCancelando] = useState(false);
   const [usuarioActualId, setUsuarioActualId] = useState(null);
   const [respondiendo, setRespondiendo] = useState(false); // NUEVO
+  const [jugadores, setJugadores] = useState([]);          // NUEVO: dobles
 
   const partidoId = itemInicial.id_partido ?? itemInicial.id_encuentro ?? itemInicial.id;
 
@@ -46,6 +48,11 @@ export function DetallePartidoScreen({ navigation, route }) {
         const data = res?.data ?? res;
         if (data && typeof data === 'object') {
           setItem((prev) => ({ ...prev, ...data }));
+          // NUEVO: en dobles, traer a los 4 jugadores con su pareja
+          if (Number(data.es_dobles ?? 0) === 1) {
+            const lista = await doblesService.participantes(partidoId).catch(() => []);
+            setJugadores(Array.isArray(lista) ? lista : []);
+          }
         }
       } catch (error) {
         console.log('Error al obtener detalle del partido:', error);
@@ -114,7 +121,7 @@ export function DetallePartidoScreen({ navigation, route }) {
   // NUEVO: reto directo a un amigo esperando respuesta
   const esPendiente = estadoPartido === 29;
   const soyCreador  = idCreador != null && Number(usuarioActualId) === Number(idCreador);
-  const soyInvitado = esPendiente && !soyCreador;
+  const soyInvitado = esPendiente && !soyCreador && Number(item.es_dobles ?? 0) !== 1;
   const rivalNombre = String(rival.name ?? '').split(' ')[0];
   // NUEVO: tipo de partido (liga / rankeado antiguo / amistoso)
   const esLiga      = Number(item.es_liga ?? 0) === 1 || item.id_liga != null;
@@ -123,6 +130,18 @@ export function DetallePartidoScreen({ navigation, route }) {
   const esRetoLiga  = esLiga || esRankeado;
   const numSets     = Number(item.num_sets ?? 5);
   const formatoSets = numSets === 3 ? '2 de 3 sets' : '3 de 5 sets';
+
+  // NUEVO: dobles
+  const esDoblesPartido = Number(item.es_dobles ?? 0) === 1;
+  const yoJugador   = jugadores.find(j => Number(j.es_yo) === 1) ?? null;
+  const miEquipo    = Number(yoJugador?.equipo ?? item.mi_equipo ?? 0) || null;
+  const miPareja    = jugadores.filter(j => Number(j.equipo) === miEquipo);
+  const parejaRival = jugadores.filter(j => Number(j.equipo) !== miEquipo);
+  const pendientesDobles = jugadores.filter(j => j.estado_codigo === 'PART_INVITADO');
+  const soyInvitadoDobles = esDoblesPartido && yoJugador?.estado_codigo === 'PART_INVITADO';
+  const nombresPareja = (lista) => lista.map(j => primerNombre(j.nombre ?? j.nombre_completo)).join(' y ');
+  // Orientación del marcador: mi lado primero (sirve para singles y dobles)
+  const yoEsLocal = item.soy_equipo_local != null ? Number(item.soy_equipo_local) === 1 : esMiCreacion;
 
   async function handleCancelar() {
     Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar este partido?', [
@@ -173,6 +192,33 @@ export function DetallePartidoScreen({ navigation, route }) {
     }
   }
 
+  // NUEVO: responder invitación de dobles desde el detalle
+  async function handleInvitacionDobles(aceptar) {
+    const ejecutar = async () => {
+      try {
+        setRespondiendo(true);
+        const res = await doblesService.responderInvitacion(partido.id, aceptar);
+        if (!aceptar) { navigation.goBack(); return; }
+        Alert.alert('¡Listo!', res?.mensaje ?? '');
+        const [det, lista] = await Promise.all([
+          partidoService.obtenerDetalle(partido.id).catch(() => null),
+          doblesService.participantes(partido.id).catch(() => []),
+        ]);
+        if (det) setItem(prev => ({ ...prev, ...(det?.data ?? det) }));
+        setJugadores(Array.isArray(lista) ? lista : []);
+      } catch (e) {
+        Alert.alert('Error', e.message ?? 'No se pudo responder la invitación.');
+      } finally {
+        setRespondiendo(false);
+      }
+    };
+    if (aceptar) return ejecutar();
+    Alert.alert('Rechazar invitación', 'El partido se cancelará para todos.', [
+      { text: 'No', style: 'cancel' },
+      { text: 'Sí, rechazar', style: 'destructive', onPress: ejecutar },
+    ]);
+  }
+
   if (usuarioActualId === null) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
@@ -215,12 +261,45 @@ export function DetallePartidoScreen({ navigation, route }) {
           <View style={styles.tipoAmistoso}>
             <Ionicons name={esRankeado ? 'ribbon-outline' : 'happy-outline'} size={16} color={colors.textPrimary} />
             <Text style={styles.tipoAmistosoText}>
-              {esRankeado ? 'Rankeado' : 'Amistoso'} · {formatoSets}
+              {esRankeado ? 'Rankeado' : 'Amistoso'}{esDoblesPartido ? ' · Dobles' : ''} · {formatoSets}
             </Text>
           </View>
         )}
 
-        {/* Dos jugadores */}
+        {/* NUEVO: dobles — dos parejas */}
+        {esDoblesPartido ? (
+          <View style={styles.playersRow}>
+            {[
+              { titulo: 'Tu pareja', lista: miPareja },
+              { titulo: 'Rivales',   lista: parejaRival },
+            ].map((lado, idx) => (
+              <React.Fragment key={lado.titulo}>
+                {idx === 1 && <Text style={styles.vsLabel}>vs</Text>}
+                <View style={styles.playerCol}>
+                  <Text style={styles.parejaTitulo}>{lado.titulo}</Text>
+                  {lado.lista.length === 0 ? (
+                    <View style={styles.parejaVacia}>
+                      <Ionicons name="people-outline" size={28} color={colors.textSecondary} />
+                      <Text style={styles.playerPts}>Buscando pareja...</Text>
+                    </View>
+                  ) : lado.lista.map(j => (
+                    <View key={j.id_usuario} style={styles.dobleJugador}>
+                      <Image source={getAvatarSource(j.foto_perfil_url, j.nombre)} style={styles.dobleAvatar} />
+                      <View style={{ flexShrink: 1 }}>
+                        <Text style={styles.dobleNombre} numberOfLines={1}>
+                          {Number(j.es_yo) === 1 ? 'Tú' : primerNombre(j.nombre ?? j.nombre_completo)}
+                        </Text>
+                        <Text style={j.estado_codigo === 'PART_INVITADO' ? styles.doblePendiente : styles.playerPts}>
+                          {j.estado_codigo === 'PART_INVITADO' ? 'Por aceptar' : `${Number(j.puntaje_total ?? 0).toFixed(1)} pts`}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </React.Fragment>
+            ))}
+          </View>
+        ) : (
         <View style={styles.playersRow}>
           <View style={styles.playerCol}>
             <View style={styles.avatarWrap}>
@@ -264,6 +343,7 @@ export function DetallePartidoScreen({ navigation, route }) {
             </View>
           )}
         </View>
+        )}
 
         {/* Detalles */}
         <Text style={styles.sectionTitle}>Detalles del partido</Text>
@@ -301,8 +381,8 @@ export function DetallePartidoScreen({ navigation, route }) {
             return { n: i + 1, local: local ?? 0, visit: visit ?? 0 };
           }).filter(Boolean);
 
-          const yoSets    = setsData.filter(s => esMiCreacion ? s.local > s.visit : s.visit > s.local).length;
-          const rivalSets = setsData.filter(s => esMiCreacion ? s.visit > s.local : s.local > s.visit).length;
+          const yoSets    = setsData.filter(s => yoEsLocal ? s.local > s.visit : s.visit > s.local).length;
+          const rivalSets = setsData.filter(s => yoEsLocal ? s.visit > s.local : s.local > s.visit).length;
 
           return (
             <>
@@ -319,7 +399,7 @@ export function DetallePartidoScreen({ navigation, route }) {
                   <View key={s.n} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={styles.detailSub}>Set {s.n}</Text>
                     <Text style={styles.detailMain}>
-                      {esMiCreacion ? s.local : s.visit}  –  {esMiCreacion ? s.visit : s.local}
+                      {yoEsLocal ? s.local : s.visit}  –  {yoEsLocal ? s.visit : s.local}
                     </Text>
                   </View>
                 )) : (
@@ -338,8 +418,46 @@ export function DetallePartidoScreen({ navigation, route }) {
           </Text>
         )}
 
-        {/* NUEVO: reto directo pendiente */}
-        {esPendiente && (
+        {/* NUEVO: dobles — estado de invitaciones / convocatoria */}
+        {esDoblesPartido && (esPendiente || esBuscando) && (
+          <View style={styles.pendienteCard}>
+            <Ionicons name={esBuscando ? 'search-outline' : 'hourglass-outline'} size={20} color={colors.textPrimary} />
+            <Text style={styles.pendienteText}>
+              {soyInvitadoDobles
+                ? 'Te invitaron a este partido de dobles. Acepta para confirmar tu lugar.'
+                : esBuscando
+                  ? 'Convocatoria publicada. Las parejas que quieran retarlos aparecerán en Mis solicitudes.'
+                  : `Esperando que acepten: ${nombresPareja(pendientesDobles) || 'los invitados'}.`}
+            </Text>
+          </View>
+        )}
+
+        {soyInvitadoDobles && (
+          <>
+            <TouchableOpacity
+              style={[styles.resultadosBtn, { marginBottom: 12 }]}
+              onPress={() => handleInvitacionDobles(true)}
+              disabled={respondiendo}
+            >
+              <Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />
+              <Text style={styles.resultadosBtnText}>{respondiendo ? 'Enviando...' : 'Aceptar invitación'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => handleInvitacionDobles(false)} disabled={respondiendo}>
+              <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
+              <Text style={styles.cancelBtnText}>Rechazar</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {esDoblesPartido && esBuscando && !soyInvitadoDobles && (
+          <TouchableOpacity style={styles.chatBtn} onPress={() => navigation.navigate('MisSolicitudes')}>
+            <Ionicons name="people-outline" size={20} color={colors.textPrimary} />
+            <Text style={styles.chatBtnText}>Ver parejas que nos retan</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* NUEVO: reto directo pendiente (singles) */}
+        {esPendiente && !esDoblesPartido && (
           <View style={styles.pendienteCard}>
             <Ionicons name="hourglass-outline" size={20} color={colors.textPrimary} />
             <Text style={styles.pendienteText}>
@@ -377,7 +495,9 @@ export function DetallePartidoScreen({ navigation, route }) {
             onPress={() => {
               navigation.navigate('MatchChat', {
                 idPartido: partido.id,
-                rival: { name: rival.name, avatar: rival.avatar },
+                rival: esDoblesPartido
+                  ? { name: `${nombresPareja(miPareja)} vs ${nombresPareja(parejaRival)}`, avatar: parejaRival[0]?.foto_perfil_url ?? null }
+                  : { name: rival.name, avatar: rival.avatar },
               });
             }}
           >
@@ -386,7 +506,7 @@ export function DetallePartidoScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        {!esFinalizado && (!esPendiente || soyCreador) && (
+        {!esFinalizado && (esDoblesPartido ? soyCreador : (!esPendiente || soyCreador)) && (
           <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
             <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
             <Text style={styles.cancelBtnText}>
@@ -399,7 +519,20 @@ export function DetallePartidoScreen({ navigation, route }) {
           <TouchableOpacity
             style={styles.resultadosBtn}
             onPress={() => navigation.navigate('ColocarResultados', {
-              partido: { ...item, ...partido, id_partido: partido.id, yo, rival, esCreador: esMiCreacion },
+              partido: esDoblesPartido
+                ? {
+                    ...item, ...partido, id_partido: partido.id,
+                    yo:    { name: nombresPareja(miPareja), avatar: yoJugador?.foto_perfil_url ?? null, pts: Number(yoJugador?.puntaje_total ?? 0).toFixed(1) },
+                    rival: {
+                      id:     parejaRival[0]?.id_usuario ?? null,
+                      name:   nombresPareja(parejaRival),
+                      avatar: parejaRival[0]?.foto_perfil_url ?? null,
+                      pts:    Number(parejaRival[0]?.puntaje_total ?? 0).toFixed(1),
+                    },
+                    esCreador: miEquipo === 1,   // publica la pareja del creador
+                    esDobles: true,
+                  }
+                : { ...item, ...partido, id_partido: partido.id, yo, rival, esCreador: esMiCreacion },
             })}
           >
             <Ionicons name="trophy-outline" size={20} color={colors.primary} />
@@ -515,6 +648,13 @@ const styles = StyleSheet.create({
   },
   tipoAmistosoText: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
 
+  // NUEVO: dobles
+  parejaTitulo: { fontSize: 12, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.5, marginBottom: 10, textTransform: 'uppercase' },
+  parejaVacia: { alignItems: 'center', gap: 6, paddingVertical: 12 },
+  dobleJugador: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10, alignSelf: 'stretch' },
+  dobleAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#ccc' },
+  dobleNombre: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  doblePendiente: { fontSize: 12, fontWeight: '700', color: colors.accent },
   pendienteCard: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     backgroundColor: colors.accentLight, borderRadius: 14,

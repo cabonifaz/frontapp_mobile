@@ -57,6 +57,8 @@ function tipoDePartido(item) {
   const codigo = item.tipo_reto_codigo ?? '';
   const nombre = String(item.tipo_reto ?? '').toLowerCase();
   if (codigo === 'TIPO_RANKEADO' || nombre.includes('rank')) return { clave: 'RANKEADO', texto: 'Rankeado' };
+  // NUEVO: dobles
+  if (Number(item.es_dobles ?? 0) === 1) return { clave: 'AMISTOSO', texto: 'Amistoso · Dobles', dobles: true };
   return { clave: 'AMISTOSO', texto: 'Amistoso' };
 }
 
@@ -74,7 +76,7 @@ function TipoChip({ tipo, numSets }) {
   }
   return (
     <View style={styles.tipoChip}>
-      <Ionicons name={tipo.clave === 'RANKEADO' ? 'ribbon-outline' : 'happy-outline'} size={11} color={colors.textSecondary} />
+      <Ionicons name={tipo.clave === 'RANKEADO' ? 'ribbon-outline' : tipo.dobles ? 'people-outline' : 'happy-outline'} size={11} color={colors.textSecondary} />
       <Text style={styles.tipoChipText} numberOfLines={1}>
         {tipo.texto}{sets ? ` · ${sets}` : ''}
       </Text>
