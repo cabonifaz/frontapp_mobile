@@ -27,7 +27,18 @@ export const ligaService = {
     return api.post(`/api/Liga/${idLiga}/inscribirse`);
   },
 
+  // NUEVO: ligas de dobles — el capitán inscribe al equipo con su compañero
+  async inscribirseDobles(idLiga, idCompanero) {
+    return api.post(`/api/Liga/${idLiga}/inscribirse-dobles`, { id_companero: idCompanero });
+  },
+
+  // NUEVO: el compañero acepta o rechaza formar el equipo
+  async responderEquipo(idInscripcion, aceptar) {
+    return api.post(`/api/Liga/inscripcion/${idInscripcion}/responder`, { aceptar });
+  },
+
   // datos: { id_rival, id_cancha, fecha: 'YYYY-MM-DD', hora: 'HH:mm' }
+  // En ligas de dobles, id_rival es cualquier jugador del equipo rival (la tabla envía al capitán).
   async retar(idLiga, datos) {
     return api.post(`/api/Liga/${idLiga}/retar`, datos);
   },

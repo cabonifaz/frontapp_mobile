@@ -29,6 +29,17 @@ function EstadoInscripcion({ liga }) {
       </View>
     );
   }
+  // NUEVO: dobles — equipo creado, falta que el compañero acepte
+  if (estado === 'INSC_PENDIENTE_COMPANERO') {
+    return (
+      <View style={styles.miEstado}>
+        <Ionicons name="hourglass-outline" size={14} color="#FFFFFF" />
+        <Text style={styles.miEstadoTexto}>
+          {Number(liga.soy_capitan ?? 0) === 1 ? 'Esperando a tu compañero' : 'Te invitaron a un equipo'}
+        </Text>
+      </View>
+    );
+  }
   if (estado === 'INSC_PENDIENTE_PAGO') {
     return (
       <View style={styles.miEstado}>
@@ -93,7 +104,7 @@ function LigaCard({ liga, onPress }) {
           </View>
           <View style={styles.ligaMetaRow}>
             <Ionicons name="people-outline" size={13} color="rgba(255,255,255,0.7)" />
-            <Text style={styles.ligaMeta}>{cupo} jugadores</Text>
+            <Text style={styles.ligaMeta}>{cupo} {Number(liga.es_dobles ?? 0) === 1 ? 'equipos' : 'jugadores'}</Text>
             <Text style={styles.ligaMetaSep} />
             <Ionicons name="ticket-outline" size={13} color="rgba(255,255,255,0.7)" />
             <Text style={styles.ligaMeta}>{formatMoneda(liga.cuota_inscripcion, liga.moneda)}</Text>
@@ -211,7 +222,11 @@ export function RankingScreen({ navigation }) {
             ) : (
               <>
                 {activas.length > 0 && (
-                  <Text style={styles.sectionHint}>Elige la liga de tu nivel, inscríbete y reta a los demás jugadores.</Text>
+                  <Text style={styles.sectionHint}>
+                    {modalidad === 'dobles'
+                      ? 'Elige la liga de tu nivel, arma tu equipo con un amigo y reten a los demás equipos.'
+                      : 'Elige la liga de tu nivel, inscríbete y reta a los demás jugadores.'}
+                  </Text>
                 )}
                 {activas.map(l => (
                   <LigaCard

@@ -10,6 +10,7 @@ import { solicitudService } from '../../services/solicitudService';
 import { partidoService } from '../../services/partidoService';
 import { claseService } from '../../services/claseService';
 import { doblesService, primerNombre } from '../../services/doblesService';
+import { ligaService } from '../../services/ligaService';
 import { getAvatarSource } from '../../utils/avatars';
 
 const DIAS  = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
@@ -240,11 +241,14 @@ export function MisSolicitudesScreen({ navigation, route }) {
 
   // NUEVO: dobles — responder una invitación (compañero, rival o compañero retador)
   async function handleInvitacionDobles(item, aceptar) {
-    const clave = `inv-${item.id_partido}`;
+    const esEquipoLiga = item.tipo === 'EQUIPO_LIGA';
+    const clave = esEquipoLiga ? `eq-${item.id_liga_inscripcion}` : `inv-${item.id_partido}`;
     const ejecutar = async () => {
       try {
         setAccionDoblesLoading(clave);
-        const res = await doblesService.responderInvitacion(item.id_partido, aceptar);
+        const res = esEquipoLiga
+          ? await ligaService.responderEquipo(item.id_liga_inscripcion, aceptar)   // NUEVO: equipo de liga
+          : await doblesService.responderInvitacion(item.id_partido, aceptar);
         Alert.alert(aceptar ? '¡Listo!' : 'Invitación rechazada', res?.mensaje ?? '');
         cargar();
       } catch (e) {
@@ -256,7 +260,11 @@ export function MisSolicitudesScreen({ navigation, route }) {
     if (aceptar) return ejecutar();
     const aviso = item.rol === 'COMPANERO_RETADOR'
       ? 'Tu amigo no podrá retar con esta pareja.'
-      : 'El partido se cancelará para todos.';
+      : item.rol === 'COMPANERO_LIGA'
+        ? `No formarás equipo con ${primerNombre(item.nombre_invitador)} en esta liga.`
+        : item.rol === 'RIVAL_LIGA'
+          ? 'Se rechazará el reto de liga para tu equipo.'
+          : 'El partido se cancelará para todos.';
     Alert.alert('Rechazar invitación', aviso, [
       { text: 'No', style: 'cancel' },
       { text: 'Sí, rechazar', style: 'destructive', onPress: ejecutar },
@@ -289,6 +297,8 @@ export function MisSolicitudesScreen({ navigation, route }) {
     const quien = primerNombre(item.nombre_invitador);
     if (item.rol === 'COMPANERO') return `${quien} te invitó a ser su compañero`;
     if (item.rol === 'RIVAL') return `${quien} te retó a un partido de dobles`;
+    if (item.rol === 'RIVAL_LIGA') return `${quien} retó a tu equipo`;              // NUEVO
+    if (item.rol === 'COMPANERO_LIGA') return `${quien} te invitó a su equipo`;    // NUEVO
     return `${quien} quiere retar a una pareja contigo`;
   }
 
@@ -426,7 +436,11 @@ export function MisSolicitudesScreen({ navigation, route }) {
                   <Text style={styles.sectionHint}>Invitaciones y parejas que quieren retarte.</Text>
                   {doblesPend.map(item => {
                     const esPareja = item.tipo === 'PAREJA';
-                    const clave = esPareja ? `par-${item.id_partido}-${item.id_lider}` : `inv-${item.id_partido}`;
+                    const esEquipoLiga = item.tipo === 'EQUIPO_LIGA';
+                    const esDeLiga = esEquipoLiga || item.rol === 'RIVAL_LIGA';
+                    const clave = esPareja
+                      ? `par-${item.id_partido}-${item.id_lider}`
+                      : esEquipoLiga ? `eq-${item.id_liga_inscripcion}` : `inv-${item.id_partido}`;
                     const cargando = accionDoblesLoading === clave;
                     const yaAprobe = Number(item.ya_aprobe ?? 0) === 1;
                     const compAprobo = Number(item.companero_aprobo ?? 0) === 1;
@@ -443,7 +457,7 @@ export function MisSolicitudesScreen({ navigation, route }) {
                         <View style={styles.retadorInfo}>
                           <View style={[styles.tipoRetoChip, styles.tipoRetoLiga]}>
                             <Text style={[styles.tipoRetoText, styles.tipoRetoTextLiga]}>
-                              DOBLES · {Number(item.num_sets) === 3 ? '2 de 3' : '3 de 5'}
+                              {esDeLiga ? 'LIGA · DOBLES' : `DOBLES · ${Number(item.num_sets) === 3 ? '2 de 3' : '3 de 5'}`}
                             </Text>
                           </View>
                           <Text style={styles.retadorName} numberOfLines={2}>
@@ -451,14 +465,21 @@ export function MisSolicitudesScreen({ navigation, route }) {
                               ? `${primerNombre(item.nombre_retador)} y ${primerNombre(item.nombre_companero_retador)} quieren retarlos`
                               : textoInvitacion(item)}
                           </Text>
-                          <Text style={styles.retadorClub}>{item.nombre_cancha ?? ''}</Text>
-                          <View style={styles.metaRow}>
-                            <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
-                            <Text style={styles.metaText}> {formatFecha(item.fecha)}</Text>
-                            <Text style={{ width: 10 }} />
-                            <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
-                            <Text style={styles.metaText}> {formatHora(item.hora)}</Text>
-                          </View>
+                          <Text style={styles.retadorClub} numberOfLines={1}>
+                            {esDeLiga ? (item.nombre_liga ?? 'Liga de dobles') : (item.nombre_cancha ?? '')}
+                          </Text>
+                          {item.fecha ? (
+                            <View style={styles.metaRow}>
+                              <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
+                              <Text style={styles.metaText}> {formatFecha(item.fecha)}</Text>
+                              <Text style={{ width: 10 }} />
+                              <Ionicons name="time-outline" size={13} color={colors.textSecondary} />
+                              <Text style={styles.metaText}> {formatHora(item.hora)}</Text>
+                            </View>
+                          ) : null}
+                          {item.rol === 'RIVAL_LIGA' && (
+                            <Text style={styles.doblesEstado}>Basta con que uno de tu equipo acepte</Text>
+                          )}
                           {esPareja && (yaAprobe || compAprobo) && (
                             <Text style={styles.doblesEstado}>
                               {yaAprobe ? 'Ya aprobaste · falta tu compañero' : 'Tu compañero ya aprobó'}

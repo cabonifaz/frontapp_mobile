@@ -213,7 +213,7 @@ export function DetallePartidoScreen({ navigation, route }) {
       }
     };
     if (aceptar) return ejecutar();
-    Alert.alert('Rechazar invitación', 'El partido se cancelará para todos.', [
+    Alert.alert('Rechazar invitación', esLiga ? 'Se rechazará el reto de liga para tu equipo.' : 'El partido se cancelará para todos.', [
       { text: 'No', style: 'cancel' },
       { text: 'Sí, rechazar', style: 'destructive', onPress: ejecutar },
     ]);
@@ -424,7 +424,9 @@ export function DetallePartidoScreen({ navigation, route }) {
             <Ionicons name={esBuscando ? 'search-outline' : 'hourglass-outline'} size={20} color={colors.textPrimary} />
             <Text style={styles.pendienteText}>
               {soyInvitadoDobles
-                ? 'Te invitaron a este partido de dobles. Acepta para confirmar tu lugar.'
+                ? (esLiga
+                    ? 'Retaron a tu equipo en la liga. Basta con que uno de ustedes acepte para confirmar el partido.'
+                    : 'Te invitaron a este partido de dobles. Acepta para confirmar tu lugar.')
                 : esBuscando
                   ? 'Convocatoria publicada. Las parejas que quieran retarlos aparecerán en Mis solicitudes.'
                   : `Esperando que acepten: ${nombresPareja(pendientesDobles) || 'los invitados'}.`}
@@ -440,7 +442,7 @@ export function DetallePartidoScreen({ navigation, route }) {
               disabled={respondiendo}
             >
               <Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />
-              <Text style={styles.resultadosBtnText}>{respondiendo ? 'Enviando...' : 'Aceptar invitación'}</Text>
+              <Text style={styles.resultadosBtnText}>{respondiendo ? 'Enviando...' : esLiga ? 'Aceptar reto' : 'Aceptar invitación'}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => handleInvitacionDobles(false)} disabled={respondiendo}>
               <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />

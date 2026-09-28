@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { ligaService } from '../../services/ligaService';
 import { getAvatarSource } from '../../utils/avatars';
+import { SelectorAmigoModal } from '../../components/common/SelectorAmigoModal';
 import {
   SponsorLogo, MOTIVOS_BLOQUEO, formatMoneda, formatRangoFechas,
   formatFechaCorta, formatHora, formatPuntos,
@@ -26,8 +27,53 @@ const PUNTAJE = [
 ];
 
 // ── Inscripción ─────────────────────────────────────────────────────────────
-function PanelInscripcion({ liga, inscribiendo, onInscribirse }) {
+function PanelInscripcion({ liga, inscribiendo, onInscribirse, onResponderEquipo }) {
   const estado = liga.mi_estado_inscripcion;
+  const esDobles = Number(liga.es_dobles ?? 0) === 1;
+  const soyCapitan = Number(liga.soy_capitan ?? 0) === 1;
+  const companero = String(liga.mi_companero_nombre ?? 'tu compañero').split(' ')[0];
+
+  // NUEVO: equipo esperando que el compañero acepte
+  if (estado === 'INSC_PENDIENTE_COMPANERO') {
+    if (soyCapitan) {
+      return (
+        <View style={styles.panel}>
+          <Ionicons name="hourglass-outline" size={24} color={colors.textPrimary} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.panelTitulo}>Esperando a {companero}</Text>
+            <Text style={styles.panelTexto}>
+              Tu compañero debe aceptar la invitación desde Mis solicitudes para completar el equipo.
+            </Text>
+          </View>
+        </View>
+      );
+    }
+    return (
+      <View style={[styles.panel, { flexDirection: 'column', alignItems: 'stretch' }]}>
+        <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+          <Ionicons name="people" size={24} color={colors.textPrimary} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.panelTitulo}>{companero} te invitó a su equipo</Text>
+            <Text style={styles.panelTexto}>
+              {Number(liga.cuota_inscripcion ?? 0) > 0
+                ? `La inscripción es de ${formatMoneda(liga.cuota_inscripcion, liga.moneda)} por equipo.`
+                : 'La inscripción es gratuita.'}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.panelAcciones}>
+          <TouchableOpacity style={styles.panelRechazar} onPress={() => onResponderEquipo(false)} disabled={inscribiendo}>
+            <Text style={styles.panelRechazarText}>Rechazar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.panelAceptar} onPress={() => onResponderEquipo(true)} disabled={inscribiendo}>
+            {inscribiendo
+              ? <ActivityIndicator size="small" color={colors.primary} />
+              : <Text style={styles.panelAceptarText}>Aceptar</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
   const nivel = liga.mi_nivel;
   const fueraDeNivel = nivel != null && (nivel < liga.nivel_min || nivel > liga.nivel_max);
   const abierta = ['LIGA_INSCRIPCION_ABIERTA', 'LIGA_EN_CURSO'].includes(liga.estado_liga);
@@ -39,9 +85,11 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse }) {
           <Text style={styles.panelPosNum}>{liga.mi_posicion ?? '-'}°</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.panelTitulo}>Estás inscrito</Text>
+          <Text style={styles.panelTitulo}>{esDobles ? `Tu equipo con ${companero}` : 'Estás inscrito'}</Text>
           <Text style={styles.panelTexto}>
-            Llevas {liga.mis_puntos ?? 0} puntos de liga. Reta a los jugadores habilitados en la tabla.
+            {esDobles
+              ? `Llevan ${liga.mis_puntos ?? 0} puntos de liga. Reten a los equipos habilitados en la tabla.`
+              : `Llevas ${liga.mis_puntos ?? 0} puntos de liga. Reta a los jugadores habilitados en la tabla.`}
           </Text>
         </View>
       </View>
@@ -55,7 +103,9 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse }) {
         <View style={{ flex: 1 }}>
           <Text style={styles.panelTitulo}>Pago en validación</Text>
           <Text style={styles.panelTexto}>
-            Tu inscripción se activará cuando confirmemos el pago de {formatMoneda(liga.cuota_inscripcion, liga.moneda)}.
+            {esDobles
+              ? `Tu equipo con ${companero} se activará cuando confirmemos el pago de ${formatMoneda(liga.cuota_inscripcion, liga.moneda)} (una cuota por equipo).`
+              : `Tu inscripción se activará cuando confirmemos el pago de ${formatMoneda(liga.cuota_inscripcion, liga.moneda)}.`}
           </Text>
           {liga.instrucciones_pago ? (
             <Text style={styles.panelInstrucciones}>{liga.instrucciones_pago}</Text>
@@ -91,9 +141,9 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse }) {
         <ActivityIndicator size="small" color={colors.primary} />
       ) : (
         <>
-          <Ionicons name="person-add" size={18} color={colors.primary} />
+          <Ionicons name={esDobles ? 'people' : 'person-add'} size={18} color={colors.primary} />
           <Text style={styles.inscribirText}>
-            Inscribirme · {formatMoneda(liga.cuota_inscripcion, liga.moneda)}
+            {esDobles ? 'Inscribir mi equipo' : 'Inscribirme'} · {formatMoneda(liga.cuota_inscripcion, liga.moneda)}
           </Text>
         </>
       )}
@@ -111,7 +161,14 @@ function FilaJugador({ fila, onPerfil, onRetar }) {
     <View style={[styles.fila, esYo && styles.filaYo]}>
       <Text style={[styles.filaPos, fila.posicion <= 3 && styles.filaPosTop]}>{fila.posicion}</Text>
       <TouchableOpacity style={styles.filaJugador} onPress={onPerfil} activeOpacity={0.7}>
-        <Image source={getAvatarSource(fila.foto_perfil_url)} style={styles.filaAvatar} />
+        {Number(fila.es_equipo ?? 0) === 1 ? (
+          <View style={styles.filaPareja}>
+            <Image source={getAvatarSource(fila.foto_perfil_url)} style={[styles.filaParejaAvatar, { left: 0, top: 0 }]} />
+            <Image source={getAvatarSource(fila.foto_companero)} style={[styles.filaParejaAvatar, { right: 0, bottom: 0 }]} />
+          </View>
+        ) : (
+          <Image source={getAvatarSource(fila.foto_perfil_url)} style={styles.filaAvatar} />
+        )}
         <Text style={styles.filaNombre} numberOfLines={2}>{fila.nombre_completo}</Text>
       </TouchableOpacity>
       <Text style={styles.filaNum}>{fila.partidos_jugados ?? 0}</Text>
@@ -144,7 +201,9 @@ function TabTabla({ tabla, liga, navigation }) {
     return (
       <View style={styles.vacio}>
         <Ionicons name="podium-outline" size={40} color={colors.textSecondary} />
-        <Text style={styles.vacioText}>Aún no hay jugadores activos en esta liga.</Text>
+        <Text style={styles.vacioText}>
+          {Number(liga.es_dobles ?? 0) === 1 ? 'Aún no hay equipos activos en esta liga.' : 'Aún no hay jugadores activos en esta liga.'}
+        </Text>
       </View>
     );
   }
@@ -153,7 +212,7 @@ function TabTabla({ tabla, liga, navigation }) {
     <View>
       <View style={styles.tablaHeader}>
         <Text style={[styles.thText, { width: COL.pos }]}>#</Text>
-        <Text style={[styles.thText, { flex: 1 }]}>Jugador</Text>
+        <Text style={[styles.thText, { flex: 1 }]}>{Number(liga.es_dobles ?? 0) === 1 ? 'Equipo' : 'Jugador'}</Text>
         <Text style={[styles.thText, styles.thNum, { width: COL.num }]}>PJ</Text>
         <Text style={[styles.thText, styles.thNum, { width: COL.num }]}>PG</Text>
         <Text style={[styles.thText, styles.thNum, { width: COL.pts }]}>Pts</Text>
@@ -194,10 +253,17 @@ function TabTabla({ tabla, liga, navigation }) {
 }
 
 // ── Tab Partidos ────────────────────────────────────────────────────────────
-function JugadorResultado({ nombre, foto, sets, puntos, ganador }) {
+function JugadorResultado({ nombre, foto, foto2, esEquipo, sets, puntos, ganador }) {
   return (
     <View style={styles.pjRow}>
-      <Image source={getAvatarSource(foto)} style={styles.pjAvatar} />
+      {esEquipo ? (
+        <View style={styles.filaPareja}>
+          <Image source={getAvatarSource(foto)} style={[styles.filaParejaAvatar, { left: 0, top: 0 }]} />
+          <Image source={getAvatarSource(foto2)} style={[styles.filaParejaAvatar, { right: 0, bottom: 0 }]} />
+        </View>
+      ) : (
+        <Image source={getAvatarSource(foto)} style={styles.pjAvatar} />
+      )}
       <Text style={[styles.pjNombre, ganador && styles.pjGanador]} numberOfLines={1}>{nombre}</Text>
       {puntos != null && (
         <Text style={[styles.pjPuntos, puntos > 0 ? styles.pjPuntosMas : styles.pjPuntosMenos]}>
@@ -239,6 +305,8 @@ function TabPartidos({ partidos }) {
             <JugadorResultado
               nombre={p.jugador1}
               foto={p.foto_jugador1}
+              foto2={p.foto_jugador1_companero}
+              esEquipo={Number(p.es_equipo ?? 0) === 1}
               sets={finalizado ? s1 : null}
               puntos={p.puntos_jugador1}
               ganador={finalizado && s1 > s2}
@@ -246,6 +314,8 @@ function TabPartidos({ partidos }) {
             <JugadorResultado
               nombre={p.jugador2}
               foto={p.foto_jugador2}
+              foto2={p.foto_jugador2_companero}
+              esEquipo={Number(p.es_equipo ?? 0) === 1}
               sets={finalizado ? s2 : null}
               puntos={p.puntos_jugador2}
               ganador={finalizado && s2 > s1}
@@ -259,6 +329,7 @@ function TabPartidos({ partidos }) {
 
 // ── Tab Reglas ──────────────────────────────────────────────────────────────
 function TabReglas({ liga }) {
+  const d = Number(liga.es_dobles ?? 0) === 1;
   return (
     <View>
       <Text style={styles.reglaTitulo}>Puntaje por partido</Text>
@@ -280,12 +351,15 @@ function TabReglas({ liga }) {
       <Text style={styles.reglaTitulo}>Cómo funciona</Text>
       {[
         'Todos empiezan la liga con 0 puntos. Estos puntos son solo de la liga y no cambian tu puntaje general.',
-        `Modalidad singles, siempre al mejor de ${liga.num_sets ?? 5} sets (gana quien llega a 3).`,
+        d
+          ? `Modalidad dobles: se inscriben equipos de 2 (los dos dentro del nivel ${liga.nivel_min}–${liga.nivel_max}). Siempre al mejor de ${liga.num_sets ?? 5} sets.`
+          : `Modalidad singles, siempre al mejor de ${liga.num_sets ?? 5} sets (gana quien llega a 3).`,
+        ...(d ? ['Cualquiera de los dos puede retar a otro equipo; en el equipo retado basta con que uno acepte.'] : []),
         liga.max_diferencia_posiciones
-          ? `Puedes retar a jugadores que estén hasta ${liga.max_diferencia_posiciones} posiciones arriba o abajo de ti.`
-          : 'Puedes retar a cualquier jugador activo de la liga.',
-        'No puedes volver a retar a un jugador mientras tengan un reto pendiente o un partido por jugar.',
-        `Los retos se habilitan cuando la liga tiene al menos ${liga.minimo_jugadores} jugadores activos.`,
+          ? `Puedes retar a ${d ? 'equipos' : 'jugadores'} que estén hasta ${liga.max_diferencia_posiciones} posiciones arriba o abajo de ${d ? 'tu equipo' : 'ti'}.`
+          : `Puedes retar a cualquier ${d ? 'equipo activo' : 'jugador activo'} de la liga.`,
+        `No puedes volver a retar a ${d ? 'un equipo' : 'un jugador'} mientras tengan un reto pendiente o un partido por jugar.`,
+        `Los retos se habilitan cuando la liga tiene al menos ${liga.minimo_jugadores} ${d ? 'equipos activos' : 'jugadores activos'}.`,
         'El resultado se publica y confirma igual que en cualquier partido; los puntos se aplican al confirmarse.',
       ].map((t, i) => (
         <View key={i} style={styles.reglaItem}>
@@ -298,9 +372,9 @@ function TabReglas({ liga }) {
       <View style={styles.datosCard}>
         <Dato icon="calendar-outline" label="Fechas" valor={formatRangoFechas(liga.fecha_inicio, liga.fecha_fin)} />
         <Dato icon="stats-chart-outline" label="Nivel requerido" valor={`${liga.nivel_min} a ${liga.nivel_max}`} />
-        <Dato icon="people-outline" label="Participantes" valor={liga.cupo_maximo ? `Máximo ${liga.cupo_maximo}` : 'Sin límite'} />
-        <Dato icon="person-outline" label="Mínimo para empezar" valor={`${liga.minimo_jugadores} jugadores`} />
-        <Dato icon="ticket-outline" label="Inscripción" valor={formatMoneda(liga.cuota_inscripcion, liga.moneda)} />
+        <Dato icon="people-outline" label={d ? 'Equipos' : 'Participantes'} valor={liga.cupo_maximo ? `Máximo ${liga.cupo_maximo}` : 'Sin límite'} />
+        <Dato icon="person-outline" label="Mínimo para empezar" valor={`${liga.minimo_jugadores} ${d ? 'equipos' : 'jugadores'}`} />
+        <Dato icon="ticket-outline" label="Inscripción" valor={`${formatMoneda(liga.cuota_inscripcion, liga.moneda)}${d ? ' por equipo' : ''}`} />
         <Dato icon="trophy-outline" label="Premio" valor={liga.premio ?? 'Por anunciar'} ultimo />
       </View>
     </View>
@@ -328,6 +402,7 @@ export function LigaDetalleScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [refrescando, setRefrescando] = useState(false);
   const [inscribiendo, setInscribiendo] = useState(false);
+  const [showSelector, setShowSelector] = useState(false);   // NUEVO: elegir compañero
 
   const cargar = useCallback(async () => {
     const [rLiga, rTabla, rPartidos] = await Promise.allSettled([
@@ -348,7 +423,51 @@ export function LigaDetalleScreen({ navigation, route }) {
     }, [cargar])
   );
 
+  // NUEVO: dobles — inscribir equipo con un amigo
+  function inscribirEquipo(amigo) {
+    setShowSelector(false);
+    const cuota = Number(liga.cuota_inscripcion ?? 0);
+    const nombre = String(amigo.nombre_completo ?? '').split(' ')[0];
+    const mensaje =
+      `${nombre} recibirá una invitación y debe aceptarla. Los dos deben tener nivel ${liga.nivel_min} a ${liga.nivel_max}.` +
+      (cuota > 0 ? `\n\nLa inscripción cuesta ${formatMoneda(cuota, liga.moneda)} por equipo.` : '') +
+      (cuota > 0 && liga.instrucciones_pago ? `\n\n${liga.instrucciones_pago}` : '');
+    Alert.alert(`Inscribir equipo con ${nombre}`, mensaje, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Enviar invitación',
+        onPress: async () => {
+          try {
+            setInscribiendo(true);
+            const res = await ligaService.inscribirseDobles(idLiga, amigo.id_usuario);
+            Alert.alert('Invitación enviada', res?.mensaje ?? '');
+            await cargar();
+          } catch (e) {
+            Alert.alert('No se pudo inscribir', e.message ?? 'Intenta nuevamente.');
+          } finally {
+            setInscribiendo(false);
+          }
+        },
+      },
+    ]);
+  }
+
+  // NUEVO: dobles — el compañero acepta o rechaza el equipo
+  async function responderEquipo(aceptar) {
+    try {
+      setInscribiendo(true);
+      const res = await ligaService.responderEquipo(liga.mi_id_inscripcion, aceptar);
+      Alert.alert(aceptar ? '¡Listo!' : 'Invitación rechazada', res?.mensaje ?? '');
+      await cargar();
+    } catch (e) {
+      Alert.alert('Error', e.message ?? 'No se pudo responder.');
+    } finally {
+      setInscribiendo(false);
+    }
+  }
+
   function confirmarInscripcion() {
+    if (Number(liga.es_dobles ?? 0) === 1) { setShowSelector(true); return; }
     const cuota = Number(liga.cuota_inscripcion ?? 0);
     const mensaje = cuota > 0
       ? `La inscripción cuesta ${formatMoneda(cuota, liga.moneda)}. Quedará pendiente hasta que validemos tu pago.` +
@@ -404,7 +523,7 @@ export function LigaDetalleScreen({ navigation, route }) {
         </View>
         <Text style={styles.headerTitulo} numberOfLines={2}>{liga.nombre_oficial}</Text>
         <Text style={styles.headerSub}>
-          Singles · 3 de 5 sets · {formatRangoFechas(liga.fecha_inicio, liga.fecha_fin)}
+          {Number(liga.es_dobles ?? 0) === 1 ? 'Dobles' : 'Singles'} · 3 de 5 sets · {formatRangoFechas(liga.fecha_inicio, liga.fecha_fin)}
         </Text>
         {liga.auspiciador_nombre ? (
           <View style={styles.headerSponsor}>
@@ -420,7 +539,12 @@ export function LigaDetalleScreen({ navigation, route }) {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refrescando} onRefresh={() => { setRefrescando(true); cargar(); }} />}
       >
-        <PanelInscripcion liga={liga} inscribiendo={inscribiendo} onInscribirse={confirmarInscripcion} />
+        <PanelInscripcion
+          liga={liga}
+          inscribiendo={inscribiendo}
+          onInscribirse={confirmarInscripcion}
+          onResponderEquipo={responderEquipo}
+        />
 
         <View style={styles.tabBar}>
           {TABS.map(t => (
@@ -439,6 +563,14 @@ export function LigaDetalleScreen({ navigation, route }) {
 
         <View style={{ height: 40 + insets.bottom }} />
       </ScrollView>
+
+      {/* NUEVO: elegir compañero para inscribir el equipo */}
+      <SelectorAmigoModal
+        visible={showSelector}
+        titulo="¿Con quién formas tu equipo?"
+        onClose={() => setShowSelector(false)}
+        onSelect={inscribirEquipo}
+      />
     </View>
   );
 }
@@ -509,6 +641,23 @@ const styles = StyleSheet.create({
   filaPosTop: { color: colors.textPrimary, fontWeight: '900' },
   filaJugador: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingRight: 4 },
   filaAvatar: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#ccc' },
+  // NUEVO: dobles
+  filaPareja: { width: 38, height: 32 },
+  filaParejaAvatar: {
+    position: 'absolute', width: 24, height: 24, borderRadius: 12,
+    backgroundColor: '#ccc', borderWidth: 1.5, borderColor: colors.background,
+  },
+  panelAcciones: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  panelAceptar: {
+    flex: 1, backgroundColor: colors.accent, borderRadius: 22,
+    paddingVertical: 11, alignItems: 'center', justifyContent: 'center', minHeight: 44,
+  },
+  panelAceptarText: { fontSize: 14, fontWeight: '800', color: colors.primary },
+  panelRechazar: {
+    flex: 1, borderWidth: 1.5, borderColor: colors.textPrimary, borderRadius: 22,
+    paddingVertical: 11, alignItems: 'center', justifyContent: 'center',
+  },
+  panelRechazarText: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
   filaNombre: { flex: 1, fontSize: 13, fontWeight: '700', color: colors.textPrimary, lineHeight: 17 },
   filaNum: { width: COL.num, textAlign: 'center', fontSize: 14, fontWeight: '600', color: colors.textPrimary },
   filaPts: { width: COL.pts, textAlign: 'center', fontSize: 16, fontWeight: '900', color: colors.textPrimary },
