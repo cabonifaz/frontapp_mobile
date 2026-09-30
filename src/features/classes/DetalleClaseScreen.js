@@ -6,6 +6,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import { colors } from '../../constants';
 import { claseService } from '../../services/claseService';
 import { getAvatarSource } from '../../utils/avatars';
@@ -29,11 +31,12 @@ function codigoEstado(d) {
 }
 
 const ESTADO_UI = {
-  CLASE_SOLICITADA: { texto: 'Solicitada', bg: '#FFF3E0', color: '#E65100' },
-  CLASE_ACEPTADA:   { texto: 'Aceptada',   bg: '#E3F2FD', color: '#1565C0' },
-  CLASE_COMPLETADA: { texto: 'Completada', bg: '#E8F5E9', color: '#2E7D32' },
-  CLASE_RECHAZADA:  { texto: 'Rechazada',  bg: '#FFEBEE', color: '#C62828' },
-  CLASE_CANCELADA:  { texto: 'Cancelada',  bg: '#FFEBEE', color: '#C62828' },
+  // NUEVO (idiomas): "texto" es la clave de traducción del estado
+  CLASE_SOLICITADA: { texto: 'estados.solicitada', bg: '#FFF3E0', color: '#E65100' },
+  CLASE_ACEPTADA:   { texto: 'estados.aceptada',   bg: '#E3F2FD', color: '#1565C0' },
+  CLASE_COMPLETADA: { texto: 'estados.completada', bg: '#E8F5E9', color: '#2E7D32' },
+  CLASE_RECHAZADA:  { texto: 'estados.rechazada',  bg: '#FFEBEE', color: '#C62828' },
+  CLASE_CANCELADA:  { texto: 'estados.cancelado',  bg: '#FFEBEE', color: '#C62828' },
 };
 
 function formatPuntos(p) {
@@ -64,29 +67,29 @@ function Estrellas({ valor, onChange, size = 30 }) {
 
 // Pantalla que ve el PROFESOR al completar: los puntos son del alumno
 function PuntosScreen({ puntos, nombreAlumno, onVolver }) {
-  const alumno = String(nombreAlumno ?? 'Tu alumno').split(' ')[0];
+  const { t } = useTranslation();
+  const alumno = String(nombreAlumno ?? t('clases.detalle.tuAlumno')).split(' ')[0];
   return (
     <View style={styles.puntosContainer}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.puntosCircle}>
           <Ionicons name="checkmark-circle" size={80} color={colors.accent} />
         </View>
-        <Text style={styles.puntosTitle}>¡Clase completada!</Text>
+        <Text style={styles.puntosTitle}>{t('clases.detalle.completada')}</Text>
         <Text style={styles.puntosSubtitle}>
-          {alumno} ganó <Text style={styles.puntosNum}>{formatPuntos(puntos)} {Number(puntos) === 1 ? 'punto' : 'puntos'}</Text>
+          {t('clases.detalle.gano', { nombre: alumno })}<Text style={styles.puntosNum}>{formatPuntos(puntos)} {Number(puntos) === 1 ? t('clases.detalle.punto') : t('clases.detalle.puntos')}</Text>
         </Text>
-        <Text style={styles.puntosNote}>
-          Ahora {alumno} podrá calificar la clase desde su detalle.
-        </Text>
+        <Text style={styles.puntosNote}>{t('clases.detalle.ahoraPodra', { nombre: alumno })}</Text>
       </View>
       <TouchableOpacity style={styles.accentBtn} onPress={onVolver}>
-        <Text style={styles.accentBtnText}>Volver</Text>
+        <Text style={styles.accentBtnText}>{t('clases.detalle.volver')}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 export function DetalleClaseScreen({ navigation, route }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const insets = useSafeAreaInsets();
   const claseParams = route?.params?.clase ?? {};
   const idClase = claseParams.id_clase ?? claseParams.id_encuentro ?? claseParams.id ?? null;
@@ -123,8 +126,8 @@ export function DetalleClaseScreen({ navigation, route }) {
   const soyProfesor = soyAlumno === false;
 
   const nombreOtro = soyAlumno
-    ? (d.nombre_profesor ?? d.nombre_rival ?? d.rival ?? 'Profesor')
-    : (d.nombre_alumno  ?? d.nombre_rival ?? d.rival ?? 'Alumno');
+    ? (d.nombre_profesor ?? d.nombre_rival ?? d.rival ?? t('clases.detalle.profesor'))
+    : (d.nombre_alumno  ?? d.nombre_rival ?? d.rival ?? t('clases.detalle.alumno'));
   const fotoOtro = soyAlumno
     ? (d.foto_profesor ?? d.foto_perfil_url_rival ?? null)
     : (d.foto_alumno   ?? d.foto_perfil_url_rival ?? null);
@@ -132,7 +135,7 @@ export function DetalleClaseScreen({ navigation, route }) {
     ? (d.ranking_profesor ?? d.ranking_rival ?? '--')
     : (d.ranking_alumno   ?? d.ranking_rival ?? '--');
 
-  const nombreCancha = d.nombre_cancha ?? d.lugar ?? 'Cancha';
+  const nombreCancha = d.nombre_cancha ?? d.lugar ?? t('crear.cancha.nombre');
   const direccion    = d.descripcion   ?? d.direccion ?? d.address ?? '';
   const fecha        = d.fecha_clase   ?? d.fecha_partido ?? d.fecha ?? '--';
   const horaRaw      = d.hora_clase ?? d.hora_partido ?? d.hora;
@@ -155,7 +158,7 @@ export function DetalleClaseScreen({ navigation, route }) {
   function formatFecha(f) {
     if (!f || f === '--') return '--';
     const [year, month, day] = (String(f).split('T')[0]).split('-').map(Number);
-    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const months = i18n.t('fechas.mesesAbrev', { returnObjects: true });
     return `${day} ${months[month - 1]} ${year}`;
   }
 
@@ -164,17 +167,17 @@ export function DetalleClaseScreen({ navigation, route }) {
       setAccion(nombreAccion);
       await fn();
     } catch (e) {
-      Alert.alert('No se pudo completar', e.message ?? 'Intenta nuevamente.');
+      Alert.alert(t('clases.detalle.noSePudo'), e.message ?? t('clases.detalle.intentaNuevo'));
     } finally {
       setAccion(null);
     }
   }
 
   function handleCancelar() {
-    Alert.alert('Cancelar clase', '¿Seguro que quieres cancelar esta clase?', [
-      { text: 'No', style: 'cancel' },
+    Alert.alert(t('clases.detalle.cancelarTitulo'), t('clases.detalle.cancelarMensaje'), [
+      { text: t('solicitudes.alertas.no'), style: 'cancel' },
       {
-        text: 'Sí, cancelar', style: 'destructive',
+        text: t('solicitudes.alertas.siCancelar'), style: 'destructive',
         onPress: () => ejecutar('cancelar', async () => {
           await claseService.cancelar(idClase);
           navigation.goBack();
@@ -184,10 +187,10 @@ export function DetalleClaseScreen({ navigation, route }) {
   }
 
   function handleCompletar() {
-    Alert.alert('Completar clase', `¿Confirmas que la clase con ${String(nombreOtro).split(' ')[0]} se realizó?`, [
-      { text: 'No', style: 'cancel' },
+    Alert.alert(t('clases.detalle.completarTitulo'), t('clases.detalle.completarMensaje', { nombre: String(nombreOtro).split(' ')[0] }), [
+      { text: t('solicitudes.alertas.no'), style: 'cancel' },
       {
-        text: 'Sí, completar',
+        text: t('clases.detalle.siCompletar'),
         onPress: () => ejecutar('completar', async () => {
           const res = await claseService.completar(idClase);
           setPuntosCompletados(res?.puntosGanados ?? 0);
@@ -204,10 +207,10 @@ export function DetalleClaseScreen({ navigation, route }) {
   }
 
   function handleRechazar() {
-    Alert.alert('Rechazar clase', '¿Seguro que quieres rechazar esta solicitud?', [
-      { text: 'No', style: 'cancel' },
+    Alert.alert(t('solicitudes.alertas.rechazarClase'), t('solicitudes.alertas.rechazarClaseMensaje'), [
+      { text: t('solicitudes.alertas.no'), style: 'cancel' },
       {
-        text: 'Sí, rechazar', style: 'destructive',
+        text: t('solicitudes.alertas.siRechazar'), style: 'destructive',
         onPress: () => ejecutar('rechazar', async () => {
           await claseService.rechazar(idClase);
           navigation.goBack();
@@ -219,7 +222,7 @@ export function DetalleClaseScreen({ navigation, route }) {
   function handleCalificar() {
     ejecutar('calificar', async () => {
       await claseService.dejarFeedback(idClase, { calificacion: nota, comentario: comentario.trim() || null });
-      Alert.alert('¡Gracias!', 'Tu calificación se sumó al perfil del profesor.');
+      Alert.alert(t('clases.detalle.gracias'), t('clases.detalle.graciasMensaje'));
       cargar();
     });
   }
@@ -274,7 +277,7 @@ export function DetalleClaseScreen({ navigation, route }) {
 
         <Text style={styles.name}>{nombreOtro}</Text>
         {soyAlumno !== null && (
-          <Text style={styles.role}>{soyAlumno ? 'Profesor' : 'Alumno'}</Text>
+          <Text style={styles.role}>{soyAlumno ? t('clases.detalle.profesor') : t('clases.detalle.alumno')}</Text>
         )}
 
         {/* Calificación del profesor (visible para el alumno) */}
@@ -283,18 +286,18 @@ export function DetalleClaseScreen({ navigation, route }) {
             <Ionicons name="star" size={14} color={colors.accent} />
             <Text style={styles.califValor}>{califProf != null ? califProf.toFixed(1) : '—'}</Text>
             <Text style={styles.califTexto}>
-              {totalCalif > 0 ? `como profesor · ${totalCalif}` : 'sin calificaciones'}
+              {totalCalif > 0 ? t('clases.detalle.comoProfesor', { n: totalCalif }) : t('clases.detalle.sinCalif')}
             </Text>
           </View>
         )}
 
         {estadoUi && (
           <View style={[styles.estadoBadge, { backgroundColor: estadoUi.bg }]}>
-            <Text style={[styles.estadoText, { color: estadoUi.color }]}>{estadoUi.texto}</Text>
+            <Text style={[styles.estadoText, { color: estadoUi.color }]}>{t(estadoUi.texto)}</Text>
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Detalles de la clase</Text>
+        <Text style={styles.sectionTitle}>{t('clases.detalle.detalles')}</Text>
 
         <View style={styles.detailCard}>
           <View style={{ flex: 1 }}>
@@ -322,18 +325,20 @@ export function DetalleClaseScreen({ navigation, route }) {
         {/* Puntos de una clase completada */}
         {estado === 'CLASE_COMPLETADA' && d.puntos_ganados != null && (
           <Text style={styles.puntosInfo}>
-            {soyAlumno ? 'Ganaste' : `${String(nombreOtro).split(' ')[0]} ganó`} {formatPuntos(d.puntos_ganados)} pts con esta clase.
+            {soyAlumno
+              ? t('clases.detalle.ganaste', { pts: formatPuntos(d.puntos_ganados) })
+              : t('clases.detalle.otroGano', { nombre: String(nombreOtro).split(' ')[0], pts: formatPuntos(d.puntos_ganados) })}
           </Text>
         )}
 
         {/* ALUMNO: calificar al profesor */}
         {puedeCalificar && (
           <View style={styles.feedbackCard}>
-            <Text style={styles.feedbackTitle}>¿Qué tal fue tu clase con {String(nombreOtro).split(' ')[0]}?</Text>
+            <Text style={styles.feedbackTitle}>{t('clases.detalle.queTal', { nombre: String(nombreOtro).split(' ')[0] })}</Text>
             <Estrellas valor={nota} onChange={setNota} />
             <TextInput
               style={styles.feedbackInput}
-              placeholder="Comentario opcional"
+              placeholder={t('clases.detalle.comentario')}
               placeholderTextColor={colors.textSecondary}
               value={comentario}
               onChangeText={setComentario}
@@ -348,7 +353,7 @@ export function DetalleClaseScreen({ navigation, route }) {
             >
               {accion === 'calificar'
                 ? <ActivityIndicator size="small" color={colors.primary} />
-                : <Text style={styles.feedbackBtnText}>Enviar calificación</Text>}
+                : <Text style={styles.feedbackBtnText}>{t('clases.detalle.enviarCalif')}</Text>}
             </TouchableOpacity>
           </View>
         )}
@@ -357,7 +362,7 @@ export function DetalleClaseScreen({ navigation, route }) {
         {estado === 'CLASE_COMPLETADA' && notaDada != null && (
           <View style={styles.feedbackCard}>
             <Text style={styles.feedbackTitle}>
-              {soyAlumno ? 'Tu calificación' : 'Calificación de tu alumno'}
+              {soyAlumno ? t('clases.detalle.tuCalif') : t('clases.detalle.califAlumno')}
             </Text>
             <Estrellas valor={notaDada} size={24} />
             {!!d.comentario && <Text style={styles.feedbackComentario}>"{d.comentario}"</Text>}
@@ -371,10 +376,10 @@ export function DetalleClaseScreen({ navigation, route }) {
           <>
             <TouchableOpacity style={styles.completadaBtn} onPress={handleAceptar} disabled={!!accion}>
               <Ionicons name="checkmark" size={20} color={colors.primary} />
-              <Text style={styles.completadaBtnText}>{accion === 'aceptar' ? 'Aceptando...' : 'Aceptar clase'}</Text>
+              <Text style={styles.completadaBtnText}>{accion === 'aceptar' ? t('clases.detalle.aceptando') : t('clases.detalle.aceptarClase')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.cancelBtn, { marginTop: 12 }]} onPress={handleRechazar} disabled={!!accion}>
-              <Text style={styles.cancelBtnText}>{accion === 'rechazar' ? 'Rechazando...' : 'Rechazar'}</Text>
+              <Text style={styles.cancelBtnText}>{accion === 'rechazar' ? t('clases.detalle.rechazando') : t('clases.detalle.rechazar')}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -382,21 +387,21 @@ export function DetalleClaseScreen({ navigation, route }) {
         {puedeChatear && (
           <TouchableOpacity style={styles.chatActionBtn} onPress={handleChatear}>
             <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.textPrimary} />
-            <Text style={styles.cancelBtnText}>Chatear</Text>
+            <Text style={styles.cancelBtnText}>{t('clases.detalle.chatear')}</Text>
           </TouchableOpacity>
         )}
 
         {puedeCancelar && !puedeResponder && (
           <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={!!accion}>
             <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
-            <Text style={styles.cancelBtnText}>{accion === 'cancelar' ? 'Cancelando...' : 'Cancelar clase'}</Text>
+            <Text style={styles.cancelBtnText}>{accion === 'cancelar' ? t('clases.detalle.cancelando') : t('clases.detalle.cancelarClase')}</Text>
           </TouchableOpacity>
         )}
 
         {puedeCompletar && (
           <TouchableOpacity style={styles.completadaBtn} onPress={handleCompletar} disabled={!!accion}>
             <Ionicons name="checkmark-done" size={20} color={colors.primary} />
-            <Text style={styles.completadaBtnText}>{accion === 'completar' ? 'Guardando...' : 'Clase completada'}</Text>
+            <Text style={styles.completadaBtnText}>{accion === 'completar' ? t('clases.detalle.guardando') : t('clases.detalle.claseCompletada')}</Text>
           </TouchableOpacity>
         )}
       </ScrollView>

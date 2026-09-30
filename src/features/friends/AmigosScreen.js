@@ -5,11 +5,13 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { amistadService } from '../../services/amistadService';
 import { getAvatarSource } from '../../utils/avatars';
 
 function AmigoRow({ amigo, onPerfil, onRetar, onOpciones }) {
+  const { t } = useTranslation();
   return (
     <TouchableOpacity style={styles.card} onPress={onPerfil} activeOpacity={0.75}>
       <Image source={getAvatarSource(amigo.foto_perfil_url)} style={styles.avatar} />
@@ -17,13 +19,13 @@ function AmigoRow({ amigo, onPerfil, onRetar, onOpciones }) {
         <Text style={styles.name} numberOfLines={1}>{amigo.nombre_completo}</Text>
         <View style={styles.metaRow}>
           <Ionicons name="trophy" size={13} color={colors.textPrimary} />
-          <Text style={styles.metaText}> {amigo.posicion_ranking ?? 'N/R'}</Text>
+          <Text style={styles.metaText}> {amigo.posicion_ranking ?? t('header.sinRanking')}</Text>
           <Text style={{ width: 10 }} />
           <Text style={styles.metaText}>{Number(amigo.puntaje_total ?? 0).toFixed(1)} pts</Text>
         </View>
       </View>
       <TouchableOpacity style={styles.retarBtn} onPress={onRetar}>
-        <Text style={styles.retarText}>Retar</Text>
+        <Text style={styles.retarText}>{t('amigos.retar')}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={onOpciones} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="ellipsis-vertical" size={18} color={colors.textSecondary} />
@@ -33,6 +35,7 @@ function AmigoRow({ amigo, onPerfil, onRetar, onOpciones }) {
 }
 
 export function AmigosScreen({ navigation }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const [amigos, setAmigos] = useState([]);
   const [pendientes, setPendientes] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -72,29 +75,29 @@ export function AmigosScreen({ navigation }) {
   }
 
   function opciones(a) {
-    const nombre = (a.nombre_completo ?? 'este jugador').split(' ')[0];
+    const nombre = (a.nombre_completo ?? t('retar.esteJugador')).split(' ')[0];
     Alert.alert(a.nombre_completo, undefined, [
-      { text: 'Ver perfil', onPress: () => abrirPerfil(a) },
+      { text: t('amigos.verPerfil'), onPress: () => abrirPerfil(a) },
       {
-        text: 'Eliminar de amigos',
+        text: t('amigos.eliminarDeAmigos'),
         style: 'destructive',
-        onPress: () => Alert.alert('Eliminar amigo', `¿Quieres eliminar a ${nombre} de tus amigos?`, [
-          { text: 'Cancelar', style: 'cancel' },
+        onPress: () => Alert.alert(t('perfil.amistad.eliminarTitulo'), t('perfil.amistad.eliminarMensaje', { nombre }), [
+          { text: t('amigos.cancelar'), style: 'cancel' },
           {
-            text: 'Eliminar',
+            text: t('amigos.eliminar'),
             style: 'destructive',
             onPress: async () => {
               try {
                 await amistadService.eliminar(a.id_usuario);
                 setAmigos(prev => prev.filter(x => x.id_usuario !== a.id_usuario));
               } catch (e) {
-                Alert.alert('Error', e.message ?? 'No se pudo eliminar al amigo.');
+                Alert.alert(t('comun.error'), e.message ?? t('amigos.errorEliminar'));
               }
             },
           },
         ]),
       },
-      { text: 'Cancelar', style: 'cancel' },
+      { text: t('amigos.cancelar'), style: 'cancel' },
     ]);
   }
 
@@ -109,7 +112,7 @@ export function AmigosScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Amigos</Text>
+        <Text style={styles.headerTitle}>{t('amigos.titulo')}</Text>
         <TouchableOpacity
           style={styles.solicitudesBtn}
           onPress={() => navigation.navigate('SolicitudesAmistad')}
@@ -135,7 +138,7 @@ export function AmigosScreen({ navigation }) {
               <Ionicons name="search" size={18} color={colors.textPrimary} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Buscar amigo"
+                placeholder={t('amigos.buscar')}
                 placeholderTextColor="#9E9E9E"
                 value={search}
                 onChangeText={setSearch}
@@ -149,7 +152,7 @@ export function AmigosScreen({ navigation }) {
             <TouchableOpacity style={styles.avisoCard} onPress={() => navigation.navigate('SolicitudesAmistad')}>
               <Ionicons name="person-add" size={18} color={colors.primary} />
               <Text style={styles.avisoText}>
-                Tienes {pendientes} {pendientes === 1 ? 'solicitud' : 'solicitudes'} de amistad por responder
+                {t(pendientes === 1 ? 'amigos.avisoUna' : 'amigos.avisoVarias', { n: pendientes })}
               </Text>
               <Ionicons name="chevron-forward" size={18} color={colors.primary} />
             </TouchableOpacity>
@@ -158,19 +161,17 @@ export function AmigosScreen({ navigation }) {
           {amigos.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="people-outline" size={44} color={colors.textSecondary} />
-              <Text style={styles.emptyTitle}>Aún no tienes amigos</Text>
-              <Text style={styles.emptyText}>
-                Entra al perfil de un jugador desde el ranking y envíale una solicitud de amistad.
-              </Text>
+              <Text style={styles.emptyTitle}>{t('crear.amigo.sinAmigos')}</Text>
+              <Text style={styles.emptyText}>{t('amigos.sinAmigosTexto')}</Text>
               <TouchableOpacity
                 style={styles.accentBtn}
                 onPress={() => navigation.navigate('MainTabs', { screen: 'Ranking' })}
               >
-                <Text style={styles.accentBtnText}>Ir al ranking</Text>
+                <Text style={styles.accentBtnText}>{t('crear.amigo.irRanking')}</Text>
               </TouchableOpacity>
             </View>
           ) : filtrados.length === 0 ? (
-            <Text style={styles.noResults}>Sin resultados para "{search}"</Text>
+            <Text style={styles.noResults}>{t('ranking.sinResultados', { q: search })}</Text>
           ) : (
             filtrados.map(a => (
               <AmigoRow

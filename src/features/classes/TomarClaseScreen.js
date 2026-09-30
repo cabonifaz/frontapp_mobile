@@ -4,6 +4,7 @@ import {
   SafeAreaView, Image, Modal, TextInput, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { maestroService } from '../../services/maestroService';
 import { resumenHorario, MAX_HORAS_CLASE } from './horasClase';
@@ -18,7 +19,7 @@ function getHorasDisponibles(fechaSeleccionada) {
   const horaActual = new Date().getHours();
   return HORAS.filter(h => parseInt(h, 10) > horaActual);
 }
-const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+// NUEVO (idiomas): cada día guarda el número de mes; el nombre se muestra según el idioma
 
 function getNextDays(n = 14) {
   const days = [];
@@ -29,7 +30,7 @@ function getNextDays(n = 14) {
     const yyyy = d.getFullYear();
     const mm   = String(d.getMonth() + 1).padStart(2, '0');
     const dd   = String(d.getDate()).padStart(2, '0');
-    days.push({ key: String(i), day: d.getDate(), month: MESES[d.getMonth()], iso: `${yyyy}-${mm}-${dd}` });
+    days.push({ key: String(i), day: d.getDate(), mes: d.getMonth(), iso: `${yyyy}-${mm}-${dd}` });
   }
   return days;
 }
@@ -53,6 +54,7 @@ function siguienteSeleccion(actual, h) {
 }
 
 function CanchaModal({ visible, onClose, onSelect }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [canchas, setCanchas] = useState([]);
   const [loadingCanchas, setLoadingCanchas] = useState(true);
@@ -74,7 +76,7 @@ function CanchaModal({ visible, onClose, onSelect }) {
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Selecciona una cancha</Text>
+          <Text style={styles.modalTitle}>{t('crear.cancha.seleccionar')}</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -83,7 +85,7 @@ function CanchaModal({ visible, onClose, onSelect }) {
           <Ionicons name="search" size={18} color={colors.dark} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar cancha"
+            placeholder={t('crear.cancha.buscar')}
             placeholderTextColor="#9E9E9E"
             value={search}
             onChangeText={setSearch}
@@ -96,7 +98,7 @@ function CanchaModal({ visible, onClose, onSelect }) {
           <ScrollView>
             {filtered.map((c, i) => {
               const id      = c.id_maestro ?? c.id ?? String(i);
-              const nombre  = c.nombre ?? c.name ?? 'Cancha';
+              const nombre  = c.nombre ?? c.name ?? t('crear.cancha.nombre');
               const address = c.descripcion ?? c.valor ?? c.address ?? '';
               const fotoUri = c.foto_url ?? c.uri ?? null;
               return (
@@ -130,6 +132,8 @@ function CanchaModal({ visible, onClose, onSelect }) {
 }
 
 export function TomarClaseScreen({ navigation }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
+  const mesesCortos = t('fechas.mesesCortos', { returnObjects: true });
   const [cancha, setCancha] = useState(null);
   const [fecha, setFecha] = useState(null);
   const [horas, setHoras] = useState([]);
@@ -154,7 +158,7 @@ export function TomarClaseScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tomar una clase</Text>
+        <Text style={styles.headerTitle}>{t('clases.titulo')}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -170,20 +174,18 @@ export function TomarClaseScreen({ navigation }) {
           )}
           <View style={{ flex: 1 }}>
             <Text style={styles.canchaName}>
-              {cancha ? cancha.nombre : 'Selecciona una cancha'}
+              {cancha ? cancha.nombre : t('crear.cancha.seleccionar')}
             </Text>
             <Text style={styles.canchaHint}>
-              {cancha ? 'Toca para cambiar' : 'Toca para seleccionar una cancha'}
+              {cancha ? t('crear.cancha.tocaCambiar') : t('crear.cancha.tocaSeleccionar')}
             </Text>
           </View>
         </TouchableOpacity>
 
-        <Text style={styles.mandatoryNote}>
-          Es mandatorio para el usuario que busca tomar una clase separar la cancha elegida por un medio independiente.
-        </Text>
+        <Text style={styles.mandatoryNote}>{t('clases.notaCancha')}</Text>
 
         {/* Fecha */}
-        <Text style={styles.sectionTitle}>Selecciona una fecha cercana</Text>
+        <Text style={styles.sectionTitle}>{t('crear.fecha')}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -199,17 +201,15 @@ export function TomarClaseScreen({ navigation }) {
                 onPress={() => setFecha(d)}
               >
                 <Text style={[styles.dateChipNum, active && styles.dateChipNumActive]}>{d.day}</Text>
-                <Text style={[styles.dateChipMonth, active && styles.dateChipMonthActive]}>{d.month}</Text>
+                <Text style={[styles.dateChipMonth, active && styles.dateChipMonthActive]}>{Array.isArray(mesesCortos) ? mesesCortos[d.mes] : ''}</Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
         {/* Horas — bloque consecutivo */}
-        <Text style={styles.sectionTitle}>Selecciona el horario de la clase</Text>
-        <Text style={styles.horasHint}>
-          Elige hasta {MAX_HORAS_CLASE} horas seguidas.
-        </Text>
+        <Text style={styles.sectionTitle}>{t('clases.horario')}</Text>
+        <Text style={styles.horasHint}>{t('clases.hastaHoras', { n: MAX_HORAS_CLASE })}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -225,10 +225,7 @@ export function TomarClaseScreen({ navigation }) {
                 onPress={() => {
                   const siguiente = siguienteSeleccion(horas, h);
                   if (siguiente.length > MAX_HORAS_CLASE) {
-                    Alert.alert(
-                      'Máximo de horas',
-                      `Una clase puede durar como máximo ${MAX_HORAS_CLASE} horas. Si quieres más práctica, reserva otra clase en otro horario.`
-                    );
+                    Alert.alert(t('clases.maxHorasTitulo'), t('clases.maxHorasMensaje', { n: MAX_HORAS_CLASE }));
                     return;
                   }
                   setHoras(siguiente);
@@ -263,7 +260,7 @@ export function TomarClaseScreen({ navigation }) {
           })}
         >
           <Text style={[styles.searchBtnText, !canSearch && styles.searchBtnTextDisabled]}>
-            Buscar profesores
+            {t('clases.buscarProfesores')}
           </Text>
         </TouchableOpacity>
       </View>

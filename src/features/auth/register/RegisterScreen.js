@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../../constants';
 import { PrimaryButton } from '../../../components/common';
 import { CircularCropModal } from '../../../components/CircularCropModal';
@@ -36,6 +37,26 @@ const GENERO_MAP = {
 const DEPORTE_MAP     = { 'fronton': DEPORTES.FRONTON, 'tenis': DEPORTES.TENIS, 'padel': DEPORTES.PADEL };
 const PARTIDOS_MAP    = { '0': 0, '1': 1, '2 o más': 2 };
 const NIVEL_FISICO_MAP = { 'Bajo': 1, 'Normal': 2, 'Bueno': 3 };
+
+// NUEVO (idiomas): las opciones guardan SIEMPRE el mismo valor interno (el de arriba,
+// que usan los mapas para enviar ids al backend). Solo se traduce el texto visible.
+const CLAVE_OPCION = {
+  'Masculino':           'registro.opciones.masculino',
+  'Femenino':            'registro.opciones.femenino',
+  'Prefiero no decirlo': 'registro.opciones.noDecir',
+  'Principiante':        'registro.opciones.principiante',
+  'Intermedio':          'registro.opciones.intermedio',
+  'Avanzado':            'registro.opciones.avanzado',
+  'Elite':               'registro.opciones.elite',
+  '2 o más':             'registro.opciones.dosOMas',
+  'Bajo':                'registro.opciones.bajo',
+  'Normal':              'registro.opciones.normal',
+  'Bueno':               'registro.opciones.bueno',
+};
+function useEtiquetaOpcion() {
+  const { t } = useTranslation();
+  return (opt) => (CLAVE_OPCION[opt] ? t(CLAVE_OPCION[opt]) : opt);
+}
 
 // --- Shared sub-components ---
 
@@ -75,6 +96,7 @@ const OPCIONES_VISIBLES = 4;
 function DropdownField({ label, value, options, onSelect }) {
   const [open, setOpen] = useState(false);
   const listaRef = React.useRef(null);
+  const etiqueta = useEtiquetaOpcion();   // NUEVO: texto visible según el idioma
 
   // Al abrir, lleva la lista a la opción ya elegida
   function alAbrir() {
@@ -97,7 +119,7 @@ function DropdownField({ label, value, options, onSelect }) {
         activeOpacity={0.7}
       >
         <Text style={[styles.dropdownValue, !value && { color: colors.textSecondary }]} numberOfLines={1}>
-          {value || label}
+          {value ? etiqueta(value) : label}
         </Text>
         <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textSecondary} />
       </TouchableOpacity>
@@ -118,7 +140,7 @@ function DropdownField({ label, value, options, onSelect }) {
                 activeOpacity={0.7}
               >
                 <Text style={[styles.dropdownItemText, value === opt && { color: colors.accent, fontWeight: '600' }]}>
-                  {opt}
+                  {etiqueta(opt)}
                 </Text>
                 {value === opt && <Ionicons name="checkmark" size={16} color={colors.accent} />}
               </TouchableOpacity>
@@ -131,6 +153,7 @@ function DropdownField({ label, value, options, onSelect }) {
 }
 
 function RadioGroup({ question, options, selected, onSelect }) {
+  const etiqueta = useEtiquetaOpcion();   // NUEVO: texto visible según el idioma
   return (
     <View style={styles.radioGroup}>
       <Text style={styles.radioQuestion}>{question}</Text>
@@ -144,7 +167,7 @@ function RadioGroup({ question, options, selected, onSelect }) {
           <View style={[styles.radioOuter, selected === opt && styles.radioOuterSelected]}>
             {selected === opt && <View style={styles.radioInner} />}
           </View>
-          <Text style={styles.radioLabel}>{opt}</Text>
+          <Text style={styles.radioLabel}>{etiqueta(opt)}</Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -164,6 +187,7 @@ function CheckboxRow({ label, checked, onToggle }) {
 
 // --- Step 1: Información básica ---
 function Step1({ data, setData, onNext, loading }) {
+  const { t } = useTranslation();
   // NUEVO: solo mayores de edad (18 a 90 años)
   const edades = Array.from({ length: EDAD_MAX - EDAD_MIN + 1 }, (_, i) => String(i + EDAD_MIN));
   const canContinue = data.terminos && data.nombre && data.apellido && data.correo && data.contrasena && data.genero && data.edad;
@@ -175,16 +199,16 @@ function Step1({ data, setData, onNext, loading }) {
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
     >
-      <Text style={styles.stepTitle}>Información básica</Text>
+      <Text style={styles.stepTitle}>{t('registro.infoBasica')}</Text>
 
       <UnderlineField
-        label="Nombre"
+        label={t('registro.nombre')}
         value={data.nombre}
         onChangeText={(v) => setData({ ...data, nombre: v })}
         placeholder="Juan Pablo"
       />
       <UnderlineField
-        label="Apellido"
+        label={t('registro.apellido')}
         value={data.apellido}
         onChangeText={(v) => setData({ ...data, apellido: v })}
         placeholder="Varillas"
@@ -193,7 +217,7 @@ function Step1({ data, setData, onNext, loading }) {
       <View style={styles.halfRow}>
         <View style={{ flex: 1.3, marginRight: 8 }}>
           <DropdownField
-            label="Género"
+            label={t('registro.genero')}
             value={data.genero}
             options={GENERO_OPCIONES}
             onSelect={(v) => setData({ ...data, genero: v })}
@@ -201,17 +225,17 @@ function Step1({ data, setData, onNext, loading }) {
         </View>
         <View style={{ flex: 1, marginLeft: 8 }}>
           <DropdownField
-            label="Edad"
+            label={t('registro.edad')}
             value={data.edad}
             options={edades}
             onSelect={(v) => setData({ ...data, edad: v })}
           />
         </View>
       </View>
-      <Text style={styles.edadHint}>Debes tener {EDAD_MIN} años o más para registrarte.</Text>
+      <Text style={styles.edadHint}>{t('registro.edadHint', { edad: EDAD_MIN })}</Text>
 
       <UnderlineField
-        label="Correo"
+        label={t('registro.correo')}
         value={data.correo}
         onChangeText={(v) => setData({ ...data, correo: v })}
         placeholder="jvarillas@icloud.com"
@@ -220,7 +244,7 @@ function Step1({ data, setData, onNext, loading }) {
       />
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>Celular</Text>
+        <Text style={styles.fieldLabel}>{t('registro.celular')}</Text>
         <View style={[styles.halfRow, { gap: 8 }]}>
           <View style={{ width: 80 }}>
             <View style={styles.dropdownTrigger}>
@@ -242,22 +266,22 @@ function Step1({ data, setData, onNext, loading }) {
       </View>
 
       <UnderlineField
-        label="Contraseña"
+        label={t('registro.contrasena')}
         value={data.contrasena}
         onChangeText={(v) => setData({ ...data, contrasena: v })}
-        placeholder="Mínimo 8 caracteres"
+        placeholder={t('registro.contrasenaPlaceholder')}
         secureTextEntry
         autoCapitalize="none"
       />
 
       <CheckboxRow
-        label="Acepto los términos y condiciones de Ranked"
+        label={t('registro.terminos')}
         checked={data.terminos}
         onToggle={() => setData({ ...data, terminos: !data.terminos })}
       />
 
       <View style={{ marginTop: 28 }}>
-        <PrimaryButton title="Siguiente" onPress={onNext} disabled={!canContinue || loading} loading={loading} />
+        <PrimaryButton title={t('registro.siguiente')} onPress={onNext} disabled={!canContinue || loading} loading={loading} />
       </View>
       <View style={{ height: 40 }} />
     </ScrollView>
@@ -267,21 +291,22 @@ function Step1({ data, setData, onNext, loading }) {
 // --- Step 2: Selecciona un deporte ---
 
 function Step2({ data, setData, onNext, onBack }) {
+  const { t } = useTranslation();
   const deportes = [
     {
       id: 'fronton',
-      label: 'Frontón',
+      label: t('deportes.fronton'),
       uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&q=80',
     },
     {
       id: 'tenis',
-      label: 'Tenis',
+      label: t('deportes.tenis'),
       uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&q=80',
       proximamente: true,
     },
     {
       id: 'padel',
-      label: 'Padel',
+      label: t('deportes.padel'),
       uri: 'https://images.unsplash.com/photo-1646649853703-7645147474ba?w=400&q=80',
       proximamente: true,
     },
@@ -289,8 +314,8 @@ function Step2({ data, setData, onNext, onBack }) {
 
   return (
     <View style={{ flex: 1 }}>
-      <Text style={styles.stepTitle}>Selecciona un deporte para empezar</Text>
-      <Text style={styles.stepSubtitle}>Luego podrás seleccionar más deportes para jugar.</Text>
+      <Text style={styles.stepTitle}>{t('registro.deporteTitulo')}</Text>
+      <Text style={styles.stepSubtitle}>{t('registro.deporteSubtitulo')}</Text>
 
       <View style={styles.sportGrid}>
         {deportes.map((d) => (
@@ -308,7 +333,7 @@ function Step2({ data, setData, onNext, onBack }) {
               <View style={styles.sportOverlay} />
               {d.proximamente && (
                 <View style={styles.proximamenteBadge}>
-                  <Text style={styles.proximamenteText}>Próximamente</Text>
+                  <Text style={styles.proximamenteText}>{t('registro.proximamente')}</Text>
                 </View>
               )}
               {data.deporte === d.id && (
@@ -324,10 +349,10 @@ function Step2({ data, setData, onNext, onBack }) {
 
       <View style={styles.navRow}>
         <View style={{ flex: 1, marginRight: 8 }}>
-          <PrimaryButton title="Atrás" onPress={onBack} variant="outline" />
+          <PrimaryButton title={t('registro.atras')} onPress={onBack} variant="outline" />
         </View>
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <PrimaryButton title="Siguiente" onPress={onNext} disabled={!data.deporte} />
+          <PrimaryButton title={t('registro.siguiente')} onPress={onNext} disabled={!data.deporte} />
         </View>
       </View>
     </View>
@@ -337,6 +362,7 @@ function Step2({ data, setData, onNext, onBack }) {
 // --- Step 3: Determina tu nivel ---
 
 function Step3({ data, setData, onNext, onBack }) {
+  const { t } = useTranslation();
   const canContinue = data.nivel && data.partidos_semana && data.lecciones && data.nivel_fisico;
 
   return (
@@ -345,50 +371,48 @@ function Step3({ data, setData, onNext, onBack }) {
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
     >
-      <Text style={styles.stepTitle}>Determina tu nivel</Text>
-      <Text style={styles.stepSubtitle}>
-        Con esta información, podremos determinar tu nivel de juego y emparejarte con jugadores similares.
-      </Text>
+      <Text style={styles.stepTitle}>{t('registro.nivelTitulo')}</Text>
+      <Text style={styles.stepSubtitle}>{t('registro.nivelSubtitulo')}</Text>
 
       <RadioGroup
-        question="¿Cuál es tu nivel del juego?"
+        question={t('registro.preguntaNivel')}
         options={['Principiante', 'Intermedio', 'Avanzado', 'Elite']}
         selected={data.nivel}
         onSelect={(v) => setData({ ...data, nivel: v })}
       />
       <RadioGroup
-        question="¿Cuántos partidos has tenido en promedio por semana el último año?"
+        question={t('registro.preguntaPartidos')}
         options={['0', '1', '2 o más']}
         selected={data.partidos_semana}
         onSelect={(v) => setData({ ...data, partidos_semana: v })}
       />
       <RadioGroup
-        question="¿Has recibido lecciones el último año? ¿Cuántas lecciones por semana?"
+        question={t('registro.preguntaLecciones')}
         options={['0', '1', '2 o más']}
         selected={data.lecciones}
         onSelect={(v) => setData({ ...data, lecciones: v })}
       />
       <RadioGroup
-        question="¿Cómo es tu nivel físico?"
+        question={t('registro.preguntaFisico')}
         options={['Bajo', 'Normal', 'Bueno']}
         selected={data.nivel_fisico}
         onSelect={(v) => setData({ ...data, nivel_fisico: v })}
       />
 
       <CheckboxRow
-        label="Deseo ser profesor"
+        label={t('registro.serProfesor')}
         checked={data.es_profesor}
         onToggle={() => setData({ ...data, es_profesor: !data.es_profesor })}
       />
 
       {data.es_profesor && (
         <View style={[styles.fieldGroup, { marginTop: 12 }]}>
-          <Text style={[styles.fieldLabel, { fontWeight: '700' }]}>Mayores Logros</Text>
+          <Text style={[styles.fieldLabel, { fontWeight: '700' }]}>{t('registro.logros')}</Text>
           <TextInput
             style={styles.logrosInput}
             value={data.logros}
             onChangeText={(v) => setData({ ...data, logros: v })}
-            placeholder="Cuéntanos tus mayores logros como profesor"
+            placeholder={t('registro.logrosPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             multiline
             textAlignVertical="top"
@@ -398,10 +422,10 @@ function Step3({ data, setData, onNext, onBack }) {
 
       <View style={[styles.navRow, { marginTop: 24 }]}>
         <View style={{ flex: 1, marginRight: 8 }}>
-          <PrimaryButton title="Atrás" onPress={onBack} variant="outline" />
+          <PrimaryButton title={t('registro.atras')} onPress={onBack} variant="outline" />
         </View>
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <PrimaryButton title="Siguiente" onPress={onNext} disabled={!canContinue} />
+          <PrimaryButton title={t('registro.siguiente')} onPress={onNext} disabled={!canContinue} />
         </View>
       </View>
       <View style={{ height: 40 }} />
@@ -412,12 +436,13 @@ function Step3({ data, setData, onNext, onBack }) {
 // --- Step 4: Foto de perfil ---
 
 function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri, fotoCropParams, setFotoCropParams }) {
+  const { t } = useTranslation();
   const [rawUri, setRawUri] = useState(null);
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para subir una foto.');
+      Alert.alert(t('registro.permisoTitulo'), t('registro.permisoMensaje'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -438,9 +463,9 @@ function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri, fotoCropParams,
         onCancel={() => setRawUri(null)}
         onCrop={(uri, params) => { setFotoUri(uri); setFotoCropParams(params); setRawUri(null); }}
       />
-      <Text style={styles.stepTitle}>Elige una foto de perfil</Text>
-      <Text style={styles.stepSubtitle}>Tranquilo, luego puedes volver a cambiarla.</Text>
-      <Text style={[styles.stepSubtitle, { color: colors.accent, marginBottom: 0 }]}>Opcional*</Text>
+      <Text style={styles.stepTitle}>{t('registro.fotoTitulo')}</Text>
+      <Text style={styles.stepSubtitle}>{t('registro.fotoSubtitulo')}</Text>
+      <Text style={[styles.stepSubtitle, { color: colors.accent, marginBottom: 0 }]}>{t('registro.opcional')}</Text>
 
       <View style={styles.avatarWrapper}>
         <TouchableOpacity style={styles.avatarCircle} onPress={pickImage} activeOpacity={0.8}>
@@ -472,15 +497,15 @@ function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri, fotoCropParams,
             <Ionicons name={fotoUri ? 'pencil' : 'add'} size={18} color="#FFFFFF" />
           </View>
         </TouchableOpacity>
-        <Text style={styles.avatarHint}>{fotoUri ? 'Toca para cambiar' : 'Toca para subir'}</Text>
+        <Text style={styles.avatarHint}>{fotoUri ? t('registro.tocaCambiar') : t('registro.tocaSubir')}</Text>
       </View>
 
       <View style={styles.navRow}>
         <View style={{ flex: 1, marginRight: 8 }}>
-          <PrimaryButton title="Atrás" onPress={onBack} variant="outline" />
+          <PrimaryButton title={t('registro.atras')} onPress={onBack} variant="outline" />
         </View>
         <View style={{ flex: 1, marginLeft: 8 }}>
-          <PrimaryButton title="Confirmar" onPress={onFinish} loading={loading} />
+          <PrimaryButton title={t('registro.confirmar')} onPress={onFinish} loading={loading} />
         </View>
       </View>
     </View>
@@ -490,6 +515,7 @@ function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri, fotoCropParams,
 // --- Step 5: Nivel revelado ---
 
 function StepNivel({ nivel, puntaje, onStart }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.nivelScreen}>
       <View style={styles.nivelCircle}>
@@ -499,16 +525,16 @@ function StepNivel({ nivel, puntaje, onStart }) {
         </View>
       </View>
 
-      <Text style={styles.nivelTitle}>¡Genial! Eres nivel {nivel}</Text>
+      <Text style={styles.nivelTitle}>{t('registro.nivelRevelado', { nivel })}</Text>
       <Text style={styles.nivelSubtitle}>
         {puntaje != null
-          ? `Te hemos otorgado ${Number(puntaje).toFixed(1)} pts.`
-          : 'Ya tienes tus primeros puntos.'
-        }{'\n'}Juega partidas y gana más.
+          ? t('registro.puntosOtorgados', { puntos: Number(puntaje).toFixed(1) })
+          : t('registro.primerosPuntos')
+        }{'\n'}{t('registro.juegaMas')}
       </Text>
 
       <TouchableOpacity style={styles.nivelBtn} onPress={onStart} activeOpacity={0.85}>
-        <Text style={styles.nivelBtnText}>Empezar a jugar</Text>
+        <Text style={styles.nivelBtnText}>{t('registro.empezar')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -516,9 +542,10 @@ function StepNivel({ nivel, puntaje, onStart }) {
 
 // --- Main Screen ---
 
-const STEP_TITLES = ['Registro', 'Selecciona un deporte', 'Determina tu nivel', 'Foto de perfil'];
+const STEP_TITLES = ['registro.pasos.registro', 'registro.pasos.deporte', 'registro.pasos.nivel', 'registro.pasos.foto'];
 
 export function RegisterScreen({ navigation }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [nivelObtenido, setNivelObtenido] = useState(null);
@@ -536,21 +563,21 @@ export function RegisterScreen({ navigation }) {
 
   async function handleNextStep1() {
     if (!data.nombre || !data.apellido || !data.correo || !data.contrasena) {
-      Alert.alert('Campos requeridos', 'Completa todos los campos obligatorios.');
+      Alert.alert(t('registro.errores.camposRequeridos'), t('registro.errores.completaCampos'));
       return;
     }
     // NUEVO: género y edad obligatorios; edad mínima 18
     if (!data.genero) {
-      Alert.alert('Género', 'Selecciona una opción de género (puedes elegir "Prefiero no decirlo").');
+      Alert.alert(t('registro.genero'), t('registro.errores.generoMensaje'));
       return;
     }
     const edadNum = parseInt(data.edad, 10);
     if (!edadNum || edadNum < EDAD_MIN) {
-      Alert.alert('Edad', `Debes tener ${EDAD_MIN} años o más para registrarte.`);
+      Alert.alert(t('registro.edad'), t('registro.edadHint', { edad: EDAD_MIN }));
       return;
     }
     if (!data.terminos) {
-      Alert.alert('Términos y condiciones', 'Debes aceptar los términos y condiciones para continuar.');
+      Alert.alert(t('registro.errores.terminosTitulo'), t('registro.errores.terminosMensaje'));
       return;
     }
 
@@ -561,7 +588,7 @@ export function RegisterScreen({ navigation }) {
       setLoading(true);
       const disponible = await authService.verificarCorreo(correoLimpio);
       if (!disponible) {
-        Alert.alert('Correo en uso', 'Este correo ya está registrado. Intenta con otro o inicia sesión.');
+        Alert.alert(t('registro.errores.correoEnUso'), t('registro.errores.correoEnUsoMensaje'));
         return;
       }
 
@@ -569,7 +596,7 @@ export function RegisterScreen({ navigation }) {
       setStep(2);
     } catch (e) {
       // Si hay error de red, NO debe avanzar
-      Alert.alert('Error de conexión', 'No pudimos verificar el correo. Revisa tu internet e intenta de nuevo.');
+      Alert.alert(t('registro.errores.conexion'), t('registro.errores.conexionMensaje'));
     } finally {
       setLoading(false);
     }
@@ -589,7 +616,7 @@ export function RegisterScreen({ navigation }) {
           id_genero: idGenero,
         });
       } catch (e) {
-        Alert.alert('Error al registrarse', e.message);
+        Alert.alert(t('registro.errores.registrarse'), e.message);
         return;
       }
 
@@ -597,7 +624,7 @@ export function RegisterScreen({ navigation }) {
       try {
         await authService.login(data.correo, data.contrasena);
       } catch (e) {
-        Alert.alert('Error al iniciar sesión', e.message);
+        Alert.alert(t('registro.errores.iniciarSesion'), e.message);
         return;
       }
 
@@ -627,7 +654,7 @@ export function RegisterScreen({ navigation }) {
         nivelCalculado = resultado.nivelCalculado ?? 1;
         setPuntajeObtenido(resultado.puntajeInicial ?? null);
       } catch (e) {
-        Alert.alert('Error en cuestionario', e.message ?? 'No se pudo completar el cuestionario.');
+        Alert.alert(t('registro.errores.cuestionario'), e.message ?? t('registro.errores.cuestionarioMensaje'));
       }
 
       // 5. Crear perfil de profesor si aplica
@@ -668,7 +695,7 @@ export function RegisterScreen({ navigation }) {
         >
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{STEP_TITLES[step - 1]}</Text>
+        <Text style={styles.headerTitle}>{t(STEP_TITLES[step - 1])}</Text>
         <View style={{ width: 24 }} />
       </View>
 

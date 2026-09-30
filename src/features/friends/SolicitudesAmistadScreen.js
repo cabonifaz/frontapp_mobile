@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import { colors } from '../../constants';
 import { amistadService } from '../../services/amistadService';
 import { getAvatarSource } from '../../utils/avatars';
@@ -14,15 +16,16 @@ function haceCuanto(fecha) {
   const d = new Date(fecha);
   if (isNaN(d)) return '';
   const min = Math.floor((Date.now() - d.getTime()) / 60000);
-  if (min < 1) return 'Ahora';
-  if (min < 60) return `Hace ${min} min.`;
+  if (min < 1) return i18n.t('solAmistad.ahora');
+  if (min < 60) return i18n.t('solAmistad.haceMin', { n: min });
   const h = Math.floor(min / 60);
-  if (h < 24) return `Hace ${h} h`;
+  if (h < 24) return i18n.t('solAmistad.haceH', { n: h });
   const dias = Math.floor(h / 24);
-  return dias === 1 ? 'Ayer' : `Hace ${dias} días`;
+  return dias === 1 ? i18n.t('solAmistad.ayer') : i18n.t('solAmistad.haceDias', { n: dias });
 }
 
 export function SolicitudesAmistadScreen({ navigation }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const [solicitudes, setSolicitudes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [accionLoading, setAccionLoading] = useState(null);
@@ -51,11 +54,11 @@ export function SolicitudesAmistadScreen({ navigation }) {
       await amistadService.responder(s.id_amistad, aceptar);
       setSolicitudes(prev => prev.filter(x => x.id_amistad !== s.id_amistad));
       if (aceptar) {
-        const nombre = (s.nombre_completo ?? 'este jugador').split(' ')[0];
-        Alert.alert('Solicitud aceptada', `${nombre} ya está en tu lista de amigos. Ahora puedes retarlo directamente a un amistoso.`);
+        const nombre = (s.nombre_completo ?? t('retar.esteJugador')).split(' ')[0];
+        Alert.alert(t('solAmistad.aceptada'), t('solAmistad.aceptadaMensaje', { nombre }));
       }
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'No se pudo responder la solicitud.');
+      Alert.alert(t('comun.error'), e.message ?? t('solAmistad.errorResponder'));
     } finally {
       setAccionLoading(null);
     }
@@ -79,7 +82,7 @@ export function SolicitudesAmistadScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Solicitudes de amistad</Text>
+        <Text style={styles.headerTitle}>{t('solAmistad.titulo')}</Text>
       </View>
 
       {loading ? (
@@ -91,7 +94,7 @@ export function SolicitudesAmistadScreen({ navigation }) {
           {solicitudes.length === 0 ? (
             <View style={styles.emptyCard}>
               <Ionicons name="mail-open-outline" size={36} color={colors.textSecondary} />
-              <Text style={styles.emptyText}>No tienes solicitudes de amistad pendientes</Text>
+              <Text style={styles.emptyText}>{t('solAmistad.vacio')}</Text>
             </View>
           ) : (
             solicitudes.map(s => {
@@ -103,7 +106,7 @@ export function SolicitudesAmistadScreen({ navigation }) {
                     <Text style={styles.name} numberOfLines={1}>{s.nombre_completo}</Text>
                     <View style={styles.metaRow}>
                       <Ionicons name="trophy" size={13} color={colors.textPrimary} />
-                      <Text style={styles.metaText}> {s.posicion_ranking ?? 'N/R'}</Text>
+                      <Text style={styles.metaText}> {s.posicion_ranking ?? t('header.sinRanking')}</Text>
                       <Text style={{ width: 10 }} />
                       <Text style={styles.metaText}>{haceCuanto(s.fecha_solicitud)}</Text>
                     </View>
@@ -116,14 +119,14 @@ export function SolicitudesAmistadScreen({ navigation }) {
                     >
                       {cargando
                         ? <ActivityIndicator size="small" color={colors.textPrimary} />
-                        : <Text style={styles.aceptarText}>Aceptar</Text>}
+                        : <Text style={styles.aceptarText}>{t('solAmistad.aceptar')}</Text>}
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.rechazarBtn, cargando && { opacity: 0.5 }]}
                       onPress={() => responder(s, false)}
                       disabled={cargando}
                     >
-                      <Text style={styles.rechazarText}>Rechazar</Text>
+                      <Text style={styles.rechazarText}>{t('solAmistad.rechazar')}</Text>
                     </TouchableOpacity>
                   </View>
                 </TouchableOpacity>

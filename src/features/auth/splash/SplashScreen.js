@@ -1,15 +1,22 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { RankedLogo, RANKED_LIME } from '../../../components/common/RankedLogo';
 import { authService } from '../../../services/authService';
+import { cargarIdiomaGuardado } from '../../../i18n';
 
 const BG = '#0D1C27';
 
 export function SplashScreen({ navigation }) {
+  const { t } = useTranslation();
+
   useEffect(() => {
-    authService.isLoggedIn().then(loggedIn => {
+    (async () => {
+      // NUEVO: aplica el idioma que eligió el usuario antes de mostrar la app
+      await cargarIdiomaGuardado();
+      const loggedIn = await authService.isLoggedIn();
       navigation.replace(loggedIn ? 'MainTabs' : 'Login');
-    });
+    })();
   }, []);
 
   return (
@@ -19,7 +26,7 @@ export function SplashScreen({ navigation }) {
       <View style={styles.band3} />
       <View style={styles.center}>
         <RankedLogo size={52} />
-        <Text style={styles.tagline}>Desafía. Compite. Asciende.</Text>
+        <Text style={styles.tagline}>{t('splash.lema')}</Text>
       </View>
       <ActivityIndicator size="large" color={RANKED_LIME} style={styles.loader} />
     </View>

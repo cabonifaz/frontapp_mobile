@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { TEMPORADAS, FILTERS, PLAYER_DATA } from '../../data/rankingData';
 import { rankingService } from '../../services/rankingService';
@@ -66,6 +67,7 @@ function PlayerRow({ player, onPress }) {
 }
 
 export function RankingGeneralScreen({ navigation }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState('General');
   const [temporada, setTemporada] = useState('Verano 2024');
@@ -110,7 +112,7 @@ export function RankingGeneralScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ranking general</Text>
+        <Text style={styles.headerTitle}>{t('ranking.general')}</Text>
         <TouchableOpacity style={styles.tempBtn} onPress={() => { setTempSelected(temporada); setShowModal(true); }}>
           <Text style={styles.tempText}>{temporada}</Text>
           <Ionicons name="chevron-down" size={16} color={colors.textPrimary} />
@@ -121,13 +123,13 @@ export function RankingGeneralScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}
       >
-        <Text style={styles.hint}>Todos los jugadores ordenados por su puntaje general. No incluye los puntos de liga.</Text>
+        <Text style={styles.hint}>{t('ranking.generalHint')}</Text>
 
         <View style={styles.searchBar}>
           <Ionicons name="search" size={18} color={colors.textPrimary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar jugador"
+            placeholder={t('ranking.buscarJugador')}
             placeholderTextColor="#9E9E9E"
             underlineColorAndroid="transparent"
             value={search}
@@ -148,7 +150,7 @@ export function RankingGeneralScreen({ navigation }) {
               style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
               onPress={() => setFilter(f)}
             >
-              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{f}</Text>
+              <Text style={[styles.filterText, filter === f && styles.filterTextActive]}>{t(`ranking.filtros.${f}`, { defaultValue: f })}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -156,7 +158,7 @@ export function RankingGeneralScreen({ navigation }) {
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 40 }} />
         ) : players.length === 0 ? (
-          <Text style={styles.emptyText}>{term ? `Sin resultados para "${search}"` : 'No hay jugadores en el ranking aún'}</Text>
+          <Text style={styles.emptyText}>{term ? t('ranking.sinResultados', { q: search }) : t('ranking.vacio')}</Text>
         ) : (
           <>
             {!term && players.length >= 3 && <Podium players={players} onPress={abrirPerfil} />}
@@ -171,7 +173,7 @@ export function RankingGeneralScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, { paddingBottom: 40 + insets.bottom }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecciona la temporada</Text>
+              <Text style={styles.modalTitle}>{t('ranking.temporada')}</Text>
               <TouchableOpacity onPress={() => setShowModal(false)}>
                 <Ionicons name="close" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
@@ -189,7 +191,7 @@ export function RankingGeneralScreen({ navigation }) {
               style={styles.filterApplyBtn}
               onPress={() => { setTemporada(tempSelected); setShowModal(false); }}
             >
-              <Text style={styles.filterApplyText}>Filtrar</Text>
+              <Text style={styles.filterApplyText}>{t('ranking.filtrar')}</Text>
             </TouchableOpacity>
           </View>
         </View>

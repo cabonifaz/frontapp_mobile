@@ -1,3 +1,4 @@
+import './src/i18n';   // NUEVO: idiomas (debe cargarse antes que las pantallas)
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';

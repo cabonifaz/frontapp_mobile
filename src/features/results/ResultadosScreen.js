@@ -4,12 +4,17 @@ import {
   ActivityIndicator, Image, TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { DATE_FILTERS } from '../../data/resultadosData';
 import { resultadoService } from '../../services/resultadoService';
 import { useUsuario } from '../../hooks/useUsuario';
 import { getAvatarSource } from '../../utils/avatars';
+
+// NUEVO (idiomas): los filtros son valores internos; el texto visible sale de resultados.filtros.*
+const CLAVE_FILTRO = { 'Hoy': 'hoy', 'Ayer': 'ayer', 'Esta Semana': 'semana', 'Histórico': 'historico' };
 
 // Garantizamos que 'Histórico' esté presente entre los filtros
 const LISTA_FILTROS = DATE_FILTERS.includes('Histórico')
@@ -37,15 +42,15 @@ function formatSectionDate(dateStr) {
   if (!dateStr || dateStr === 'Sin fecha') return dateStr;
   const [year, month, day] = dateStr.split('T')[0].split('-').map(Number);
   const d = new Date(year, month - 1, day);
-  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const days = i18n.t('fechas.diasCortos', { returnObjects: true });
+  const months = i18n.t('fechas.mesesAbrev', { returnObjects: true });
   return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}, ${d.getFullYear()}`;
 }
 
 function formatDay(dateStr) {
   if (!dateStr) return { day: '--', month: '---' };
   const [year, month, day] = (dateStr.split('T')[0]).split('-').map(Number);
-  const months = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+  const months = i18n.t('fechas.mesesCortos', { returnObjects: true });
   return { day: String(day).padStart(2, '0'), month: months[month - 1] };
 }
 
@@ -101,6 +106,7 @@ function FilaJugador({ nombre, foto, foto2, esDobles, puntos, setsGanados, mostr
 }
 
 function MatchCard({ match, onPress }) {
+  const { t } = useTranslation();
   const { day, month } = formatDay(match.fecha_partido);
   const esDobles = Number(match.es_dobles ?? 0) === 1;
 
@@ -141,7 +147,7 @@ function MatchCard({ match, onPress }) {
         {esDobles && (
           <View style={styles.doblesChip}>
             <Ionicons name="people" size={10} color={colors.textSecondary} />
-            <Text style={styles.doblesChipText}>DOBLES</Text>
+            <Text style={styles.doblesChipText}>{t('resultados.dobles')}</Text>
           </View>
         )}
         <FilaJugador
@@ -164,6 +170,7 @@ function MatchCard({ match, onPress }) {
 }
 
 export function ResultadosScreen({ navigation }) {
+  const { t, i18n: i18nHook } = useTranslation();   // NUEVO: idiomas
   const usuario = useUsuario();
   const [activeFilter, setActiveFilter] = useState('Hoy');
   const [busqueda, setBusqueda] = useState('');
@@ -185,7 +192,8 @@ export function ResultadosScreen({ navigation }) {
     return () => clearTimeout(debounceRef.current);
   }, [activeFilter, busqueda]);
 
-  const grouped = groupByDate(data);
+  // i18nHook.language: al cambiar de idioma se rehacen los títulos de fecha
+  const grouped = React.useMemo(() => groupByDate(data), [data, i18nHook.language]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -200,14 +208,14 @@ export function ResultadosScreen({ navigation }) {
       />
       <View style={styles.sheet}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-          <Text style={styles.pageTitle}>Resultados</Text>
+          <Text style={styles.pageTitle}>{t('resultados.titulo')}</Text>
 
           {/* Buscador */}
           <View style={styles.searchBar}>
             <Ionicons name="search-outline" size={18} color={colors.textSecondary} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Buscar jugador"
+              placeholder={t('resultados.buscar')}
               placeholderTextColor={colors.textSecondary}
               value={busqueda}
               onChangeText={setBusqueda}
@@ -233,7 +241,7 @@ export function ResultadosScreen({ navigation }) {
                 style={[styles.filterBtn, activeFilter === f && styles.filterBtnActive]}
                 onPress={() => setActiveFilter(f)}
               >
-                <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{f}</Text>
+                <Text style={[styles.filterText, activeFilter === f && styles.filterTextActive]}>{CLAVE_FILTRO[f] ? t(`resultados.filtros.${CLAVE_FILTRO[f]}`) : f}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -244,7 +252,7 @@ export function ResultadosScreen({ navigation }) {
           ) : grouped.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="trophy-outline" size={48} color={colors.textSecondary} />
-              <Text style={styles.emptyText}>No hay resultados</Text>
+              <Text style={styles.emptyText}>{t('resultados.vacio')}</Text>
             </View>
           ) : (
             grouped.map(group => (

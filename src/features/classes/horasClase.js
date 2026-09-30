@@ -1,10 +1,12 @@
 // Utilidades compartidas para el horario de una clase (horas consecutivas)
+import i18n from '../../i18n';
 
 // Duración máxima de una clase. Debe coincidir con CFG_HORAS_MAX_CLASE (tabla maestro);
 // la base de datos también lo valida al solicitar.
 export const MAX_HORAS_CLASE = 2;
-const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-const DIAS  = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+// NUEVO (idiomas): días y meses según el idioma elegido
+const MESES = () => i18n.t('fechas.mesesAbrev', { returnObjects: true });
+const DIAS  = () => i18n.t('fechas.diasCortos', { returnObjects: true });
 
 export function ordenarHoras(horas) {
   return [...(Array.isArray(horas) ? horas : horas ? [horas] : [])].sort();
@@ -27,7 +29,7 @@ export function resumenHorario(horas) {
     fin,
     duracionMinutos: lista.length * 60,
     texto: `${inicio} – ${fin}`,
-    duracionTexto: lista.length === 1 ? '1 hora' : `${lista.length} horas`,
+    duracionTexto: lista.length === 1 ? i18n.t('clases.hora1') : i18n.t('clases.horasN', { n: lista.length }),
   };
 }
 
@@ -37,5 +39,5 @@ export function formatFechaClase(fecha) {
   if (!iso) return '--';
   const [y, m, d] = iso.split('-').map(Number);
   const dt = new Date(y, m - 1, d);
-  return `${DIAS[dt.getDay()]} ${d} ${MESES[m - 1]}`;
+  return `${DIAS()[dt.getDay()]} ${d} ${MESES()[m - 1]}`;
 }

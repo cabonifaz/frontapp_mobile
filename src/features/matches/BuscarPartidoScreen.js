@@ -4,6 +4,8 @@ import {
   SafeAreaView, Image, Modal, TextInput, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import { colors } from '../../constants';
 import { COURTS, DATES, HOURS, MATCH_TYPES } from '../../data/buscarPartidoData';
 import { partidoService } from '../../services/partidoService';
@@ -17,10 +19,10 @@ import { getAvatarSource } from '../../utils/avatars';
 // Persiste los IDs retados durante la sesión (se limpia solo al cerrar la app)
 const retadosEnSesion = new Set();
 const FILTER_KEYS = ['cancha', 'fecha', 'hora'];
-const FILTER_LABELS = { cancha: 'Cancha', fecha: 'Fecha', hora: 'Hora', partido: 'Partido' };
+// NUEVO (idiomas): el texto de cada filtro sale de buscar.filtros.<clave>
 
 function formatFecha(fecha) {
-  if (!fecha) return 'Sin fecha';
+  if (!fecha) return i18n.t('partidos.sinFecha');
   if (fecha.includes('T')) {
     const [year, month, day] = fecha.split('T')[0].split('-');
     return `${day}/${month}/${year}`;
@@ -29,7 +31,7 @@ function formatFecha(fecha) {
 }
 
 function formatHora(hora) {
-  if (!hora) return 'Sin hora';
+  if (!hora) return i18n.t('partidos.sinHora');
   if (hora.split(':').length >= 2) {
     const partes = hora.split(':');
     return `${partes[0]}:${partes[1]}`;
@@ -58,6 +60,7 @@ function FilterChip({ label, active, onPress, onRemove }) {
 }
 
 function PlayerCard({ player, onPress, onRetarPress, yaRetado }) {
+  const { t } = useTranslation();
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
       {player.es_dobles ? (
@@ -72,7 +75,9 @@ function PlayerCard({ player, onPress, onRetarPress, yaRetado }) {
         {player.es_dobles && (
           <View style={styles.doblesBadge}>
             <Ionicons name="people" size={11} color={colors.accent} />
-            <Text style={styles.doblesBadgeText}>DOBLES · {Number(player.num_sets) === 3 ? '2 de 3' : '3 de 5'}</Text>
+            <Text style={styles.doblesBadgeText}>
+              {t('buscar.doblesBadge', { sets: Number(player.num_sets) === 3 ? t('partidos.sets3') : t('partidos.sets5') })}
+            </Text>
           </View>
         )}
         <View style={styles.nameRow}>
@@ -84,7 +89,7 @@ function PlayerCard({ player, onPress, onRetarPress, yaRetado }) {
             </>
           )}
         </View>
-        <Text style={styles.playerClub} numberOfLines={1}>{player.club}</Text>
+        <Text style={styles.playerClub} numberOfLines={1}>{player.club ?? t('partidos.canchaNoEspecificada')}</Text>
         <View style={styles.dateRow}>
           <Ionicons name="calendar-outline" size={13} color={colors.textSecondary} />
           <Text style={styles.metaText}> {player.date}</Text>
@@ -96,11 +101,11 @@ function PlayerCard({ player, onPress, onRetarPress, yaRetado }) {
       <View style={styles.cardRight}>
         {yaRetado ? (
           <View style={[styles.retarBtn, styles.retadoBtn]}>
-            <Text style={styles.retadoText}>Retado</Text>
+            <Text style={styles.retadoText}>{t('buscar.retado')}</Text>
           </View>
         ) : (
           <TouchableOpacity style={styles.retarBtn} onPress={onRetarPress}>
-            <Text style={styles.retarText}>Retar</Text>
+            <Text style={styles.retarText}>{t('buscar.retar')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -109,20 +114,21 @@ function PlayerCard({ player, onPress, onRetarPress, yaRetado }) {
 }
 
 function CanchaModal({ visible, onClose, onAdd }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const filtered = COURTS.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
   return (
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Selecciona una cancha</Text>
+          <Text style={styles.modalTitle}>{t('buscar.seleccionaCancha')}</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
         </View>
         <View style={styles.modalSearchBar}>
           <Ionicons name="search" size={18} color={colors.dark} />
-          <TextInput style={styles.modalSearchInput} placeholder="Buscar cancha" placeholderTextColor="#9E9E9E" value={search} onChangeText={setSearch} />
+          <TextInput style={styles.modalSearchInput} placeholder={t('buscar.buscarCancha')} placeholderTextColor="#9E9E9E" value={search} onChangeText={setSearch} />
         </View>
         <ScrollView style={styles.modalScroll}>
           {filtered.map(c => (
@@ -144,12 +150,13 @@ function CanchaModal({ visible, onClose, onAdd }) {
 }
 
 function FechaModal({ visible, onClose, onAdd }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState('12');
   return (
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Selecciona una fecha</Text>
+          <Text style={styles.modalTitle}>{t('buscar.seleccionaFecha')}</Text>
           <TouchableOpacity onPress={onClose}><Ionicons name="close" size={24} color={colors.textPrimary} /></TouchableOpacity>
         </View>
         <View style={styles.dateGrid}>
@@ -162,7 +169,7 @@ function FechaModal({ visible, onClose, onAdd }) {
         </View>
         <View style={styles.modalFooter}>
           <TouchableOpacity style={styles.addFilterBtn} onPress={() => onAdd(`${selected} Feb`)}>
-            <Text style={styles.addFilterText}>Añadir filtro</Text>
+            <Text style={styles.addFilterText}>{t('buscar.anadirFiltro')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -171,12 +178,13 @@ function FechaModal({ visible, onClose, onAdd }) {
 }
 
 function HoraModal({ visible, onClose, onAdd }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState('15:00');
   return (
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Selecciona horas</Text>
+          <Text style={styles.modalTitle}>{t('buscar.seleccionaHoras')}</Text>
           <TouchableOpacity onPress={onClose}><Ionicons name="close" size={24} color={colors.textPrimary} /></TouchableOpacity>
         </View>
         <View style={styles.hourGrid}>
@@ -188,7 +196,7 @@ function HoraModal({ visible, onClose, onAdd }) {
         </View>
         <View style={styles.modalFooter}>
           <TouchableOpacity style={styles.addFilterBtn} onPress={() => onAdd(selected)}>
-            <Text style={styles.addFilterText}>Añadir filtro</Text>
+            <Text style={styles.addFilterText}>{t('buscar.anadirFiltro')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -197,12 +205,13 @@ function HoraModal({ visible, onClose, onAdd }) {
 }
 
 function PartidoModal({ visible, onClose, onAdd }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState('Singles');
   return (
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Tipo de partido</Text>
+          <Text style={styles.modalTitle}>{t('buscar.tipoPartido')}</Text>
           <TouchableOpacity onPress={onClose}><Ionicons name="close" size={24} color={colors.textPrimary} /></TouchableOpacity>
         </View>
         <View style={styles.radioList}>
@@ -217,7 +226,7 @@ function PartidoModal({ visible, onClose, onAdd }) {
         </View>
         <View style={styles.modalFooter}>
           <TouchableOpacity style={styles.addFilterBtn} onPress={() => onAdd(selected)}>
-            <Text style={styles.addFilterText}>Añadir filtro</Text>
+            <Text style={styles.addFilterText}>{t('buscar.anadirFiltro')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -226,13 +235,14 @@ function PartidoModal({ visible, onClose, onAdd }) {
 }
 
 export function BuscarPartidoScreen({ navigation }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const [filters, setFilters] = useState({ cancha: null, fecha: null, hora: null, partido: null });
   const [openModal, setOpenModal] = useState(null);
   const [basePlayers, setBasePlayers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [retadosIds, setRetadosIds] = useState([...retadosEnSesion]);
 
-  // NUEVO: Singles y Dobles en pestañas separadas
+  // NUEVO: Singles y Dobles en pestañas separadas ('Singles' / 'Dobles' son valores internos)
   const [modo, setModo] = useState('Singles');
   const filtrados = getFilteredPlayers(filters, basePlayers);
   const conteo = {
@@ -265,7 +275,7 @@ export function BuscarPartidoScreen({ navigation }) {
           num_sets:          p.num_sets,
           ranking:           null,
           pts:               null,
-          club:              p.nombre_cancha ?? 'Cancha no especificada',
+          club:              p.nombre_cancha ?? null,
           date:              formatFecha(p.fecha_partido),
           time:              formatHora(p.hora_partido),
           ya_postulado:      Number(p.ya_postulado ?? 0) === 1,
@@ -283,7 +293,7 @@ export function BuscarPartidoScreen({ navigation }) {
             avatar:     p.foto_perfil_url ?? p.avatar ?? null,
             ranking:    p.posicion_ranking ?? p.ranking ?? null,
             pts:        p.puntaje_total   ?? p.pts    ?? null,
-            club:       p.cancha ?? p.nombre_cancha ?? p.ubicacion ?? 'Cancha no especificada',
+            club:       p.cancha ?? p.nombre_cancha ?? p.ubicacion ?? null,
             date:       formatFecha(p.fecha_partido ?? p.date),
             time:       formatHora(p.hora_partido ?? p.time),
           }))]);
@@ -314,13 +324,18 @@ export function BuscarPartidoScreen({ navigation }) {
     });
   }
 
+  let textoConteo;
+  if (players.length === 0) textoConteo = t('buscar.sinDisponibles');
+  else if (modo === 'Dobles') textoConteo = t(players.length === 1 ? 'buscar.parejaBuscando' : 'buscar.parejasBuscando', { n: players.length });
+  else textoConteo = t('buscar.buscandoPartido', { n: players.length });
+
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Buscar partido amistoso</Text>
+        <Text style={styles.headerTitle}>{t('buscar.titulo')}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -328,13 +343,13 @@ export function BuscarPartidoScreen({ navigation }) {
         <TouchableOpacity style={styles.ligasAviso} onPress={irALigas} activeOpacity={0.85}>
           <Ionicons name="trophy" size={20} color={colors.accent} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.ligasAvisoTitulo}>¿Buscas partidos rankeados?</Text>
-            <Text style={styles.ligasAvisoTexto}>Ahora se juegan en las ligas de la pestaña Ranking.</Text>
+            <Text style={styles.ligasAvisoTitulo}>{t('buscar.avisoTitulo')}</Text>
+            <Text style={styles.ligasAvisoTexto}>{t('buscar.avisoTexto')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.7)" />
         </TouchableOpacity>
 
-        <Text style={styles.pageTitle}>Partidos amistosos</Text>
+        <Text style={styles.pageTitle}>{t('buscar.pageTitle')}</Text>
 
         {/* NUEVO: Singles | Dobles */}
         <View style={styles.modoToggle}>
@@ -351,7 +366,7 @@ export function BuscarPartidoScreen({ navigation }) {
                 color={modo === m ? colors.primary : colors.textSecondary}
               />
               <Text style={[styles.modoText, modo === m && styles.modoTextActive]}>
-                {m}{conteo[m] > 0 ? ` (${conteo[m]})` : ''}
+                {m === 'Dobles' ? t('partidos.dobles') : t('partidos.singles')}{conteo[m] > 0 ? ` (${conteo[m]})` : ''}
               </Text>
             </TouchableOpacity>
           ))}
@@ -359,18 +374,12 @@ export function BuscarPartidoScreen({ navigation }) {
 
         <View style={styles.countRow}>
           <View style={styles.greenDot} />
-          <Text style={styles.countText}>
-            {players.length === 0
-              ? 'Sin partidos disponibles'
-              : modo === 'Dobles'
-                ? `${players.length} ${players.length === 1 ? 'pareja buscando rivales' : 'parejas buscando rivales'}`
-                : `${players.length} buscando partido`}
-          </Text>
+          <Text style={styles.countText}>{textoConteo}</Text>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow} style={styles.chipScroll}>
           {FILTER_KEYS.map(key => (
-            <FilterChip key={key} label={FILTER_LABELS[key]} active={!!filters[key]} onPress={() => setOpenModal(key)} onRemove={() => removeFilter(key)} />
+            <FilterChip key={key} label={t(`buscar.filtros.${key}`)} active={!!filters[key]} onPress={() => setOpenModal(key)} onRemove={() => removeFilter(key)} />
           ))}
         </ScrollView>
 
@@ -380,9 +389,7 @@ export function BuscarPartidoScreen({ navigation }) {
           <View style={styles.emptyState}>
             <Ionicons name={modo === 'Dobles' ? 'people-outline' : 'tennisball-outline'} size={40} color={colors.textSecondary} />
             <Text style={styles.emptyText}>
-              {modo === 'Dobles'
-                ? 'Ninguna pareja está buscando rivales.\nCrea una convocatoria con un amigo.'
-                : 'No hay partidos disponibles'}
+              {modo === 'Dobles' ? t('buscar.vacioDobles') : t('buscar.vacio')}
             </Text>
           </View>
         ) : (
@@ -414,7 +421,7 @@ export function BuscarPartidoScreen({ navigation }) {
         >
           <Ionicons name={modo === 'Dobles' ? 'people-outline' : 'person-add-outline'} size={20} color={colors.primary} />
           <Text style={styles.bottomBtnText}>
-            {modo === 'Dobles' ? 'Crear partido de dobles' : hasFilters ? 'Buscar Partido Amistoso' : 'Crear Partido Amistoso'}
+            {modo === 'Dobles' ? t('buscar.crearDobles') : hasFilters ? t('buscar.buscarAmistoso') : t('buscar.crearAmistoso')}
           </Text>
         </TouchableOpacity>
       </View>

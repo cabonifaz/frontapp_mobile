@@ -6,15 +6,17 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { ligaService } from '../../services/ligaService';
 import { getAvatarSource } from '../../utils/avatars';
 import { SelectorAmigoModal } from '../../components/common/SelectorAmigoModal';
 import {
-  SponsorLogo, MOTIVOS_BLOQUEO, formatMoneda, formatRangoFechas,
+  SponsorLogo, motivoBloqueo, formatMoneda, formatRangoFechas,
   formatFechaCorta, formatHora, formatPuntos,
 } from './ligaUtils';
 
+// 'Tabla' / 'Partidos' / 'Reglas' son valores internos; el texto visible sale de liga.tabs.*
 const TABS = ['Tabla', 'Partidos', 'Reglas'];
 
 // Anchos de columna de la tabla (compartidos por cabecera y filas)
@@ -28,10 +30,11 @@ const PUNTAJE = [
 
 // ── Inscripción ─────────────────────────────────────────────────────────────
 function PanelInscripcion({ liga, inscribiendo, onInscribirse, onResponderEquipo }) {
+  const { t } = useTranslation();
   const estado = liga.mi_estado_inscripcion;
   const esDobles = Number(liga.es_dobles ?? 0) === 1;
   const soyCapitan = Number(liga.soy_capitan ?? 0) === 1;
-  const companero = String(liga.mi_companero_nombre ?? 'tu compañero').split(' ')[0];
+  const companero = String(liga.mi_companero_nombre ?? t('liga.tuCompanero')).split(' ')[0];
 
   // NUEVO: equipo esperando que el compañero acepte
   if (estado === 'INSC_PENDIENTE_COMPANERO') {
@@ -40,10 +43,8 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse, onResponderEquipo
         <View style={styles.panel}>
           <Ionicons name="hourglass-outline" size={24} color={colors.textPrimary} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.panelTitulo}>Esperando a {companero}</Text>
-            <Text style={styles.panelTexto}>
-              Tu compañero debe aceptar la invitación desde Mis solicitudes para completar el equipo.
-            </Text>
+            <Text style={styles.panelTitulo}>{t('liga.esperandoA', { nombre: companero })}</Text>
+            <Text style={styles.panelTexto}>{t('liga.companeroDebeAceptar')}</Text>
           </View>
         </View>
       );
@@ -53,22 +54,22 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse, onResponderEquipo
         <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
           <Ionicons name="people" size={24} color={colors.textPrimary} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.panelTitulo}>{companero} te invitó a su equipo</Text>
+            <Text style={styles.panelTitulo}>{t('liga.teInvitoEquipo', { nombre: companero })}</Text>
             <Text style={styles.panelTexto}>
               {Number(liga.cuota_inscripcion ?? 0) > 0
-                ? `La inscripción es de ${formatMoneda(liga.cuota_inscripcion, liga.moneda)} por equipo.`
-                : 'La inscripción es gratuita.'}
+                ? t('liga.inscripcionPorEquipo', { monto: formatMoneda(liga.cuota_inscripcion, liga.moneda) })
+                : t('liga.inscripcionGratis')}
             </Text>
           </View>
         </View>
         <View style={styles.panelAcciones}>
           <TouchableOpacity style={styles.panelRechazar} onPress={() => onResponderEquipo(false)} disabled={inscribiendo}>
-            <Text style={styles.panelRechazarText}>Rechazar</Text>
+            <Text style={styles.panelRechazarText}>{t('liga.rechazar')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.panelAceptar} onPress={() => onResponderEquipo(true)} disabled={inscribiendo}>
             {inscribiendo
               ? <ActivityIndicator size="small" color={colors.primary} />
-              : <Text style={styles.panelAceptarText}>Aceptar</Text>}
+              : <Text style={styles.panelAceptarText}>{t('liga.aceptar')}</Text>}
           </TouchableOpacity>
         </View>
       </View>
@@ -85,11 +86,11 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse, onResponderEquipo
           <Text style={styles.panelPosNum}>{liga.mi_posicion ?? '-'}°</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.panelTitulo}>{esDobles ? `Tu equipo con ${companero}` : 'Estás inscrito'}</Text>
+          <Text style={styles.panelTitulo}>{esDobles ? t('liga.tuEquipoCon', { nombre: companero }) : t('liga.estasInscrito')}</Text>
           <Text style={styles.panelTexto}>
             {esDobles
-              ? `Llevan ${liga.mis_puntos ?? 0} puntos de liga. Reten a los equipos habilitados en la tabla.`
-              : `Llevas ${liga.mis_puntos ?? 0} puntos de liga. Reta a los jugadores habilitados en la tabla.`}
+              ? t('liga.llevanPuntos', { pts: liga.mis_puntos ?? 0 })
+              : t('liga.llevasPuntos', { pts: liga.mis_puntos ?? 0 })}
           </Text>
         </View>
       </View>
@@ -101,11 +102,11 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse, onResponderEquipo
       <View style={styles.panel}>
         <Ionicons name="time-outline" size={24} color={colors.textPrimary} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.panelTitulo}>Pago en validación</Text>
+          <Text style={styles.panelTitulo}>{t('liga.pagoValidacion')}</Text>
           <Text style={styles.panelTexto}>
             {esDobles
-              ? `Tu equipo con ${companero} se activará cuando confirmemos el pago de ${formatMoneda(liga.cuota_inscripcion, liga.moneda)} (una cuota por equipo).`
-              : `Tu inscripción se activará cuando confirmemos el pago de ${formatMoneda(liga.cuota_inscripcion, liga.moneda)}.`}
+              ? t('liga.pagoEquipo', { nombre: companero, monto: formatMoneda(liga.cuota_inscripcion, liga.moneda) })
+              : t('liga.pagoSingles', { monto: formatMoneda(liga.cuota_inscripcion, liga.moneda) })}
           </Text>
           {liga.instrucciones_pago ? (
             <Text style={styles.panelInstrucciones}>{liga.instrucciones_pago}</Text>
@@ -119,7 +120,7 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse, onResponderEquipo
     return (
       <View style={styles.panel}>
         <Ionicons name="lock-closed-outline" size={22} color={colors.textSecondary} />
-        <Text style={[styles.panelTexto, { flex: 1 }]}>Las inscripciones para esta liga no están abiertas.</Text>
+        <Text style={[styles.panelTexto, { flex: 1 }]}>{t('liga.noAbiertas')}</Text>
       </View>
     );
   }
@@ -129,7 +130,7 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse, onResponderEquipo
       <View style={styles.panel}>
         <Ionicons name="lock-closed-outline" size={22} color={colors.textSecondary} />
         <Text style={[styles.panelTexto, { flex: 1 }]}>
-          Esta liga es para niveles {liga.nivel_min} a {liga.nivel_max}. Tu nivel actual es {nivel}.
+          {t('liga.fueraNivel', { min: liga.nivel_min, max: liga.nivel_max, nivel })}
         </Text>
       </View>
     );
@@ -143,7 +144,7 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse, onResponderEquipo
         <>
           <Ionicons name={esDobles ? 'people' : 'person-add'} size={18} color={colors.primary} />
           <Text style={styles.inscribirText}>
-            {esDobles ? 'Inscribir mi equipo' : 'Inscribirme'} · {formatMoneda(liga.cuota_inscripcion, liga.moneda)}
+            {esDobles ? t('liga.inscribirEquipo') : t('liga.inscribirme')} · {formatMoneda(liga.cuota_inscripcion, liga.moneda)}
           </Text>
         </>
       )}
@@ -153,8 +154,9 @@ function PanelInscripcion({ liga, inscribiendo, onInscribirse, onResponderEquipo
 
 // ── Tab Tabla ───────────────────────────────────────────────────────────────
 function FilaJugador({ fila, onPerfil, onRetar }) {
+  const { t } = useTranslation();
   const esYo = Number(fila.es_yo) === 1;
-  const motivo = MOTIVOS_BLOQUEO[fila.motivo_bloqueo] ?? { corto: 'Bloqueado', largo: null };
+  const motivo = motivoBloqueo(fila.motivo_bloqueo);   // textos ya traducidos
   const puedeRetar = fila.motivo_bloqueo === 'OK';
 
   return (
@@ -177,14 +179,14 @@ function FilaJugador({ fila, onPerfil, onRetar }) {
       <View style={styles.filaAccion}>
         {puedeRetar ? (
           <TouchableOpacity style={styles.retarBtn} onPress={onRetar}>
-            <Text style={styles.retarText}>Retar</Text>
+            <Text style={styles.retarText}>{t('liga.retar')}</Text>
           </TouchableOpacity>
         ) : esYo ? (
-          <Text style={styles.tuText}>Tú</Text>
+          <Text style={styles.tuText}>{t('liga.tu')}</Text>
         ) : (
           <TouchableOpacity
             style={styles.bloqueado}
-            onPress={() => motivo.largo && Alert.alert(motivo.corto ?? 'No disponible', motivo.largo)}
+            onPress={() => motivo.largo && Alert.alert(motivo.corto ?? t('motivos.noDisponible'), motivo.largo)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Ionicons name="lock-closed" size={13} color={colors.textSecondary} />
@@ -197,12 +199,13 @@ function FilaJugador({ fila, onPerfil, onRetar }) {
 }
 
 function TabTabla({ tabla, liga, navigation }) {
+  const { t } = useTranslation();
   if (!tabla.length) {
     return (
       <View style={styles.vacio}>
         <Ionicons name="podium-outline" size={40} color={colors.textSecondary} />
         <Text style={styles.vacioText}>
-          {Number(liga.es_dobles ?? 0) === 1 ? 'Aún no hay equipos activos en esta liga.' : 'Aún no hay jugadores activos en esta liga.'}
+          {Number(liga.es_dobles ?? 0) === 1 ? t('liga.sinEquipos') : t('liga.sinJugadores')}
         </Text>
       </View>
     );
@@ -212,10 +215,10 @@ function TabTabla({ tabla, liga, navigation }) {
     <View>
       <View style={styles.tablaHeader}>
         <Text style={[styles.thText, { width: COL.pos }]}>#</Text>
-        <Text style={[styles.thText, { flex: 1 }]}>{Number(liga.es_dobles ?? 0) === 1 ? 'Equipo' : 'Jugador'}</Text>
-        <Text style={[styles.thText, styles.thNum, { width: COL.num }]}>PJ</Text>
-        <Text style={[styles.thText, styles.thNum, { width: COL.num }]}>PG</Text>
-        <Text style={[styles.thText, styles.thNum, { width: COL.pts }]}>Pts</Text>
+        <Text style={[styles.thText, { flex: 1 }]}>{Number(liga.es_dobles ?? 0) === 1 ? t('liga.equipo') : t('liga.jugador')}</Text>
+        <Text style={[styles.thText, styles.thNum, { width: COL.num }]}>{t('liga.pj')}</Text>
+        <Text style={[styles.thText, styles.thNum, { width: COL.num }]}>{t('liga.pg')}</Text>
+        <Text style={[styles.thText, styles.thNum, { width: COL.pts }]}>{t('liga.pts')}</Text>
         <View style={{ width: COL.accion }} />
       </View>
       {tabla.map(f => (
@@ -247,7 +250,7 @@ function TabTabla({ tabla, liga, navigation }) {
           })}
         />
       ))}
-      <Text style={styles.leyenda}>PJ: partidos jugados · PG: partidos ganados · Pts: puntos de liga</Text>
+      <Text style={styles.leyenda}>{t('liga.leyenda')}</Text>
     </View>
   );
 }
@@ -278,11 +281,12 @@ function JugadorResultado({ nombre, foto, foto2, esEquipo, sets, puntos, ganador
 }
 
 function TabPartidos({ partidos }) {
+  const { t } = useTranslation();
   if (!partidos.length) {
     return (
       <View style={styles.vacio}>
         <Ionicons name="tennisball-outline" size={40} color={colors.textSecondary} />
-        <Text style={styles.vacioText}>Todavía no hay partidos en esta liga.</Text>
+        <Text style={styles.vacioText}>{t('liga.sinPartidos')}</Text>
       </View>
     );
   }
@@ -299,7 +303,7 @@ function TabPartidos({ partidos }) {
                 {formatFechaCorta(p.fecha_partido)} · {formatHora(p.hora_partido)} · {p.nombre_cancha}
               </Text>
               <View style={[styles.estadoChip, finalizado ? styles.estadoFin : styles.estadoProg]}>
-                <Text style={styles.estadoChipText}>{finalizado ? 'Finalizado' : 'Por jugar'}</Text>
+                <Text style={styles.estadoChipText}>{finalizado ? t('liga.finalizado') : t('liga.porJugar')}</Text>
               </View>
             </View>
             <JugadorResultado
@@ -329,15 +333,16 @@ function TabPartidos({ partidos }) {
 
 // ── Tab Reglas ──────────────────────────────────────────────────────────────
 function TabReglas({ liga }) {
+  const { t } = useTranslation();
   const d = Number(liga.es_dobles ?? 0) === 1;
   return (
     <View>
-      <Text style={styles.reglaTitulo}>Puntaje por partido</Text>
+      <Text style={styles.reglaTitulo}>{t('liga.puntajePartido')}</Text>
       <View style={styles.puntajeTabla}>
         <View style={[styles.puntajeFila, styles.puntajeHeader]}>
-          <Text style={styles.puntajeTh}>Resultado</Text>
-          <Text style={styles.puntajeTh}>Ganador</Text>
-          <Text style={styles.puntajeTh}>Perdedor</Text>
+          <Text style={styles.puntajeTh}>{t('liga.resultado')}</Text>
+          <Text style={styles.puntajeTh}>{t('liga.ganador')}</Text>
+          <Text style={styles.puntajeTh}>{t('liga.perdedor')}</Text>
         </View>
         {PUNTAJE.map(r => (
           <View key={r.resultado} style={styles.puntajeFila}>
@@ -348,19 +353,19 @@ function TabReglas({ liga }) {
         ))}
       </View>
 
-      <Text style={styles.reglaTitulo}>Cómo funciona</Text>
+      <Text style={styles.reglaTitulo}>{t('liga.comoFunciona')}</Text>
       {[
-        'Todos empiezan la liga con 0 puntos. Estos puntos son solo de la liga y no cambian tu puntaje general.',
+        t('liga.regla0'),
         d
-          ? `Modalidad dobles: se inscriben equipos de 2 (los dos dentro del nivel ${liga.nivel_min}–${liga.nivel_max}). Siempre al mejor de ${liga.num_sets ?? 5} sets.`
-          : `Modalidad singles, siempre al mejor de ${liga.num_sets ?? 5} sets (gana quien llega a 3).`,
-        ...(d ? ['Cualquiera de los dos puede retar a otro equipo; en el equipo retado basta con que uno acepte.'] : []),
+          ? t('liga.reglaDobles', { min: liga.nivel_min, max: liga.nivel_max, sets: liga.num_sets ?? 5 })
+          : t('liga.reglaSingles', { sets: liga.num_sets ?? 5 }),
+        ...(d ? [t('liga.reglaRetoDobles')] : []),
         liga.max_diferencia_posiciones
-          ? `Puedes retar a ${d ? 'equipos' : 'jugadores'} que estén hasta ${liga.max_diferencia_posiciones} posiciones arriba o abajo de ${d ? 'tu equipo' : 'ti'}.`
-          : `Puedes retar a cualquier ${d ? 'equipo activo' : 'jugador activo'} de la liga.`,
-        `No puedes volver a retar a ${d ? 'un equipo' : 'un jugador'} mientras tengan un reto pendiente o un partido por jugar.`,
-        `Los retos se habilitan cuando la liga tiene al menos ${liga.minimo_jugadores} ${d ? 'equipos activos' : 'jugadores activos'}.`,
-        'El resultado se publica y confirma igual que en cualquier partido; los puntos se aplican al confirmarse.',
+          ? t(d ? 'liga.reglaRangoEquipos' : 'liga.reglaRangoJugadores', { n: liga.max_diferencia_posiciones })
+          : t(d ? 'liga.reglaCualquierEquipo' : 'liga.reglaCualquierJugador'),
+        t(d ? 'liga.reglaNoRepetirEquipo' : 'liga.reglaNoRepetirJugador'),
+        t(d ? 'liga.reglaMinimoEquipos' : 'liga.reglaMinimoJugadores', { n: liga.minimo_jugadores }),
+        t('liga.reglaResultado'),
       ].map((t, i) => (
         <View key={i} style={styles.reglaItem}>
           <View style={styles.reglaDot} />
@@ -368,14 +373,14 @@ function TabReglas({ liga }) {
         </View>
       ))}
 
-      <Text style={styles.reglaTitulo}>Datos de la liga</Text>
+      <Text style={styles.reglaTitulo}>{t('liga.datosLiga')}</Text>
       <View style={styles.datosCard}>
-        <Dato icon="calendar-outline" label="Fechas" valor={formatRangoFechas(liga.fecha_inicio, liga.fecha_fin)} />
-        <Dato icon="stats-chart-outline" label="Nivel requerido" valor={`${liga.nivel_min} a ${liga.nivel_max}`} />
-        <Dato icon="people-outline" label={d ? 'Equipos' : 'Participantes'} valor={liga.cupo_maximo ? `Máximo ${liga.cupo_maximo}` : 'Sin límite'} />
-        <Dato icon="person-outline" label="Mínimo para empezar" valor={`${liga.minimo_jugadores} ${d ? 'equipos' : 'jugadores'}`} />
-        <Dato icon="ticket-outline" label="Inscripción" valor={`${formatMoneda(liga.cuota_inscripcion, liga.moneda)}${d ? ' por equipo' : ''}`} />
-        <Dato icon="trophy-outline" label="Premio" valor={liga.premio ?? 'Por anunciar'} ultimo />
+        <Dato icon="calendar-outline" label={t('liga.fechas')} valor={formatRangoFechas(liga.fecha_inicio, liga.fecha_fin)} />
+        <Dato icon="stats-chart-outline" label={t('liga.nivelRequerido')} valor={t('liga.nivelValor', { min: liga.nivel_min, max: liga.nivel_max })} />
+        <Dato icon="people-outline" label={d ? t('liga.equipos') : t('liga.participantes')} valor={liga.cupo_maximo ? t('liga.maximo', { n: liga.cupo_maximo }) : t('liga.sinLimite')} />
+        <Dato icon="person-outline" label={t('liga.minimoEmpezar')} valor={t(d ? 'liga.nEquipos' : 'liga.nJugadores', { n: liga.minimo_jugadores })} />
+        <Dato icon="ticket-outline" label={t('liga.inscripcion')} valor={`${formatMoneda(liga.cuota_inscripcion, liga.moneda)}${d ? t('liga.porEquipo') : ''}`} />
+        <Dato icon="trophy-outline" label={t('liga.premio')} valor={liga.premio ?? t('liga.porAnunciar')} ultimo />
       </View>
     </View>
   );
@@ -393,6 +398,7 @@ function Dato({ icon, label, valor, ultimo }) {
 
 // ── Pantalla ────────────────────────────────────────────────────────────────
 export function LigaDetalleScreen({ navigation, route }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const insets = useSafeAreaInsets();
   const idLiga = route?.params?.idLiga;
   const [liga, setLiga] = useState(null);
@@ -429,21 +435,21 @@ export function LigaDetalleScreen({ navigation, route }) {
     const cuota = Number(liga.cuota_inscripcion ?? 0);
     const nombre = String(amigo.nombre_completo ?? '').split(' ')[0];
     const mensaje =
-      `${nombre} recibirá una invitación y debe aceptarla. Los dos deben tener nivel ${liga.nivel_min} a ${liga.nivel_max}.` +
-      (cuota > 0 ? `\n\nLa inscripción cuesta ${formatMoneda(cuota, liga.moneda)} por equipo.` : '') +
+      t('liga.invitacionEquipoMensaje', { nombre, min: liga.nivel_min, max: liga.nivel_max }) +
+      (cuota > 0 ? `\n\n${t('liga.cuotaEquipo', { monto: formatMoneda(cuota, liga.moneda) })}` : '') +
       (cuota > 0 && liga.instrucciones_pago ? `\n\n${liga.instrucciones_pago}` : '');
-    Alert.alert(`Inscribir equipo con ${nombre}`, mensaje, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('liga.invitacionEquipoTitulo', { nombre }), mensaje, [
+      { text: t('liga.cancelar'), style: 'cancel' },
       {
-        text: 'Enviar invitación',
+        text: t('liga.enviarInvitacion'),
         onPress: async () => {
           try {
             setInscribiendo(true);
             const res = await ligaService.inscribirseDobles(idLiga, amigo.id_usuario);
-            Alert.alert('Invitación enviada', res?.mensaje ?? '');
+            Alert.alert(t('liga.invitacionEnviada'), res?.mensaje ?? '');
             await cargar();
           } catch (e) {
-            Alert.alert('No se pudo inscribir', e.message ?? 'Intenta nuevamente.');
+            Alert.alert(t('liga.noSePudoInscribir'), e.message ?? t('liga.intentaNuevo'));
           } finally {
             setInscribiendo(false);
           }
@@ -457,10 +463,10 @@ export function LigaDetalleScreen({ navigation, route }) {
     try {
       setInscribiendo(true);
       const res = await ligaService.responderEquipo(liga.mi_id_inscripcion, aceptar);
-      Alert.alert(aceptar ? '¡Listo!' : 'Invitación rechazada', res?.mensaje ?? '');
+      Alert.alert(aceptar ? t('liga.listo') : t('liga.invitacionRechazada'), res?.mensaje ?? '');
       await cargar();
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'No se pudo responder.');
+      Alert.alert(t('comun.error'), e.message ?? t('liga.noSePudoResponder'));
     } finally {
       setInscribiendo(false);
     }
@@ -470,25 +476,25 @@ export function LigaDetalleScreen({ navigation, route }) {
     if (Number(liga.es_dobles ?? 0) === 1) { setShowSelector(true); return; }
     const cuota = Number(liga.cuota_inscripcion ?? 0);
     const mensaje = cuota > 0
-      ? `La inscripción cuesta ${formatMoneda(cuota, liga.moneda)}. Quedará pendiente hasta que validemos tu pago.` +
+      ? t('liga.cuotaSingles', { monto: formatMoneda(cuota, liga.moneda) }) +
         (liga.instrucciones_pago ? `\n\n${liga.instrucciones_pago}` : '')
-      : 'La inscripción es gratuita y quedará activa de inmediato.';
+      : t('liga.gratisInmediata');
 
-    Alert.alert(`Inscribirme en ${liga.nombre_oficial}`, mensaje, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('liga.inscribirmeEn', { nombre: liga.nombre_oficial }), mensaje, [
+      { text: t('liga.cancelar'), style: 'cancel' },
       {
-        text: 'Inscribirme',
+        text: t('liga.inscribirme'),
         onPress: async () => {
           try {
             setInscribiendo(true);
             const res = await ligaService.inscribirse(idLiga);
             Alert.alert(
-              res?.estadoInscripcion === 'INSC_ACTIVA' ? '¡Listo!' : 'Inscripción registrada',
-              res?.mensaje ?? 'Inscripción registrada.'
+              res?.estadoInscripcion === 'INSC_ACTIVA' ? t('liga.listo') : t('liga.inscripcionRegistrada'),
+              res?.mensaje ?? t('liga.inscripcionRegistradaPunto')
             );
             await cargar();
           } catch (e) {
-            Alert.alert('No se pudo inscribir', e.message ?? 'Intenta nuevamente.');
+            Alert.alert(t('liga.noSePudoInscribir'), e.message ?? t('liga.intentaNuevo'));
           } finally {
             setInscribiendo(false);
           }
@@ -503,7 +509,7 @@ export function LigaDetalleScreen({ navigation, route }) {
         {loading ? (
           <ActivityIndicator size="large" color={colors.accent} />
         ) : (
-          <Text style={styles.vacioText}>No se pudo cargar la liga.</Text>
+          <Text style={styles.vacioText}>{t('liga.noSePudoCargar')}</Text>
         )}
       </SafeAreaView>
     );
@@ -518,17 +524,17 @@ export function LigaDetalleScreen({ navigation, route }) {
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.headerNivel}>
-            <Text style={styles.headerNivelText}>Nivel {liga.nivel_min}–{liga.nivel_max}</Text>
+            <Text style={styles.headerNivelText}>{t('ranking.nivelRango', { min: liga.nivel_min, max: liga.nivel_max })}</Text>
           </View>
         </View>
         <Text style={styles.headerTitulo} numberOfLines={2}>{liga.nombre_oficial}</Text>
         <Text style={styles.headerSub}>
-          {Number(liga.es_dobles ?? 0) === 1 ? 'Dobles' : 'Singles'} · 3 de 5 sets · {formatRangoFechas(liga.fecha_inicio, liga.fecha_fin)}
+          {Number(liga.es_dobles ?? 0) === 1 ? t('liga.dobles') : t('liga.singles')} · {t('liga.formato')} · {formatRangoFechas(liga.fecha_inicio, liga.fecha_fin)}
         </Text>
         {liga.auspiciador_nombre ? (
           <View style={styles.headerSponsor}>
             <SponsorLogo nombre={liga.auspiciador_nombre} logoUrl={liga.auspiciador_logo_url} size={30} width={56} dark />
-            <Text style={styles.headerSponsorText} numberOfLines={1}>Presentado por {liga.auspiciador_nombre}</Text>
+            <Text style={styles.headerSponsorText} numberOfLines={1}>{t('ranking.presentadoPorNombre', { nombre: liga.auspiciador_nombre })}</Text>
           </View>
         ) : null}
       </View>
@@ -547,12 +553,12 @@ export function LigaDetalleScreen({ navigation, route }) {
         />
 
         <View style={styles.tabBar}>
-          {TABS.map(t => (
-            <TouchableOpacity key={t} style={styles.tabItem} onPress={() => setTab(t)}>
-              <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-                {t}{t === 'Tabla' ? ` (${tabla.length})` : ''}
+          {TABS.map(tb => (
+            <TouchableOpacity key={tb} style={styles.tabItem} onPress={() => setTab(tb)}>
+              <Text style={[styles.tabText, tab === tb && styles.tabTextActive]}>
+                {t(`liga.tabs.${tb}`)}{tb === 'Tabla' ? ` (${tabla.length})` : ''}
               </Text>
-              {tab === t && <View style={styles.tabIndicator} />}
+              {tab === tb && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           ))}
         </View>
@@ -567,7 +573,7 @@ export function LigaDetalleScreen({ navigation, route }) {
       {/* NUEVO: elegir compañero para inscribir el equipo */}
       <SelectorAmigoModal
         visible={showSelector}
-        titulo="¿Con quién formas tu equipo?"
+        titulo={t('liga.conQuienEquipo')}
         onClose={() => setShowSelector(false)}
         onSelect={inscribirEquipo}
       />

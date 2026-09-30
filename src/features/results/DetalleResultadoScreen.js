@@ -4,6 +4,8 @@ import {
   SafeAreaView, Image, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import * as SecureStore from 'expo-secure-store';
 import { colors } from '../../constants';
 import { resultadoService } from '../../services/resultadoService';
@@ -12,7 +14,7 @@ import { getAvatarSource } from '../../utils/avatars';
 function formatFecha(dateStr) {
   if (!dateStr) return '--';
   const [year, month, day] = (String(dateStr).split('T')[0]).split('-').map(Number);
-  const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const months = i18n.t('fechas.mesesAbrev', { returnObjects: true });
   return `${day} ${months[month - 1]} ${year}`;
 }
 
@@ -47,6 +49,7 @@ function AvatarLado({ foto, foto2, esDobles, ranking }) {
 }
 
 export function DetalleResultadoScreen({ navigation, route }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const { match } = route.params ?? {};
   const [detalle, setDetalle] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -74,8 +77,8 @@ export function DetalleResultadoScreen({ navigation, route }) {
     ? Number(d.soy_local) === 0
     : (idUsuarioActual != null && d.id_jugador_local != null && Number(d.id_jugador_local) !== idUsuarioActual);
 
-  const jugadorYo     = soyVisitante ? (d.jugador_visitante ?? 'Jugador 2') : (d.jugador_local     ?? 'Jugador 1');
-  const jugadorRival  = soyVisitante ? (d.jugador_local     ?? 'Jugador 1') : (d.jugador_visitante ?? 'Jugador 2');
+  const jugadorYo     = soyVisitante ? (d.jugador_visitante ?? t('detalleRes.jugador2')) : (d.jugador_local     ?? t('detalleRes.jugador1'));
+  const jugadorRival  = soyVisitante ? (d.jugador_local     ?? t('detalleRes.jugador1')) : (d.jugador_visitante ?? t('detalleRes.jugador2'));
   const fotoYo        = soyVisitante ? (d.foto_visitante    ?? null)        : (d.foto_local        ?? null);
   const fotoRival     = soyVisitante ? (d.foto_local        ?? null)        : (d.foto_visitante    ?? null);
   const fotoYo2       = soyVisitante ? (d.foto_visitante_2  ?? null)        : (d.foto_local_2      ?? null);
@@ -119,7 +122,7 @@ export function DetalleResultadoScreen({ navigation, route }) {
         {esDobles && (
           <View style={styles.doblesChip}>
             <Ionicons name="people" size={12} color={colors.accent} />
-            <Text style={styles.doblesChipText}>DOBLES</Text>
+            <Text style={styles.doblesChipText}>{t('detalleRes.dobles')}</Text>
           </View>
         )}
 
@@ -145,10 +148,10 @@ export function DetalleResultadoScreen({ navigation, route }) {
       {/* Sheet */}
       <View style={styles.sheet}>
         <View style={styles.tabBar}>
-          {['Resultados', 'Detalles'].map(t => (
-            <TouchableOpacity key={t} style={styles.tabItem} onPress={() => setActiveTab(t)}>
-              <Text style={[styles.tabText, activeTab === t && styles.tabTextActive]}>{t}</Text>
-              {activeTab === t && <View style={styles.tabIndicator} />}
+          {['Resultados', 'Detalles'].map(tb => (
+            <TouchableOpacity key={tb} style={styles.tabItem} onPress={() => setActiveTab(tb)}>
+              <Text style={[styles.tabText, activeTab === tb && styles.tabTextActive]}>{t(`detalleRes.tabs.${tb}`)}</Text>
+              {activeTab === tb && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           ))}
         </View>
@@ -159,7 +162,7 @@ export function DetalleResultadoScreen({ navigation, route }) {
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
             {activeTab === 'Resultados' ? (
               <>
-                <Text style={styles.sectionTitle}>Resultado Final</Text>
+                <Text style={styles.sectionTitle}>{t('detalleRes.resultadoFinal')}</Text>
                 <View style={styles.resultadoFinalRow}>
                   <Text style={styles.resultadoFinalNum}>{setsYo}</Text>
                   <Text style={styles.resultadoFinalSep}> – </Text>
@@ -167,13 +170,13 @@ export function DetalleResultadoScreen({ navigation, route }) {
                 </View>
 
                 {sets.length === 0 ? (
-                  <Text style={styles.noDataText}>Sin sets registrados</Text>
+                  <Text style={styles.noDataText}>{t('detalleRes.sinSets')}</Text>
                 ) : (
                   <>
-                    <Text style={[styles.sectionTitle, { marginTop: 16 }]}>Sets</Text>
+                    <Text style={[styles.sectionTitle, { marginTop: 16 }]}>{t('detalleRes.sets')}</Text>
                     {sets.map(([l, v], i) => (
                       <View key={i} style={styles.setRow}>
-                        <Text style={styles.setLabel}>Set {i + 1}</Text>
+                        <Text style={styles.setLabel}>{t('detalleRes.set', { n: i + 1 })}</Text>
                         <Image source={getAvatarSource(fotoYo)} style={styles.setAvatar} />
                         <View style={styles.scoreBox}>
                           <Text style={styles.scoreNum}>{l ?? '-'}</Text>
@@ -192,13 +195,13 @@ export function DetalleResultadoScreen({ navigation, route }) {
               <>
                 <View style={styles.photosPlaceholder}>
                   <Ionicons name="image-outline" size={36} color={colors.textSecondary} />
-                  <Text style={styles.photosPlaceholderText}>Fotos del encuentro</Text>
+                  <Text style={styles.photosPlaceholderText}>{t('detalleRes.fotos')}</Text>
                 </View>
 
                 {/* Comentario: lo escribió quien publicó el resultado (lado local) */}
                 {d.comentario_rival ? (
                   <>
-                    <Text style={styles.sectionTitle}>Comentarios</Text>
+                    <Text style={styles.sectionTitle}>{t('detalleRes.comentarios')}</Text>
                     <View style={styles.comentarioCard}>
                       <Image source={getAvatarSource(d.foto_local)} style={styles.comentAvatar} />
                       <View style={{ flex: 1 }}>
@@ -211,7 +214,7 @@ export function DetalleResultadoScreen({ navigation, route }) {
                   </>
                 ) : null}
 
-                <Text style={styles.sectionTitle}>Detalles del partido</Text>
+                <Text style={styles.sectionTitle}>{t('detalleRes.detalles')}</Text>
                 <View style={styles.detalleCard}>
                   <Text style={styles.canchaName}>{d.nombre_cancha ?? '--'}</Text>
                   {d.cancha_direccion ? (

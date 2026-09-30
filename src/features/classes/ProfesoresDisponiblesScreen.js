@@ -4,13 +4,15 @@ import {
   SafeAreaView, Image, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { claseService } from '../../services/claseService';
 import { getAvatarSource } from '../../utils/avatars';
 import { resumenHorario, formatFechaClase } from './horasClase';
 
 function ProfesorCard({ profesor, onSolicitar, cargando }) {
-  const nombre = profesor.nombre ?? profesor.nombre_completo ?? profesor.name ?? 'Profesor';
+  const { t } = useTranslation();
+  const nombre = profesor.nombre ?? profesor.nombre_completo ?? profesor.name ?? t('clases.profesores.profesor');
 
   // CORREGIDO: la estrella es la calificación como profesor (antes mostraba el ranking)
   const calif = profesor.calificacion_promedio;
@@ -38,7 +40,7 @@ function ProfesorCard({ profesor, onSolicitar, cargando }) {
               <Text style={styles.califCount}> ({totalCalif})</Text>
             </Text>
           ) : (
-            <Text style={styles.sinCalif}> Sin calificaciones</Text>
+            <Text style={styles.sinCalif}> {t('clases.profesores.sinCalif')}</Text>
           )}
         </View>
 
@@ -48,13 +50,13 @@ function ProfesorCard({ profesor, onSolicitar, cargando }) {
             {ranking != null && (
               <View style={styles.extra}>
                 <Ionicons name="trophy-outline" size={12} color={colors.textSecondary} />
-                <Text style={styles.extraText}>Puesto {ranking}</Text>
+                <Text style={styles.extraText}>{t('clases.profesores.puesto', { n: ranking })}</Text>
               </View>
             )}
             {tieneTarifa && (
               <View style={styles.extra}>
                 <Ionicons name="cash-outline" size={12} color={colors.textSecondary} />
-                <Text style={styles.extraText}>S/ {Number(tarifa).toFixed(0)} / hora</Text>
+                <Text style={styles.extraText}>{t('clases.profesores.tarifa', { monto: Number(tarifa).toFixed(0) })}</Text>
               </View>
             )}
           </View>
@@ -68,7 +70,7 @@ function ProfesorCard({ profesor, onSolicitar, cargando }) {
       >
         {cargando
           ? <ActivityIndicator size="small" color={colors.textPrimary} />
-          : <Text style={styles.solicitarText}>Solicitar</Text>
+          : <Text style={styles.solicitarText}>{t('clases.profesores.solicitar')}</Text>
         }
       </TouchableOpacity>
     </View>
@@ -76,7 +78,8 @@ function ProfesorCard({ profesor, onSolicitar, cargando }) {
 }
 
 function SuccessScreen({ profesor, horario, onPress }) {
-  const nombre = (profesor.nombre ?? profesor.name ?? 'El profesor').split(' ')[0];
+  const { t } = useTranslation();
+  const nombre = (profesor.nombre ?? profesor.name ?? t('clases.profesores.elProfesor')).split(' ')[0];
   return (
     <View style={styles.successContainer}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -86,20 +89,21 @@ function SuccessScreen({ profesor, horario, onPress }) {
             style={styles.successAvatar}
           />
         </View>
-        <Text style={styles.successTitle}>{'¡Genial!\n'}{nombre} recibió tu solicitud</Text>
+        <Text style={styles.successTitle}>{t('clases.profesores.exitoTitulo', { nombre })}</Text>
         <Text style={styles.successSubtitle}>
-          {horario ? `Clase de ${horario.texto}. ` : ''}
-          Cuando la acepte podrán coordinar por el chat desde "Mis partidos → Clases".
+          {horario ? t('clases.profesores.claseDe', { horario: horario.texto }) : ''}
+          {t('clases.profesores.cuandoAcepte')}
         </Text>
       </View>
       <TouchableOpacity style={styles.accentBtn} onPress={onPress}>
-        <Text style={styles.accentBtnText}>Ir a mis partidos</Text>
+        <Text style={styles.accentBtnText}>{t('solicitudes.exito.irPartidos')}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 export function ProfesoresDisponiblesScreen({ navigation, route }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const { cancha, fecha, horas } = route?.params ?? {};
   const horario = resumenHorario(horas);   // { inicio, fin, duracionMinutos, texto }
 
@@ -140,7 +144,7 @@ export function ProfesoresDisponiblesScreen({ navigation, route }) {
       });
       setProfesorAceptado(profesor);
     } catch (e) {
-      Alert.alert('No se pudo solicitar', e.message ?? 'Intenta con otro horario o profesor.');
+      Alert.alert(t('clases.profesores.noSePudo'), e.message ?? t('clases.profesores.intentaOtro'));
       cargar(); // refresca por si el profesor ya no está disponible
     } finally {
       setSolicitandoId(null);
@@ -165,14 +169,14 @@ export function ProfesoresDisponiblesScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profesores disponibles</Text>
+        <Text style={styles.headerTitle}>{t('clases.profesores.titulo')}</Text>
       </View>
 
       {/* Resumen de la clase buscada (una sola vez, no repetido en cada tarjeta) */}
       <View style={styles.resumen}>
         <View style={styles.resumenItem}>
           <Ionicons name="location-outline" size={15} color={colors.textPrimary} />
-          <Text style={styles.resumenText} numberOfLines={1}>{cancha?.nombre ?? 'Cancha'}</Text>
+          <Text style={styles.resumenText} numberOfLines={1}>{cancha?.nombre ?? t('crear.cancha.nombre')}</Text>
         </View>
         <View style={styles.resumenItem}>
           <Ionicons name="calendar-outline" size={15} color={colors.textPrimary} />
@@ -193,9 +197,7 @@ export function ProfesoresDisponiblesScreen({ navigation, route }) {
           {profesores.length === 0 ? (
             <View style={styles.emptyCard}>
               <Ionicons name="school-outline" size={36} color={colors.textSecondary} />
-              <Text style={styles.emptyText}>
-                No hay profesores libres en ese horario. Prueba con otra hora o fecha.
-              </Text>
+              <Text style={styles.emptyText}>{t('clases.profesores.vacio')}</Text>
             </View>
           ) : (
             profesores.map((p, i) => {

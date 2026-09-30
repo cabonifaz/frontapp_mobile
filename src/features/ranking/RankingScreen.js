@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { useUsuario } from '../../hooks/useUsuario';
@@ -13,18 +14,19 @@ import { TIPOS_JUEGO } from '../../constants/maestro';
 import { SponsorLogo, formatMoneda, formatRangoFechas } from './ligaUtils';
 
 const MODALIDADES = [
-  { key: 'singles', label: 'Singles', idTipoJuego: TIPOS_JUEGO.SINGLES },
-  { key: 'dobles',  label: 'Dobles',  idTipoJuego: TIPOS_JUEGO.DOBLES },
+  { key: 'singles', label: 'partidos.singles', idTipoJuego: TIPOS_JUEGO.SINGLES },
+  { key: 'dobles',  label: 'partidos.dobles',  idTipoJuego: TIPOS_JUEGO.DOBLES },
 ];
 
 function EstadoInscripcion({ liga }) {
+  const { t } = useTranslation();
   const estado = liga.mi_estado_inscripcion;
   if (estado === 'INSC_ACTIVA') {
     return (
       <View style={[styles.miEstado, styles.miEstadoActivo]}>
         <Ionicons name="checkmark-circle" size={14} color={colors.primary} />
         <Text style={styles.miEstadoTextoOscuro}>
-          {liga.mi_posicion ? `Vas ${liga.mi_posicion}° · ${liga.mis_puntos ?? 0} pts` : 'Inscrito'}
+          {liga.mi_posicion ? t('ranking.vas', { pos: liga.mi_posicion, pts: liga.mis_puntos ?? 0 }) : t('ranking.inscrito')}
         </Text>
       </View>
     );
@@ -35,7 +37,7 @@ function EstadoInscripcion({ liga }) {
       <View style={styles.miEstado}>
         <Ionicons name="hourglass-outline" size={14} color="#FFFFFF" />
         <Text style={styles.miEstadoTexto}>
-          {Number(liga.soy_capitan ?? 0) === 1 ? 'Esperando a tu compañero' : 'Te invitaron a un equipo'}
+          {Number(liga.soy_capitan ?? 0) === 1 ? t('ranking.esperandoCompanero') : t('ranking.teInvitaron')}
         </Text>
       </View>
     );
@@ -44,7 +46,7 @@ function EstadoInscripcion({ liga }) {
     return (
       <View style={styles.miEstado}>
         <Ionicons name="time-outline" size={14} color="#FFFFFF" />
-        <Text style={styles.miEstadoTexto}>Pago en validación</Text>
+        <Text style={styles.miEstadoTexto}>{t('ranking.pagoValidacion')}</Text>
       </View>
     );
   }
@@ -53,7 +55,7 @@ function EstadoInscripcion({ liga }) {
     return (
       <View style={styles.miEstado}>
         <Ionicons name="lock-closed-outline" size={13} color="rgba(255,255,255,0.7)" />
-        <Text style={[styles.miEstadoTexto, { color: 'rgba(255,255,255,0.7)' }]}>Tu nivel es {nivel}</Text>
+        <Text style={[styles.miEstadoTexto, { color: 'rgba(255,255,255,0.7)' }]}>{t('ranking.tuNivel', { nivel })}</Text>
       </View>
     );
   }
@@ -61,6 +63,7 @@ function EstadoInscripcion({ liga }) {
 }
 
 function SponsorLiga({ liga }) {
+  const { t } = useTranslation();
   if (!liga.auspiciador_nombre) return null;
   const web = liga.auspiciador_sitio_web;
   return (
@@ -74,7 +77,7 @@ function SponsorLiga({ liga }) {
       >
         <SponsorLogo nombre={liga.auspiciador_nombre} logoUrl={liga.auspiciador_logo_url} size={40} width={76} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.ligaSponsorLabel}>Presentado por</Text>
+          <Text style={styles.ligaSponsorLabel}>{t('ranking.presentadoPor')}</Text>
           <Text style={styles.ligaSponsorNombre} numberOfLines={1}>{liga.auspiciador_nombre}</Text>
         </View>
         {web ? <Ionicons name="open-outline" size={16} color="rgba(255,255,255,0.5)" /> : null}
@@ -84,13 +87,14 @@ function SponsorLiga({ liga }) {
 }
 
 function LigaCard({ liga, onPress }) {
+  const { t } = useTranslation();
   const cupo = liga.cupo_maximo ? `${liga.inscritos}/${liga.cupo_maximo}` : `${liga.inscritos}`;
   return (
     <TouchableOpacity style={styles.ligaCard} activeOpacity={0.85} onPress={onPress}>
       <SponsorLiga liga={liga} />
       <View style={styles.ligaTop}>
         <View style={styles.nivelBlock}>
-          <Text style={styles.nivelLabel}>Nivel</Text>
+          <Text style={styles.nivelLabel}>{t('ranking.nivel')}</Text>
           <Text style={styles.nivelRango} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
             {liga.nivel_min}–{liga.nivel_max}
           </Text>
@@ -104,7 +108,7 @@ function LigaCard({ liga, onPress }) {
           </View>
           <View style={styles.ligaMetaRow}>
             <Ionicons name="people-outline" size={13} color="rgba(255,255,255,0.7)" />
-            <Text style={styles.ligaMeta}>{cupo} {Number(liga.es_dobles ?? 0) === 1 ? 'equipos' : 'jugadores'}</Text>
+            <Text style={styles.ligaMeta}>{cupo} {Number(liga.es_dobles ?? 0) === 1 ? t('ranking.equipos') : t('ranking.jugadores')}</Text>
             <Text style={styles.ligaMetaSep} />
             <Ionicons name="ticket-outline" size={13} color="rgba(255,255,255,0.7)" />
             <Text style={styles.ligaMeta}>{formatMoneda(liga.cuota_inscripcion, liga.moneda)}</Text>
@@ -118,7 +122,7 @@ function LigaCard({ liga, onPress }) {
       {liga.premio ? (
         <View style={styles.premioRow}>
           <Ionicons name="trophy" size={13} color={colors.accent} />
-          <Text style={styles.premioText} numberOfLines={1}>Premio: {liga.premio}</Text>
+          <Text style={styles.premioText} numberOfLines={1}>{t('ranking.premio', { premio: liga.premio })}</Text>
         </View>
       ) : null}
     </TouchableOpacity>
@@ -126,6 +130,7 @@ function LigaCard({ liga, onPress }) {
 }
 
 function ProximamenteCard({ titulo, subtitulo }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.proxCard}>
       <View style={styles.proxNivel}>
@@ -136,13 +141,14 @@ function ProximamenteCard({ titulo, subtitulo }) {
         {subtitulo ? <Text style={styles.proxSub}>{subtitulo}</Text> : null}
       </View>
       <View style={styles.proxBadge}>
-        <Text style={styles.proxBadgeText}>Próximamente</Text>
+        <Text style={styles.proxBadgeText}>{t('ranking.proximamente')}</Text>
       </View>
     </View>
   );
 }
 
 export function RankingScreen({ navigation }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const usuario = useUsuario();
   const [modalidad, setModalidad] = useState('singles');
   const [ligas, setLigas] = useState([]);
@@ -186,10 +192,10 @@ export function RankingScreen({ navigation }) {
       />
       <View style={styles.sheet}>
         <View style={styles.titleRow}>
-          <Text style={styles.pageTitle}>Ranking</Text>
+          <Text style={styles.pageTitle}>{t('ranking.titulo')}</Text>
           <TouchableOpacity style={styles.generalBtn} onPress={() => navigation.navigate('RankingGeneral')}>
             <Ionicons name="podium-outline" size={16} color={colors.textPrimary} />
-            <Text style={styles.generalBtnText}>Ranking general</Text>
+            <Text style={styles.generalBtnText}>{t('ranking.general')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -200,7 +206,7 @@ export function RankingScreen({ navigation }) {
               style={[styles.toggleBtn, modalidad === m.key && styles.toggleBtnActive]}
               onPress={() => setModalidad(m.key)}
             >
-              <Text style={[styles.toggleText, modalidad === m.key && styles.toggleTextActive]}>{m.label}</Text>
+              <Text style={[styles.toggleText, modalidad === m.key && styles.toggleTextActive]}>{t(m.label)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -216,16 +222,14 @@ export function RankingScreen({ navigation }) {
           >
             {activas.length === 0 && proximas.length === 0 ? (
               <ProximamenteCard
-                titulo={modalidad === 'dobles' ? 'Ranking de dobles' : 'Ligas de singles'}
-                subtitulo="Estamos preparando las primeras ligas."
+                titulo={modalidad === 'dobles' ? t('ranking.rankingDobles') : t('ranking.ligasSingles')}
+                subtitulo={t('ranking.preparando')}
               />
             ) : (
               <>
                 {activas.length > 0 && (
                   <Text style={styles.sectionHint}>
-                    {modalidad === 'dobles'
-                      ? 'Elige la liga de tu nivel, arma tu equipo con un amigo y reten a los demás equipos.'
-                      : 'Elige la liga de tu nivel, inscríbete y reta a los demás jugadores.'}
+                    {modalidad === 'dobles' ? t('ranking.hintDobles') : t('ranking.hintSingles')}
                   </Text>
                 )}
                 {activas.map(l => (
@@ -239,7 +243,7 @@ export function RankingScreen({ navigation }) {
                   <ProximamenteCard
                     key={l.id_liga}
                     titulo={l.nombre_oficial}
-                    subtitulo={`Nivel ${l.nivel_min}–${l.nivel_max}`}
+                    subtitulo={t('ranking.nivelRango', { min: l.nivel_min, max: l.nivel_max })}
                   />
                 ))}
               </>

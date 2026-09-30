@@ -6,6 +6,8 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { TABS } from '../../data/partidosData';
@@ -22,6 +24,18 @@ const AVATARES_LOCALES = {
   avatar_femenino_3:  require('../../../assets/avatar_femenino_3.png'),
 };
 
+// NUEVO (idiomas): valor interno de cada pestaña -> clave del texto visible
+const CLAVE_TAB = { 'Partidos': 'partidos.tabs.partidos', 'Clases': 'partidos.tabs.clases' };
+
+// NUEVO (idiomas): estados que llegan de la base (en español) -> clave de traducción.
+// Solo cambia el texto; los colores se siguen calculando con el valor original.
+const CLAVE_ESTADO = {
+  'pendiente': 'estados.pendiente', 'confirmado': 'estados.confirmado', 'finalizado': 'estados.finalizado',
+  'cancelado': 'estados.cancelado', 'buscando oponente': 'estados.buscandoOponente',
+  'solicitada': 'estados.solicitada', 'aceptada': 'estados.aceptada',
+  'completada': 'estados.completada', 'rechazada': 'estados.rechazada',
+};
+
 function fuenteAvatar(foto) {
   if (foto && (foto.startsWith('http://') || foto.startsWith('https://'))) return { uri: foto };
   if (foto && AVATARES_LOCALES[foto]) return AVATARES_LOCALES[foto];
@@ -32,10 +46,10 @@ function fuenteAvatar(foto) {
 }
 
 function formatSectionDate(dateStr) {
-  if (!dateStr) return 'Sin fecha';
+  if (!dateStr) return i18n.t('partidos.sinFecha');
   const d = new Date(dateStr);
-  const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const days = i18n.t('fechas.diasCortos', { returnObjects: true });
+  const months = i18n.t('fechas.mesesAbrev', { returnObjects: true });
   return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}, ${d.getFullYear()}`;
 }
 
@@ -43,7 +57,7 @@ function groupByDate(items) {
   const map = {};
   items.forEach(item => {
     const key = item.fecha_partido ?? 'Sin fecha';
-    if (!map[key]) map[key] = { section: formatSectionDate(key), items: [] };
+    if (!map[key]) map[key] = { section: formatSectionDate(item.fecha_partido), items: [] };
     map[key].items.push(item);
   });
   return Object.values(map);
@@ -53,18 +67,19 @@ function groupByDate(items) {
 function tipoDePartido(item) {
   if (item.categoria_tab === 'CLASE') return { clave: 'CLASE' };
   const esLiga = Number(item.es_liga ?? 0) === 1 || item.id_liga != null;
-  if (esLiga) return { clave: 'LIGA', texto: item.nombre_liga ?? 'Partido de liga' };
+  if (esLiga) return { clave: 'LIGA', texto: item.nombre_liga ?? i18n.t('partidos.partidoLiga') };
   const codigo = item.tipo_reto_codigo ?? '';
   const nombre = String(item.tipo_reto ?? '').toLowerCase();
-  if (codigo === 'TIPO_RANKEADO' || nombre.includes('rank')) return { clave: 'RANKEADO', texto: 'Rankeado' };
+  if (codigo === 'TIPO_RANKEADO' || nombre.includes('rank')) return { clave: 'RANKEADO', texto: i18n.t('partidos.rankeado') };
   // NUEVO: dobles
-  if (Number(item.es_dobles ?? 0) === 1) return { clave: 'AMISTOSO', texto: 'Amistoso · Dobles', dobles: true };
-  return { clave: 'AMISTOSO', texto: 'Amistoso' };
+  if (Number(item.es_dobles ?? 0) === 1) return { clave: 'AMISTOSO', texto: i18n.t('partidos.amistosoDobles'), dobles: true };
+  return { clave: 'AMISTOSO', texto: i18n.t('partidos.amistoso') };
 }
 
 function TipoChip({ tipo, numSets }) {
+  const { t } = useTranslation();
   if (tipo.clave === 'CLASE') return null;
-  const sets = Number(numSets) === 3 ? '2 de 3' : Number(numSets) === 5 ? '3 de 5' : null;
+  const sets = Number(numSets) === 3 ? t('partidos.sets3') : Number(numSets) === 5 ? t('partidos.sets5') : null;
 
   if (tipo.clave === 'LIGA') {
     return (
@@ -85,6 +100,7 @@ function TipoChip({ tipo, numSets }) {
 }
 
 function AppointmentCard({ item, onPress }) {
+  const { t } = useTranslation();
   const esClase     = item.categoria_tab === 'CLASE';
   const tipo        = tipoDePartido(item);
   const nombreRival = item.nombre_rival ?? item.rival ?? item.participante ?? null;
@@ -114,6 +130,9 @@ function AppointmentCard({ item, onPress }) {
   if (estadoStr === '2') etiquetaVisual = 'Confirmado';
   if (estadoStr === '3') etiquetaVisual = 'Finalizado';
   if (estadoStr === '4') etiquetaVisual = 'Cancelado';
+  // NUEVO (idiomas): texto del estado en el idioma elegido (si no se reconoce, se muestra tal cual)
+  const claveEstado = CLAVE_ESTADO[etiquetaVisual.trim().toLowerCase()];
+  const etiquetaTraducida = claveEstado ? t(claveEstado) : etiquetaVisual;
 
   return (
     <TouchableOpacity
@@ -139,7 +158,7 @@ function AppointmentCard({ item, onPress }) {
           <View style={{ flex: 1 }}>
             <View style={styles.nameRow}>
               <Text style={styles.cardName} numberOfLines={1}>
-                {nombreRival ?? (esClase ? 'Clase' : 'Buscando rival')}
+                {nombreRival ?? (esClase ? t('partidos.clase') : t('partidos.buscandoRival'))}
               </Text>
               {rankingRival != null && (
                 <View style={styles.rankRow}>
@@ -153,7 +172,7 @@ function AppointmentCard({ item, onPress }) {
 
           {/* Badge de estado */}
           <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-            <Text style={[styles.statusText, { color: statusTxt }]}>{etiquetaVisual}</Text>
+            <Text style={[styles.statusText, { color: statusTxt }]}>{etiquetaTraducida}</Text>
           </View>
         </View>
 
@@ -193,6 +212,7 @@ function Section({ data, onPressItem }) {
 }
 
 export function PartidosScreen({ navigation }) {
+  const { t, i18n: i18nHook } = useTranslation();   // NUEVO: idiomas
   const usuario = useUsuario();
   const [activeTab, setActiveTab] = useState('Partidos');
   const [rawItems, setRawItems] = useState([]);
@@ -213,9 +233,10 @@ export function PartidosScreen({ navigation }) {
     }, [])
   );
 
+  // i18nHook.language en las dependencias: al cambiar de idioma se rehacen las fechas de sección
   const partidos = useMemo(
     () => groupByDate(rawItems.filter(r => r.categoria_tab === 'PARTIDO')),
-    [rawItems]
+    [rawItems, i18nHook.language]
   );
 
   // Clases SOLICITADAS: solo visibles para el alumno que la pidió.
@@ -231,9 +252,10 @@ export function PartidosScreen({ navigation }) {
       return true;
     });
     return groupByDate(filtered);
-  }, [rawItems, userId]);
+  }, [rawItems, userId, i18nHook.language]);
 
   const currentData = activeTab === 'Partidos' ? partidos : clases;
+  const tituloTab = (tab) => (CLAVE_TAB[tab] ? t(CLAVE_TAB[tab]) : tab);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -248,17 +270,17 @@ export function PartidosScreen({ navigation }) {
       />
       <View style={styles.sheet}>
         <View style={styles.tabBar}>
-          {TABS.map((t) => (
-            <TouchableOpacity key={t} style={styles.tabItem} onPress={() => setActiveTab(t)}>
-              <Text style={[styles.tabText, activeTab === t && styles.tabTextActive]}>{t}</Text>
-              {activeTab === t && <View style={styles.tabIndicator} />}
+          {TABS.map((tab) => (
+            <TouchableOpacity key={tab} style={styles.tabItem} onPress={() => setActiveTab(tab)}>
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tituloTab(tab)}</Text>
+              {activeTab === tab && <View style={styles.tabIndicator} />}
             </TouchableOpacity>
           ))}
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} style={{ paddingHorizontal: 20 }}>
           <View style={styles.titleRow}>
-            <Text style={styles.pageTitle}>{activeTab}</Text>
+            <Text style={styles.pageTitle}>{tituloTab(activeTab)}</Text>
             <TouchableOpacity
               style={styles.solicitudesBtn}
               onPress={() => navigation.navigate('MisSolicitudes', {
@@ -266,7 +288,7 @@ export function PartidosScreen({ navigation }) {
               })}
             >
               <Ionicons name="people-outline" size={16} color={colors.primary} />
-              <Text style={styles.solicitudesBtnText}>Solicitudes</Text>
+              <Text style={styles.solicitudesBtnText}>{t('partidos.solicitudes')}</Text>
             </TouchableOpacity>
           </View>
           {loading ? (
@@ -274,7 +296,9 @@ export function PartidosScreen({ navigation }) {
           ) : currentData.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="calendar-outline" size={48} color={colors.textSecondary} />
-              <Text style={styles.emptyText}>No tienes {activeTab.toLowerCase()} programados</Text>
+              <Text style={styles.emptyText}>
+                {activeTab === 'Clases' ? t('partidos.sinClases') : t('partidos.sinPartidos')}
+              </Text>
             </View>
           ) : (
             <Section

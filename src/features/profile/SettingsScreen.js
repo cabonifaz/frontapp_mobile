@@ -1,25 +1,28 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { authService } from '../../services/authService';
+import { SelectorIdioma } from '../../components/common/SelectorIdioma';
 
 export function SettingsScreen({ navigation }) {
+  const { t } = useTranslation();
 
   // Cierre de sesión normal (Un solo clic para volver a entrar)
   async function handleLogout() {
     Alert.alert(
-      "Cerrar sesión",
-      "¿Deseas salir? Al volver podrás ingresar de inmediato con un solo clic.",
+      t('ajustes.cerrarSesion'),
+      t('ajustes.cerrarSesionMensaje'),
       [
-        { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Salir", 
+        { text: t('comun.cancelar'), style: 'cancel' },
+        {
+          text: t('ajustes.salir'),
           onPress: async () => {
             await authService.logout();
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-          } 
-        }
+          },
+        },
       ]
     );
   }
@@ -27,18 +30,18 @@ export function SettingsScreen({ navigation }) {
   // Cambio de cuenta (Obliga a elegir otra cuenta de Google o Facebook)
   async function handleSwitchAccount() {
     Alert.alert(
-      "Cambiar de cuenta",
-      "Se cerrará la sesión de Google/Facebook en este dispositivo para que puedas elegir otra cuenta.",
+      t('ajustes.cambiarCuenta'),
+      t('ajustes.cambiarCuentaMensaje'),
       [
-        { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Cambiar cuenta", 
-          style: "destructive",
+        { text: t('comun.cancelar'), style: 'cancel' },
+        {
+          text: t('ajustes.cambiarCuentaBoton'),
+          style: 'destructive',
           onPress: async () => {
             await authService.logoutAndSwitch();
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-          } 
-        }
+          },
+        },
       ]
     );
   }
@@ -49,15 +52,18 @@ export function SettingsScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Configuración</Text>
+        <Text style={styles.title}>{t('ajustes.titulo')}</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* NUEVO: idioma de la aplicación */}
+        <SelectorIdioma />
+
         <TouchableOpacity style={styles.optionRow} onPress={() => {}}>
           <View style={styles.optionLeft}>
             <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
-            <Text style={styles.optionText}>Notificaciones</Text>
+            <Text style={styles.optionText}>{t('ajustes.notificaciones')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -65,7 +71,7 @@ export function SettingsScreen({ navigation }) {
         <TouchableOpacity style={styles.optionRow} onPress={() => {}}>
           <View style={styles.optionLeft}>
             <Ionicons name="lock-closed-outline" size={22} color={colors.textPrimary} />
-            <Text style={styles.optionText}>Privacidad y Seguridad</Text>
+            <Text style={styles.optionText}>{t('ajustes.privacidad')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
@@ -75,15 +81,15 @@ export function SettingsScreen({ navigation }) {
         {/* 1. BOTÓN CERRAR SESIÓN (Mantiene credenciales de redes) */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={20} color={colors.textPrimary} />
-          <Text style={styles.logoutText}>Cerrar sesión</Text>
+          <Text style={styles.logoutText}>{t('ajustes.cerrarSesion')}</Text>
         </TouchableOpacity>
 
         {/* 2. BOTÓN CAMBIAR DE CUENTA (Limpia credenciales de redes) */}
         <TouchableOpacity style={styles.switchBtn} onPress={handleSwitchAccount} activeOpacity={0.8}>
           <Ionicons name="swap-horizontal-outline" size={20} color="#E53935" />
-          <Text style={styles.switchText}>Cambiar de cuenta</Text>
+          <Text style={styles.switchText}>{t('ajustes.cambiarCuenta')}</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

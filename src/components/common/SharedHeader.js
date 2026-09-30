@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { useUsuario } from '../../hooks/useUsuario';
 
@@ -22,6 +23,7 @@ function formatCalif(valor) {
 }
 
 export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, puntos, fotoPerfil, genero }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   // Las calificaciones SIEMPRE salen del hook (menú principal), no del prop:
   // algunas pantallas pasan en `calificacion` el promedio de profesor (0),
   // lo que mostraba "0.0" aunque el jugador tuviera calificaciones.
@@ -55,11 +57,11 @@ export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, pu
       <View style={styles.left}>
         <Image source={obtenerFoto()} style={styles.avatar} />
         <View>
-          <Text style={styles.sport}>{deporte ?? 'Frontón'}</Text>
-          <Text style={styles.name}>Hola {nombre ?? '...'}</Text>
+          <Text style={styles.sport}>{deporte ?? t('deportes.fronton')}</Text>
+          <Text style={styles.name}>{t('header.hola', { nombre: nombre ?? '...' })}</Text>
           <View style={styles.statsRow}>
             <Ionicons name="trophy" size={14} color="#DDDDDD" />
-            <Text style={styles.statText}> {ranking ?? 'N/R'}</Text>
+            <Text style={styles.statText}> {ranking ?? t('header.sinRanking')}</Text>
             <Text style={{ width: 12 }} />
             {/* Calificación como jugador */}
             <Ionicons name="star" size={14} color="#DDDDDD" />

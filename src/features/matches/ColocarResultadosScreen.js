@@ -4,6 +4,7 @@ import {
   SafeAreaView, Image, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import api from '../../services/api';
 import { resultadoService } from '../../services/resultadoService';
@@ -35,9 +36,10 @@ async function revisarResultado(idPartido, sets, calificacion) {
 }
 
 function ScoreRow({ index, myScore, rivalScore, onChangeMyScore, onChangeRivalScore, readonly }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.scoreRow}>
-      <Text style={styles.setLabel}>Set {index + 1}</Text>
+      <Text style={styles.setLabel}>{t('colocar.set', { n: index + 1 })}</Text>
       <View style={styles.scoreBoxes}>
         <TextInput
           style={[styles.scoreInput, readonly && styles.scoreInputReadonly]}
@@ -85,6 +87,7 @@ function StarRating({ rating, onRate, size = 32 }) {
 
 // Resumen de sets desde MI punto de vista
 function ResumenSets({ sets, yoNombre, rivalNombre }) {
+  const { t } = useTranslation();
   const misSets   = sets.filter(s => Number(s.my) > Number(s.rival)).length;
   const susSets   = sets.filter(s => Number(s.rival) > Number(s.my)).length;
   return (
@@ -103,12 +106,12 @@ function ResumenSets({ sets, yoNombre, rivalNombre }) {
       <View style={styles.confirmScoreCard}>
         {sets.map((s, i) => (
           <View key={i} style={styles.confirmScoreRow}>
-            <Text style={styles.confirmSetLabel}>Set {i + 1}</Text>
+            <Text style={styles.confirmSetLabel}>{t('colocar.set', { n: i + 1 })}</Text>
             <Text style={styles.confirmScoreText}>{s.my} : {s.rival}</Text>
           </View>
         ))}
         {sets.length === 0 && (
-          <Text style={[styles.confirmSetLabel, { textAlign: 'center' }]}>Sin sets registrados</Text>
+          <Text style={[styles.confirmSetLabel, { textAlign: 'center' }]}>{t('colocar.sinSets')}</Text>
         )}
       </View>
     </>
@@ -117,32 +120,33 @@ function ResumenSets({ sets, yoNombre, rivalNombre }) {
 
 // Pantalla para quien debe revisar: confirmar (con estrellas) o corregir
 function ConfirmationView({ sets, rivalName, enRevision, puedeCorregir, rating, onRate, onCorregir, onAgree, loading }) {
+  const { t } = useTranslation();
   return (
     <ScrollView contentContainerStyle={styles.confirmContainer} showsVerticalScrollIndicator={false}>
       <Text style={styles.confirmTitle}>
         {enRevision
-          ? `${rivalName} corrigió el resultado. ¿Estás de acuerdo?`
-          : `${rivalName} publicó este resultado. ¿Estás de acuerdo?`}
+          ? t('colocar.confirmCorrigio', { nombre: rivalName })
+          : t('colocar.confirmPublico', { nombre: rivalName })}
       </Text>
 
-      <ResumenSets sets={sets} yoNombre="Tú" rivalNombre={rivalName} />
+      <ResumenSets sets={sets} yoNombre={t('colocar.tu')} rivalNombre={rivalName} />
 
-      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>¿Qué tal fue jugar con {rivalName}?</Text>
+      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>{t('colocar.queTal', { nombre: rivalName })}</Text>
       <StarRating rating={rating} onRate={onRate} />
-      <Text style={styles.hintText}>Opcional. Tu calificación se suma a su perfil de jugador.</Text>
+      <Text style={styles.hintText}>{t('colocar.calificacionHint')}</Text>
 
       <View style={styles.confirmBtns}>
         <TouchableOpacity style={styles.agreeBtn} onPress={onAgree} disabled={loading}>
           {loading
             ? <ActivityIndicator size="small" color={colors.primary} />
-            : <Text style={styles.agreeBtnText}>Sí, de acuerdo</Text>}
+            : <Text style={styles.agreeBtnText}>{t('colocar.deAcuerdo')}</Text>}
         </TouchableOpacity>
         {puedeCorregir ? (
           <TouchableOpacity style={styles.reviewBtn} onPress={onCorregir} disabled={loading}>
-            <Text style={styles.reviewBtnText}>No, corregir resultado</Text>
+            <Text style={styles.reviewBtnText}>{t('colocar.corregir')}</Text>
           </TouchableOpacity>
         ) : (
-          <Text style={styles.hintText}>Se alcanzó el máximo de correcciones para este partido.</Text>
+          <Text style={styles.hintText}>{t('colocar.maxCorrecciones')}</Text>
         )}
       </View>
     </ScrollView>
@@ -151,39 +155,41 @@ function ConfirmationView({ sets, rivalName, enRevision, puedeCorregir, rating, 
 
 // Pantalla para quien hizo la última edición
 function EsperandoView({ sets, rivalName, enRevision, onVolver }) {
+  const { t } = useTranslation();
   return (
     <ScrollView contentContainerStyle={styles.confirmContainer} showsVerticalScrollIndicator={false}>
       <View style={styles.waitingIcon}>
         <Ionicons name="hourglass-outline" size={34} color={colors.textPrimary} />
       </View>
-      <Text style={styles.confirmTitle}>Esperando a {rivalName}</Text>
+      <Text style={styles.confirmTitle}>{t('colocar.esperandoA', { nombre: rivalName })}</Text>
       <Text style={styles.waitingSubtitle}>
         {enRevision
-          ? `Enviaste una corrección. ${rivalName} debe confirmarla o corregirla.`
-          : `Publicaste el resultado. ${rivalName} debe confirmarlo o corregirlo.`}
+          ? t('colocar.enviasteCorreccion', { nombre: rivalName })
+          : t('colocar.publicaste', { nombre: rivalName })}
       </Text>
-      <ResumenSets sets={sets} yoNombre="Tú" rivalNombre={rivalName} />
+      <ResumenSets sets={sets} yoNombre={t('colocar.tu')} rivalNombre={rivalName} />
       <TouchableOpacity style={[styles.reviewBtn, { marginTop: 24 }]} onPress={onVolver}>
-        <Text style={styles.reviewBtnText}>Volver</Text>
+        <Text style={styles.reviewBtnText}>{t('colocar.volver')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
 export function ColocarResultadosScreen({ navigation, route }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const partido = route?.params?.partido ?? {};
   const idPartido = partido.id_partido ?? partido.id ?? null;
   const esCreador = partido.esCreador ?? true;
 
   const rival = {
     id:      partido.rival?.id      ?? partido.id_rival      ?? partido.id_usuario_rival ?? null,
-    name:    partido.rival?.name    ?? partido.name           ?? partido.nombre_rival     ?? 'Rival',
+    name:    partido.rival?.name    ?? partido.name           ?? partido.nombre_rival     ?? t('colocar.rival'),
     avatar:  partido.rival?.avatar  ?? partido.avatar         ?? partido.foto_rival       ?? null,
     pts:     partido.rival?.pts     ?? partido.pts            ?? partido.puntos_rival     ?? 0,
     ranking: partido.rival?.ranking ?? partido.ranking        ?? partido.ranking_rival    ?? '--',
   };
   const yo = {
-    name:   partido.yo?.name   ?? partido.nombre_yo ?? 'Tú',
+    name:   partido.yo?.name   ?? partido.nombre_yo ?? t('colocar.tu'),
     avatar: partido.yo?.avatar ?? partido.avatar_yo ?? null,
     pts:    partido.yo?.pts    ?? partido.puntos_yo  ?? 0,
   };
@@ -312,9 +318,9 @@ export function ColocarResultadosScreen({ navigation, route }) {
       if (modoCorreccion) {
         await revisarResultado(idPartido, sets, rating);
         Alert.alert(
-          'Corrección enviada',
-          `${rivalFirst} deberá confirmar o corregir el resultado.`,
-          [{ text: 'Entendido', onPress: () => navigation.goBack() }]
+          t('colocar.correccionEnviada'),
+          t('colocar.correccionEnviadaMensaje', { nombre: rivalFirst }),
+          [{ text: t('colocar.entendido'), onPress: () => navigation.goBack() }]
         );
         return;
       }
@@ -329,13 +335,13 @@ export function ColocarResultadosScreen({ navigation, route }) {
       }
 
       Alert.alert(
-        '¡Resultado publicado!',
-        'Se ha enviado el resultado. Queda pendiente de la confirmación de tu rival.',
-        [{ text: 'Entendido', onPress: () => navigation.goBack() }]
+        t('colocar.publicado'),
+        t('colocar.publicadoMensaje'),
+        [{ text: t('colocar.entendido'), onPress: () => navigation.goBack() }]
       );
     } catch (e) {
-      const mensajeError = e.response?.data?.mensaje || e.message || 'No se pudo enviar el resultado.';
-      Alert.alert('Error', mensajeError);
+      const mensajeError = e.response?.data?.mensaje || e.message || t('colocar.errorEnviar');
+      Alert.alert(t('comun.error'), mensajeError);
     } finally {
       setPublicando(false);
     }
@@ -345,11 +351,11 @@ export function ColocarResultadosScreen({ navigation, route }) {
     try {
       setConfirmando(true);
       await confirmarResultado(idPartido, true, rating);
-      Alert.alert('Resultado confirmado', '¡Gracias! El resultado quedó registrado.', [
-        { text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Partidos' }) },
+      Alert.alert(t('colocar.confirmado'), t('colocar.confirmadoMensaje'), [
+        { text: t('colocar.ok'), onPress: () => navigation.navigate('MainTabs', { screen: 'Partidos' }) },
       ]);
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'No se pudo confirmar el resultado.');
+      Alert.alert(t('comun.error'), e.message ?? t('colocar.errorConfirmar'));
     } finally {
       setConfirmando(false);
     }
@@ -413,7 +419,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
         >
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{modoCorreccion ? 'Corregir resultado' : 'Resultados'}</Text>
+        <Text style={styles.headerTitle}>{modoCorreccion ? t('colocar.tituloCorregir') : t('colocar.titulo')}</Text>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -422,18 +428,16 @@ export function ColocarResultadosScreen({ navigation, route }) {
           {modoCorreccion ? (
             <View style={styles.correccionBanner}>
               <Ionicons name="create-outline" size={18} color={colors.textPrimary} />
-              <Text style={styles.correccionText}>
-                Corrige los sets que estén mal. {rivalFirst} deberá confirmar tu corrección.
-              </Text>
+              <Text style={styles.correccionText}>{t('colocar.bannerCorreccion', { nombre: rivalFirst })}</Text>
             </View>
           ) : (
             <>
-              <Text style={styles.sectionTitle}>Tipo de resultado</Text>
+              <Text style={styles.sectionTitle}>{t('colocar.tipoResultado')}</Text>
               <View style={styles.tipoToggle}>
                 {[
-                  { key: 'normal',   label: 'Normal' },
-                  { key: 'walkover', label: 'Walkover' },
-                  { key: 'abandono', label: 'Abandono' },
+                  { key: 'normal',   label: t('colocar.normal') },
+                  { key: 'walkover', label: t('colocar.walkover') },
+                  { key: 'abandono', label: t('colocar.abandono') },
                 ].map(op => (
                   <TouchableOpacity
                     key={op.key}
@@ -459,10 +463,9 @@ export function ColocarResultadosScreen({ navigation, route }) {
           {!mostrarFormulario && (
             <View style={styles.waitingContainer}>
               <Ionicons name="time-outline" size={36} color={colors.textSecondary} style={{ marginBottom: 10 }} />
-              <Text style={styles.waitingTitle}>Esperando resultados</Text>
+              <Text style={styles.waitingTitle}>{t('colocar.esperandoResultados')}</Text>
               <Text style={styles.waitingSubtitle}>
-                {esDoblesPartido ? `Solo ${rivalFirst} pueden` : `Solo ${rivalFirst} puede`} ingresar los resultados.
-                Cambia a Walkover o Abandono si aplica.
+                {t(esDoblesPartido ? 'colocar.soloPueden' : 'colocar.soloPuede', { nombre: rivalFirst })}
               </Text>
             </View>
           )}
@@ -471,7 +474,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
           {!modoCorreccion && tipoResultado !== 'normal' && (
             <View style={styles.jugadorSelector}>
               <Text style={styles.jugadorSelectorLabel}>
-                {tipoResultado === 'walkover' ? '¿Quién no se presentó?' : '¿Quién abandonó?'}
+                {tipoResultado === 'walkover' ? t('colocar.quienNoSePresento') : t('colocar.quienAbandono')}
               </Text>
               <View style={styles.jugadorBtns}>
                 {[
@@ -523,7 +526,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
               {confirmedSets.length > 0 && (
                 <View style={styles.matchResultRow}>
                   <Text style={styles.matchResultText}>{myWins} - {rivalWins}</Text>
-                  <Text style={styles.matchResultSub}>Tú · {rivalFirst}</Text>
+                  <Text style={styles.matchResultSub}>{t('colocar.resultadoSub', { nombre: rivalFirst })}</Text>
                 </View>
               )}
 
@@ -537,7 +540,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
                   onPress={() => { setConfirmedSets([]); setCurMy(''); setCurRival(''); }}
                 >
                   <Ionicons name="refresh" size={15} color={colors.textSecondary} />
-                  <Text style={styles.resetText}>Volver a ingresar los sets</Text>
+                  <Text style={styles.resetText}>{t('colocar.reingresar')}</Text>
                 </TouchableOpacity>
               )}
 
@@ -571,16 +574,14 @@ export function ColocarResultadosScreen({ navigation, route }) {
                     disabled={!canConfirmSet}
                   >
                     <Text style={[styles.confirmSetBtnText, !canConfirmSet && styles.confirmBtnTextDisabled]}>
-                      Confirmar Set {currentSetNum}
+                      {t('colocar.confirmarSet', { n: currentSetNum })}
                     </Text>
                   </TouchableOpacity>
                 </>
               )}
 
               {!modoCorreccion && tipoResultado === 'abandono' && (
-                <Text style={styles.abandonoNote}>
-                  Los sets vacíos se registran 15-0 a favor del jugador que continuó.
-                </Text>
+                <Text style={styles.abandonoNote}>{t('colocar.notaAbandono')}</Text>
               )}
             </>
           )}
@@ -588,18 +589,16 @@ export function ColocarResultadosScreen({ navigation, route }) {
           {/* Calificación (+ comentario al publicar) */}
           {mostrarFormulario && (matchDone || (!modoCorreccion && tipoResultado !== 'normal')) && (
             <>
-              <Text style={styles.sectionTitle}>¿Qué tal fue jugar con {rivalFirst}?</Text>
+              <Text style={styles.sectionTitle}>{t('colocar.queTal', { nombre: rivalFirst })}</Text>
               <StarRating rating={rating} onRate={setRating} />
-              <Text style={[styles.hintText, { marginTop: -12, marginBottom: 20 }]}>
-                Opcional. Se suma a su calificación como jugador.
-              </Text>
+              <Text style={[styles.hintText, { marginTop: -12, marginBottom: 20 }]}>{t('colocar.calificacionHint2')}</Text>
 
               {!modoCorreccion && (
                 <>
-                  <Text style={styles.sectionTitle}>Deja un comentario de tu rival</Text>
+                  <Text style={styles.sectionTitle}>{t('colocar.comentarioTitulo')}</Text>
                   <TextInput
                     style={styles.commentInput}
-                    placeholder="50 palabras como máximo."
+                    placeholder={t('colocar.comentarioPlaceholder')}
                     placeholderTextColor={colors.textSecondary}
                     multiline
                     numberOfLines={4}
@@ -608,10 +607,10 @@ export function ColocarResultadosScreen({ navigation, route }) {
                     textAlignVertical="top"
                   />
 
-                  <Text style={styles.sectionTitle}>Sube fotos del encuentro</Text>
+                  <Text style={styles.sectionTitle}>{t('colocar.fotosTitulo')}</Text>
                   <View style={styles.photoBox}>
                     <Ionicons name="image-outline" size={32} color={colors.textSecondary} />
-                    <Text style={styles.photoBoxText}>Toca para subir fotos</Text>
+                    <Text style={styles.photoBoxText}>{t('colocar.fotosTexto')}</Text>
                   </View>
                 </>
               )}
@@ -634,7 +633,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
                 color={canPublish ? colors.primary : colors.textSecondary}
               />
               <Text style={[styles.confirmBtnText, !canPublish && styles.confirmBtnTextDisabled]}>
-                {publicando ? 'Enviando...' : modoCorreccion ? 'Enviar corrección' : 'Confirmar resultados'}
+                {publicando ? t('colocar.enviando') : modoCorreccion ? t('colocar.enviarCorreccion') : t('colocar.confirmarResultados')}
               </Text>
             </TouchableOpacity>
           </View>

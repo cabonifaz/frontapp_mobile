@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { partidoService } from '../../services/partidoService';
 import { authService } from '../../services/authService';
@@ -16,6 +17,7 @@ const COVER_H = 200;
 const AVATAR_SIZE = 90;
 
 export function DetallePartidoScreen({ navigation, route }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const insets = useSafeAreaInsets();
   const itemInicial = route?.params?.partido ?? {};
   const [item, setItem] = useState(itemInicial);
@@ -88,7 +90,7 @@ export function DetallePartidoScreen({ navigation, route }) {
 
   const datosCreador = {
     id:      idCreador,
-    name:    item.creador ?? item.nombre_yo ?? 'Creador',
+    name:    item.creador ?? item.nombre_yo ?? t('detalle.creador'),
     ranking: item.ranking_creador ?? item.ranking_yo ?? '--',
     pts:     item.puntos_creador ?? item.puntos_yo ?? 0,
     avatar:  item.foto_perfil_url_creador ?? item.foto_yo ?? null,
@@ -96,7 +98,7 @@ export function DetallePartidoScreen({ navigation, route }) {
 
   const datosParticipante = {
     id:      item.id_usuario_rival ?? item.id_rival ?? item.id_usuario,
-    name:    item.participante ?? item.rival ?? item.nombre_rival ?? 'Participante',
+    name:    item.participante ?? item.rival ?? item.nombre_rival ?? t('detalle.participante'),
     ranking: item.ranking_rival ?? '--',
     pts:     item.puntos_rival ?? 0,
     avatar:  item.foto_perfil_url_rival ?? item.foto_perfil_url_rival_alt ?? item.foto_rival ?? null,
@@ -107,7 +109,7 @@ export function DetallePartidoScreen({ navigation, route }) {
 
   const partido = {
     id:       partidoId,
-    club:     item.nombre_cancha ?? item.cancha ?? item.lugar ?? item.club ?? 'Cancha',
+    club:     item.nombre_cancha ?? item.cancha ?? item.lugar ?? item.club ?? t('detalle.cancha'),
     address:  item.direccion_cancha ?? item.direccion ?? '',
     date:     limpiarFecha(item.fecha_partido ?? item.fecha),
     time:     limpiarHora(item.hora_partido ?? item.hora),
@@ -129,7 +131,7 @@ export function DetallePartidoScreen({ navigation, route }) {
   const esRankeado  = codigoTipo === 'TIPO_RANKEADO' || String(item.tipo_reto ?? '').toLowerCase().includes('rank');
   const esRetoLiga  = esLiga || esRankeado;
   const numSets     = Number(item.num_sets ?? 5);
-  const formatoSets = numSets === 3 ? '2 de 3 sets' : '3 de 5 sets';
+  const formatoSets = numSets === 3 ? t('detalle.formato3') : t('detalle.formato5');
 
   // NUEVO: dobles
   const esDoblesPartido = Number(item.es_dobles ?? 0) === 1;
@@ -144,17 +146,17 @@ export function DetallePartidoScreen({ navigation, route }) {
   const yoEsLocal = item.soy_equipo_local != null ? Number(item.soy_equipo_local) === 1 : esMiCreacion;
 
   async function handleCancelar() {
-    Alert.alert('Cancelar partido', '¿Seguro que quieres cancelar este partido?', [
-      { text: 'No', style: 'cancel' },
+    Alert.alert(t('solicitudes.alertas.cancelarPartido'), t('solicitudes.alertas.cancelarPartidoMensaje'), [
+      { text: t('solicitudes.alertas.no'), style: 'cancel' },
       {
-        text: 'Sí, cancelar', style: 'destructive',
+        text: t('solicitudes.alertas.siCancelar'), style: 'destructive',
         onPress: async () => {
           try {
             setCancelando(true);
             if (partido.id) await partidoService.cancelar(partido.id);
             navigation.goBack();
           } catch (e) {
-            Alert.alert('Error', e.message ?? 'No se pudo cancelar el partido.');
+            Alert.alert(t('comun.error'), e.message ?? t('solicitudes.alertas.errorCancelar'));
           } finally {
             setCancelando(false);
           }
@@ -171,12 +173,12 @@ export function DetallePartidoScreen({ navigation, route }) {
         await partidoService.responderReto(partido.id, aceptar);
         if (aceptar) {
           setItem(prev => ({ ...prev, estado_partido: 30 })); // Confirmado
-          Alert.alert('Reto aceptado', `El partido con ${rivalNombre} está confirmado. Coordinen los detalles por el chat.`);
+          Alert.alert(t('detalle.retoAceptado'), t('detalle.retoAceptadoMensaje', { nombre: rivalNombre }));
         } else {
           navigation.goBack();
         }
       } catch (e) {
-        Alert.alert('Error', e.message ?? 'No se pudo responder el reto.');
+        Alert.alert(t('comun.error'), e.message ?? t('solicitudes.alertas.errorResponderReto'));
       } finally {
         setRespondiendo(false);
       }
@@ -185,9 +187,9 @@ export function DetallePartidoScreen({ navigation, route }) {
     if (aceptar) {
       ejecutar();
     } else {
-      Alert.alert('Rechazar reto', '¿Seguro que quieres rechazar este reto?', [
-        { text: 'No', style: 'cancel' },
-        { text: 'Sí, rechazar', style: 'destructive', onPress: ejecutar },
+      Alert.alert(t('detalle.rechazarReto'), t('detalle.rechazarRetoMensaje'), [
+        { text: t('solicitudes.alertas.no'), style: 'cancel' },
+        { text: t('solicitudes.alertas.siRechazar'), style: 'destructive', onPress: ejecutar },
       ]);
     }
   }
@@ -199,7 +201,7 @@ export function DetallePartidoScreen({ navigation, route }) {
         setRespondiendo(true);
         const res = await doblesService.responderInvitacion(partido.id, aceptar);
         if (!aceptar) { navigation.goBack(); return; }
-        Alert.alert('¡Listo!', res?.mensaje ?? '');
+        Alert.alert(t('solicitudes.alertas.listo'), res?.mensaje ?? '');
         const [det, lista] = await Promise.all([
           partidoService.obtenerDetalle(partido.id).catch(() => null),
           doblesService.participantes(partido.id).catch(() => []),
@@ -207,15 +209,15 @@ export function DetallePartidoScreen({ navigation, route }) {
         if (det) setItem(prev => ({ ...prev, ...(det?.data ?? det) }));
         setJugadores(Array.isArray(lista) ? lista : []);
       } catch (e) {
-        Alert.alert('Error', e.message ?? 'No se pudo responder la invitación.');
+        Alert.alert(t('comun.error'), e.message ?? t('solicitudes.alertas.errorInvitacion'));
       } finally {
         setRespondiendo(false);
       }
     };
     if (aceptar) return ejecutar();
-    Alert.alert('Rechazar invitación', esLiga ? 'Se rechazará el reto de liga para tu equipo.' : 'El partido se cancelará para todos.', [
-      { text: 'No', style: 'cancel' },
-      { text: 'Sí, rechazar', style: 'destructive', onPress: ejecutar },
+    Alert.alert(t('solicitudes.alertas.rechazarInvitacion'), esLiga ? t('solicitudes.alertas.avisoRivalLiga') : t('solicitudes.alertas.avisoCancelaTodos'), [
+      { text: t('solicitudes.alertas.no'), style: 'cancel' },
+      { text: t('solicitudes.alertas.siRechazar'), style: 'destructive', onPress: ejecutar },
     ]);
   }
 
@@ -253,15 +255,15 @@ export function DetallePartidoScreen({ navigation, route }) {
           <View style={styles.tipoLiga}>
             <Ionicons name="trophy" size={18} color={colors.accent} />
             <View style={{ flex: 1 }}>
-              <Text style={styles.tipoLigaLabel}>Partido de liga · {formatoSets}</Text>
-              <Text style={styles.tipoLigaNombre} numberOfLines={2}>{item.nombre_liga ?? 'Liga de ranking'}</Text>
+              <Text style={styles.tipoLigaLabel}>{t('detalle.partidoLiga', { formato: formatoSets })}</Text>
+              <Text style={styles.tipoLigaNombre} numberOfLines={2}>{item.nombre_liga ?? t('detalle.ligaRanking')}</Text>
             </View>
           </View>
         ) : (
           <View style={styles.tipoAmistoso}>
             <Ionicons name={esRankeado ? 'ribbon-outline' : 'happy-outline'} size={16} color={colors.textPrimary} />
             <Text style={styles.tipoAmistosoText}>
-              {esRankeado ? 'Rankeado' : 'Amistoso'}{esDoblesPartido ? ' · Dobles' : ''} · {formatoSets}
+              {esRankeado ? t('detalle.rankeado') : t('detalle.amistoso')}{esDoblesPartido ? t('detalle.doblesSufijo') : ''} · {formatoSets}
             </Text>
           </View>
         )}
@@ -270,27 +272,27 @@ export function DetallePartidoScreen({ navigation, route }) {
         {esDoblesPartido ? (
           <View style={styles.playersRow}>
             {[
-              { titulo: 'Tu pareja', lista: miPareja },
-              { titulo: 'Rivales',   lista: parejaRival },
+              { clave: 'pareja',  titulo: t('detalle.tuPareja'), lista: miPareja },
+              { clave: 'rivales', titulo: t('detalle.rivales'),  lista: parejaRival },
             ].map((lado, idx) => (
-              <React.Fragment key={lado.titulo}>
+              <React.Fragment key={lado.clave}>
                 {idx === 1 && <Text style={styles.vsLabel}>vs</Text>}
                 <View style={styles.playerCol}>
                   <Text style={styles.parejaTitulo}>{lado.titulo}</Text>
                   {lado.lista.length === 0 ? (
                     <View style={styles.parejaVacia}>
                       <Ionicons name="people-outline" size={28} color={colors.textSecondary} />
-                      <Text style={styles.playerPts}>Buscando pareja...</Text>
+                      <Text style={styles.playerPts}>{t('detalle.buscandoPareja')}</Text>
                     </View>
                   ) : lado.lista.map(j => (
                     <View key={j.id_usuario} style={styles.dobleJugador}>
                       <Image source={getAvatarSource(j.foto_perfil_url, j.nombre)} style={styles.dobleAvatar} />
                       <View style={{ flexShrink: 1 }}>
                         <Text style={styles.dobleNombre} numberOfLines={1}>
-                          {Number(j.es_yo) === 1 ? 'Tú' : primerNombre(j.nombre ?? j.nombre_completo)}
+                          {Number(j.es_yo) === 1 ? t('detalle.tu') : primerNombre(j.nombre ?? j.nombre_completo)}
                         </Text>
                         <Text style={j.estado_codigo === 'PART_INVITADO' ? styles.doblePendiente : styles.playerPts}>
-                          {j.estado_codigo === 'PART_INVITADO' ? 'Por aceptar' : `${Number(j.puntaje_total ?? 0).toFixed(1)} pts`}
+                          {j.estado_codigo === 'PART_INVITADO' ? t('detalle.porAceptar') : `${Number(j.puntaje_total ?? 0).toFixed(1)} pts`}
                         </Text>
                       </View>
                     </View>
@@ -326,8 +328,8 @@ export function DetallePartidoScreen({ navigation, route }) {
                   <Text style={styles.rankBadgeText}> --</Text>
                 </View>
               </View>
-              <Text style={styles.playerName}>Rival</Text>
-              <Text style={styles.playerPts}>Buscando...</Text>
+              <Text style={styles.playerName}>{t('detalle.rival')}</Text>
+              <Text style={styles.playerPts}>{t('detalle.buscando')}</Text>
             </View>
           ) : (
             <View style={styles.playerCol}>
@@ -346,7 +348,7 @@ export function DetallePartidoScreen({ navigation, route }) {
         )}
 
         {/* Detalles */}
-        <Text style={styles.sectionTitle}>Detalles del partido</Text>
+        <Text style={styles.sectionTitle}>{t('detalle.detalles')}</Text>
 
         <View style={styles.detailCard}>
           <View style={{ flex: 1 }}>
@@ -386,7 +388,7 @@ export function DetallePartidoScreen({ navigation, route }) {
 
           return (
             <>
-              <Text style={styles.sectionTitle}>Resultado final</Text>
+              <Text style={styles.sectionTitle}>{t('detalle.resultadoFinal')}</Text>
 
               <View style={styles.resultadoPrimario}>
                 <Text style={styles.resultadoNum}>{yoSets}</Text>
@@ -397,13 +399,13 @@ export function DetallePartidoScreen({ navigation, route }) {
               <View style={[styles.detailCard, { flexDirection: 'column', gap: 10, alignItems: 'stretch' }]}>
                 {setsData.length > 0 ? setsData.map(s => (
                   <View key={s.n} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Text style={styles.detailSub}>Set {s.n}</Text>
+                    <Text style={styles.detailSub}>{t('detalle.set', { n: s.n })}</Text>
                     <Text style={styles.detailMain}>
                       {yoEsLocal ? s.local : s.visit}  –  {yoEsLocal ? s.visit : s.local}
                     </Text>
                   </View>
                 )) : (
-                  <Text style={[styles.detailSub, { textAlign: 'center' }]}>Sin sets registrados</Text>
+                  <Text style={[styles.detailSub, { textAlign: 'center' }]}>{t('detalle.sinSets')}</Text>
                 )}
               </View>
             </>
@@ -412,9 +414,7 @@ export function DetallePartidoScreen({ navigation, route }) {
 
         {!esFinalizado && !esBuscando && !esPendiente && (
           <Text style={styles.mandatoryNote}>
-            {esLiga
-              ? 'Resultado a 3 de 5 sets. Suma o resta puntos de liga: 3-0 ±3, 3-1 ±2, 3-2 ±1. Colócalo hasta 12 hrs luego del encuentro.'
-              : 'Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.'}
+            {esLiga ? t('detalle.notaLiga') : t('detalle.notaAmistoso')}
           </Text>
         )}
 
@@ -424,12 +424,10 @@ export function DetallePartidoScreen({ navigation, route }) {
             <Ionicons name={esBuscando ? 'search-outline' : 'hourglass-outline'} size={20} color={colors.textPrimary} />
             <Text style={styles.pendienteText}>
               {soyInvitadoDobles
-                ? (esLiga
-                    ? 'Retaron a tu equipo en la liga. Basta con que uno de ustedes acepte para confirmar el partido.'
-                    : 'Te invitaron a este partido de dobles. Acepta para confirmar tu lugar.')
+                ? (esLiga ? t('detalle.invitadoLiga') : t('detalle.invitadoDobles'))
                 : esBuscando
-                  ? 'Convocatoria publicada. Las parejas que quieran retarlos aparecerán en Mis solicitudes.'
-                  : `Esperando que acepten: ${nombresPareja(pendientesDobles) || 'los invitados'}.`}
+                  ? t('detalle.convocatoriaPublicada')
+                  : t('detalle.esperando', { nombres: nombresPareja(pendientesDobles) || t('detalle.losInvitados') })}
             </Text>
           </View>
         )}
@@ -442,11 +440,11 @@ export function DetallePartidoScreen({ navigation, route }) {
               disabled={respondiendo}
             >
               <Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />
-              <Text style={styles.resultadosBtnText}>{respondiendo ? 'Enviando...' : esLiga ? 'Aceptar reto' : 'Aceptar invitación'}</Text>
+              <Text style={styles.resultadosBtnText}>{respondiendo ? t('detalle.enviando') : esLiga ? t('detalle.aceptarReto') : t('detalle.aceptarInvitacion')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => handleInvitacionDobles(false)} disabled={respondiendo}>
               <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
-              <Text style={styles.cancelBtnText}>Rechazar</Text>
+              <Text style={styles.cancelBtnText}>{t('detalle.rechazar')}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -454,7 +452,7 @@ export function DetallePartidoScreen({ navigation, route }) {
         {esDoblesPartido && esBuscando && !soyInvitadoDobles && (
           <TouchableOpacity style={styles.chatBtn} onPress={() => navigation.navigate('MisSolicitudes')}>
             <Ionicons name="people-outline" size={20} color={colors.textPrimary} />
-            <Text style={styles.chatBtnText}>Ver parejas que nos retan</Text>
+            <Text style={styles.chatBtnText}>{t('detalle.verParejas')}</Text>
           </TouchableOpacity>
         )}
 
@@ -464,8 +462,8 @@ export function DetallePartidoScreen({ navigation, route }) {
             <Ionicons name="hourglass-outline" size={20} color={colors.textPrimary} />
             <Text style={styles.pendienteText}>
               {soyInvitado
-                ? `${rivalNombre} te retó a un partido ${esRetoLiga ? 'de liga' : 'amistoso'}.`
-                : `Esperando que ${rivalNombre} acepte tu reto.`}
+                ? t(esRetoLiga ? 'detalle.teRetoLiga' : 'detalle.teRetoAmistoso', { nombre: rivalNombre })
+                : t('detalle.esperandoAcepte', { nombre: rivalNombre })}
             </Text>
           </View>
         )}
@@ -478,7 +476,7 @@ export function DetallePartidoScreen({ navigation, route }) {
               disabled={respondiendo}
             >
               <Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />
-              <Text style={styles.resultadosBtnText}>{respondiendo ? 'Enviando...' : 'Aceptar reto'}</Text>
+              <Text style={styles.resultadosBtnText}>{respondiendo ? t('detalle.enviando') : t('detalle.aceptarReto')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.cancelBtn}
@@ -486,7 +484,7 @@ export function DetallePartidoScreen({ navigation, route }) {
               disabled={respondiendo}
             >
               <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
-              <Text style={styles.cancelBtnText}>Rechazar reto</Text>
+              <Text style={styles.cancelBtnText}>{t('detalle.rechazarReto')}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -504,7 +502,7 @@ export function DetallePartidoScreen({ navigation, route }) {
             }}
           >
             <Ionicons name="chatbubbles-outline" size={20} color={colors.textPrimary} />
-            <Text style={styles.chatBtnText}>Abrir Chat del Partido</Text>
+            <Text style={styles.chatBtnText}>{t('detalle.abrirChat')}</Text>
           </TouchableOpacity>
         )}
 
@@ -512,7 +510,7 @@ export function DetallePartidoScreen({ navigation, route }) {
           <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
             <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
             <Text style={styles.cancelBtnText}>
-              {cancelando ? 'Cancelando...' : esPendiente ? 'Cancelar reto' : 'Cancelar partido'}
+              {cancelando ? t('detalle.cancelando') : esPendiente ? t('detalle.cancelarReto') : t('detalle.cancelarPartido')}
             </Text>
           </TouchableOpacity>
         )}
@@ -539,7 +537,7 @@ export function DetallePartidoScreen({ navigation, route }) {
           >
             <Ionicons name="trophy-outline" size={20} color={colors.primary} />
             <Text style={styles.resultadosBtnText}>
-              {item.id_resultado ? 'Ver resultado publicado' : 'Colocar resultados'}
+              {item.id_resultado ? t('detalle.verResultado') : t('detalle.colocarResultados')}
             </Text>
           </TouchableOpacity>
         )}

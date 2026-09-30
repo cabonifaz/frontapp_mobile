@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../../constants';
 import { RankedLogo } from '../../../components/common';
 import { authService } from '../../../services/authService';
@@ -69,13 +70,14 @@ function Field({ label, value, onChangeText, placeholder, secureTextEntry, keybo
 }
 
 export function LoginScreen({ navigation }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
     if (!correo || !contrasena) {
-      Alert.alert('Campos requeridos', 'Ingresa tu correo y contraseña.');
+      Alert.alert(t('login.camposRequeridos'), t('login.ingresaCorreoContrasena'));
       return;
     }
     try {
@@ -83,7 +85,7 @@ export function LoginScreen({ navigation }) {
       await authService.login(correo, contrasena);
       navigation.replace('MainTabs');
     } catch (error) {
-      Alert.alert('Error', error.message);
+      Alert.alert(t('comun.error'), error.message);
     } finally {
       setLoading(false);
     }
@@ -97,7 +99,7 @@ export function LoginScreen({ navigation }) {
         navigation.replace('MainTabs');
       }
     } catch (error) {
-      Alert.alert('Error de Facebook', error.message || 'No se pudo iniciar sesión.');
+      Alert.alert(t('login.errorFacebook'), error.message || t('login.noSePudoIniciar'));
     } finally {
       setLoading(false);
     }
@@ -109,18 +111,18 @@ export function LoginScreen({ navigation }) {
       await GoogleSignin.hasPlayServices();
       const userInfo = await GoogleSignin.signIn();
       const idToken = userInfo.data?.idToken ?? userInfo.idToken;
-      if (!idToken) throw new Error('No se pudo obtener el token de Google.');
+      if (!idToken) throw new Error(t('login.noTokenGoogle'));
       await authService.loginGoogle(idToken);
       navigation.replace('MainTabs');
     } catch (error) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         // Usuario canceló, no hacemos nada
       } else if (error.code === statusCodes.IN_PROGRESS) {
-        Alert.alert('En progreso', 'El inicio de sesión ya está en curso.');
+        Alert.alert(t('login.enProgreso'), t('login.enProgresoMensaje'));
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert('Error', 'Google Play Services no disponible.');
+        Alert.alert(t('comun.error'), t('login.sinPlayServices'));
       } else {
-        Alert.alert('Error de Google', error.message || 'No se pudo iniciar sesión.');
+        Alert.alert(t('login.errorGoogle'), error.message || t('login.noSePudoIniciar'));
       }
     } finally {
       setLoading(false);
@@ -135,27 +137,25 @@ export function LoginScreen({ navigation }) {
           {/* Marca: Ranked */}
           <View style={styles.brand}>
             <RankedLogo size={42} />
-            <Text style={styles.brandTagline}>
-              Encuentra compañeros de juego,{'\n'}desafía a otros jugadores y{'\n'}asciende en el ranking.
-            </Text>
+            <Text style={styles.brandTagline}>{t('login.lema')}</Text>
           </View>
 
-          <Field label="Correo electrónico" value={correo} onChangeText={setCorreo} placeholder="correo@ejemplo.com" keyboardType="email-address" />
-          <Field label="Contraseña" value={contrasena} onChangeText={setContrasena} placeholder="Contraseña" secureTextEntry />
+          <Field label={t('login.correo')} value={correo} onChangeText={setCorreo} placeholder={t('login.correoPlaceholder')} keyboardType="email-address" />
+          <Field label={t('login.contrasena')} value={contrasena} onChangeText={setContrasena} placeholder={t('login.contrasenaPlaceholder')} secureTextEntry />
 
           <TouchableOpacity style={[styles.btnPrimary, loading && { opacity: 0.7 }]} onPress={handleLogin} disabled={loading} activeOpacity={0.85}>
-            <Text style={styles.btnPrimaryText}>{loading ? 'Cargando...' : 'Iniciar sesión'}</Text>
+            <Text style={styles.btnPrimaryText}>{loading ? t('comun.cargando') : t('login.iniciarSesion')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.btnOutline} onPress={() => navigation.navigate('Register')} activeOpacity={0.85}>
-            <Text style={styles.btnOutlineText}>Registrarme</Text>
+            <Text style={styles.btnOutlineText}>{t('login.registrarme')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.btnDemo} onPress={() => navigation.replace('MainTabs')} activeOpacity={0.7}>
-            <Text style={styles.btnDemoText}>Acceder como demo →</Text>
+            <Text style={styles.btnDemoText}>{t('login.demo')}</Text>
           </TouchableOpacity>
 
-          <Text style={styles.socialLabel}>O continúa con</Text>
+          <Text style={styles.socialLabel}>{t('login.continuaCon')}</Text>
           <View style={styles.socialRow}>
             <TouchableOpacity
               style={[styles.socialBox, { backgroundColor: '#FFFFFF' }, loading && { opacity: 0.5 }]}

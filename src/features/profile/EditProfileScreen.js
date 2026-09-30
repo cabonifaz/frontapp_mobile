@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { PROFILE_MOCK } from '../../data/profileData';
 import { PrimaryButton } from '../../components/common';
@@ -13,6 +14,8 @@ import { CircularCropModal } from '../../components/CircularCropModal';
 import { usuarioService } from '../../services/usuarioService';
 import { uploadImage } from '../../services/cloudinaryService';
 
+// "label" se mantiene en español: se usa para reconocer el deporte guardado en el perfil.
+// El texto visible sale de las traducciones (deportes.<id>).
 const DEPORTES = [
   { id: 'tenis',      label: 'Tenis',         uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&q=80' },
   { id: 'squash',     label: 'Squash',        uri: 'https://images.unsplash.com/photo-1740813402046-08ec3e0ce5d2?w=400&q=80' },
@@ -20,7 +23,6 @@ const DEPORTES = [
   { id: 'padel',      label: 'Padel',         uri: 'https://images.unsplash.com/photo-1646649853703-7645147474ba?w=400&q=80' },
 ];
 
-const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const DIAS  = Array.from({ length: 31 }, (_, i) => String(i + 1));
 const currentYear = new Date().getFullYear();
 const AÑOS  = Array.from({ length: 80 }, (_, i) => String(currentYear - 13 - i));
@@ -91,6 +93,7 @@ function DropdownField({ label, value, options, onSelect, flex }) {
 
 // ─── Sport card ───────────────────────────────────────────────────────────────
 function SportGrid({ selected, onSelect }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.sportGrid}>
       {DEPORTES.map((d) => (
@@ -107,7 +110,7 @@ function SportGrid({ selected, onSelect }) {
                 <Text style={{ color: colors.white, fontWeight: 'bold' }}>✓</Text>
               </View>
             )}
-            <Text style={styles.sportLabel}>{d.label}</Text>
+            <Text style={styles.sportLabel}>{t(`deportes.${d.id}`, { defaultValue: d.label })}</Text>
           </ImageBackground>
         </TouchableOpacity>
       ))}
@@ -117,6 +120,8 @@ function SportGrid({ selected, onSelect }) {
 
 // ─── Pantalla principal ────────────────────────────────────────────────────────
 export function EditProfileScreen({ navigation, route }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
+  const MESES = t('fechas.meses', { returnObjects: true });
   const initial = route.params?.profile ?? PROFILE_MOCK;
   const parts = (initial.nombre ?? '').split(' ');
 
@@ -140,7 +145,7 @@ export function EditProfileScreen({ navigation, route }) {
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar la foto.');
+      Alert.alert(t('registro.permisoTitulo'), t('editarPerfil.permisoMensaje'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -162,11 +167,11 @@ export function EditProfileScreen({ navigation, route }) {
         await usuarioService.actualizarFoto(url);
         setAvatarUri(url);
       }
-      Alert.alert('Perfil actualizado', 'Tus cambios han sido guardados.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+      Alert.alert(t('editarPerfil.actualizado'), t('editarPerfil.actualizadoMensaje'), [
+        { text: t('editarPerfil.ok'), onPress: () => navigation.goBack() },
       ]);
     } catch {
-      Alert.alert('Error', 'No se pudo guardar la foto. Intenta de nuevo.');
+      Alert.alert(t('comun.error'), t('editarPerfil.errorFoto'));
     } finally {
       setSaving(false);
     }
@@ -190,7 +195,7 @@ export function EditProfileScreen({ navigation, route }) {
           >
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Editar Perfil</Text>
+          <Text style={styles.headerTitle}>{t('editarPerfil.titulo')}</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -229,16 +234,16 @@ export function EditProfileScreen({ navigation, route }) {
                 <Ionicons name="camera" size={18} color={colors.primary} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.cambiarFotoText}>Cambiar foto</Text>
+            <Text style={styles.cambiarFotoText}>{t('editarPerfil.cambiarFoto')}</Text>
           </View>
 
           {/* Información personal */}
-          <Text style={styles.sectionTitle}>Información personal</Text>
+          <Text style={styles.sectionTitle}>{t('editarPerfil.infoPersonal')}</Text>
 
-          <UnderlineField label="Nombre"    value={nombre}    onChangeText={setNombre}    placeholder="Juan Pablo" />
-          <UnderlineField label="Apellidos" value={apellidos} onChangeText={setApellidos} placeholder="Varillas" />
+          <UnderlineField label={t('editarPerfil.nombre')}    value={nombre}    onChangeText={setNombre}    placeholder="Juan Pablo" />
+          <UnderlineField label={t('editarPerfil.apellidos')} value={apellidos} onChangeText={setApellidos} placeholder="Varillas" />
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Celular</Text>
+            <Text style={styles.fieldLabel}>{t('editarPerfil.celular')}</Text>
             <View style={[styles.halfRow, { gap: 8 }]}>
               <View style={{ width: 80 }}>
                 <View style={styles.dropdownTrigger}>
@@ -260,32 +265,32 @@ export function EditProfileScreen({ navigation, route }) {
           </View>
 
           {/* Fecha de nacimiento */}
-          <Text style={styles.fieldLabel}>Fecha de nacimiento</Text>
+          <Text style={styles.fieldLabel}>{t('editarPerfil.fechaNacimiento')}</Text>
           <View style={[styles.halfRow, { gap: 12, marginBottom: 16 }]}>
-            <DropdownField label="Día"  value={dia}  options={DIAS}   onSelect={setDia}  flex={1} />
-            <DropdownField label="Mes"  value={mes}  options={MESES}  onSelect={setMes}  flex={2} />
-            <DropdownField label="Año"  value={año}  options={AÑOS}   onSelect={setAño}  flex={1.5} />
+            <DropdownField label={t('editarPerfil.dia')}  value={dia}  options={DIAS}   onSelect={setDia}  flex={1} />
+            <DropdownField label={t('editarPerfil.mes')}  value={mes}  options={Array.isArray(MESES) ? MESES : []}  onSelect={setMes}  flex={2} />
+            <DropdownField label={t('editarPerfil.anio')} value={año}  options={AÑOS}   onSelect={setAño}  flex={1.5} />
           </View>
 
           {/* Deporte favorito */}
-          <Text style={styles.sectionTitle}>Deporte favorito</Text>
+          <Text style={styles.sectionTitle}>{t('editarPerfil.deporteFavorito')}</Text>
           <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginBottom: 0 }]}>
-            Luego podrás seleccionar más deportes.
+            {t('editarPerfil.masDeportes')}
           </Text>
           <SportGrid selected={deporte} onSelect={setDeporte} />
 
           {/* Sobre mí */}
-          <Text style={styles.sectionTitle}>Sobre mí</Text>
+          <Text style={styles.sectionTitle}>{t('editarPerfil.sobreMi')}</Text>
           <UnderlineField
-            label="Cuéntanos sobre ti"
+            label={t('editarPerfil.cuentanos')}
             value={sobreMi}
             onChangeText={setSobreMi}
-            placeholder="Escribe algo sobre ti..."
+            placeholder={t('editarPerfil.escribeAlgo')}
             multiline
           />
 
           <View style={{ marginTop: 12 }}>
-            <PrimaryButton title="Guardar cambios" onPress={handleGuardar} disabled={saving} loading={saving} />
+            <PrimaryButton title={t('editarPerfil.guardar')} onPress={handleGuardar} disabled={saving} loading={saving} />
           </View>
 
           <View style={{ height: 40 }} />

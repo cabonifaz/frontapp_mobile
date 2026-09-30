@@ -4,6 +4,7 @@ import {
   SafeAreaView, Image, Modal, TextInput, Alert, ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { maestroService } from '../../services/maestroService';
 import { partidoService } from '../../services/partidoService';
@@ -23,8 +24,9 @@ function getHorasDisponibles(fechaSeleccionada) {
   const horaActual = new Date().getHours();
   return HORAS.filter(h => parseInt(h, 10) > horaActual);
 }
-const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
+// NUEVO (idiomas): cada día guarda el número de mes (0-11); el nombre del mes
+// se muestra en el idioma elegido (fechas.mesesCortos).
 function getNextDays(n = 14) {
   const days = [];
   const now = new Date();
@@ -34,11 +36,12 @@ function getNextDays(n = 14) {
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
-    days.push({ key: String(i), day: d.getDate(), month: MESES[d.getMonth()], iso: `${yyyy}-${mm}-${dd}` });
+    days.push({ key: String(i), day: d.getDate(), mes: d.getMonth(), iso: `${yyyy}-${mm}-${dd}` });
   }
   return days;
 }
 
+// 'Singles' / 'Dobles' son valores internos; el texto visible sale de las traducciones
 const TIPO_JUEGO_MAP = {
   'Singles': TIPOS_JUEGO.SINGLES,
   'Dobles':  TIPOS_JUEGO.DOBLES,
@@ -46,13 +49,14 @@ const TIPO_JUEGO_MAP = {
 
 // NUEVO: modalidades del amistoso
 const MODALIDADES = [
-  { key: 'abierta', label: 'Convocatoria' },
-  { key: 'amigo',   label: 'Retar a amigo' },
+  { key: 'abierta', label: 'crear.convocatoria' },
+  { key: 'amigo',   label: 'crear.retarAmigo' },
 ];
 
 const DAYS = getNextDays(14);
 
 function CanchaModal({ visible, onClose, onSelect, courts, loadingCanchas }) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
 
   const filtered = courts.filter(c => {
@@ -64,7 +68,7 @@ function CanchaModal({ visible, onClose, onSelect, courts, loadingCanchas }) {
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>Selecciona una cancha</Text>
+          <Text style={styles.modalTitle}>{t('crear.cancha.seleccionar')}</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -74,7 +78,7 @@ function CanchaModal({ visible, onClose, onSelect, courts, loadingCanchas }) {
           <Ionicons name="search" size={18} color={colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar cancha"
+            placeholder={t('crear.cancha.buscar')}
             placeholderTextColor={colors.textSecondary}
             value={search}
             onChangeText={setSearch}
@@ -88,7 +92,7 @@ function CanchaModal({ visible, onClose, onSelect, courts, loadingCanchas }) {
           <ScrollView contentContainerStyle={styles.modalListContent}>
             {filtered.map(c => {
               const idCancha = c.id_maestro ?? c.id;
-              const nombreCancha = c.name ?? c.nombre ?? 'Cancha';
+              const nombreCancha = c.name ?? c.nombre ?? t('crear.cancha.nombre');
               const uriCancha = c.uri ?? c.foto_url;
               const direccionCancha = c.address ?? c.descripcion;
 
@@ -121,7 +125,8 @@ function CanchaModal({ visible, onClose, onSelect, courts, loadingCanchas }) {
 }
 
 // NUEVO: selector de amigo para el reto directo
-function AmigoModal({ visible, onClose, onSelect, onIrRanking, titulo = '¿A qué amigo quieres retar?', excluir = [] }) {
+function AmigoModal({ visible, onClose, onSelect, onIrRanking, titulo, excluir = [] }) {
+  const { t } = useTranslation();
   const [amigos, setAmigos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -146,7 +151,7 @@ function AmigoModal({ visible, onClose, onSelect, onIrRanking, titulo = '¿A qu�
     <Modal visible={visible} animationType="slide">
       <SafeAreaView style={styles.modalSafe}>
         <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>{titulo}</Text>
+          <Text style={styles.modalTitle}>{titulo ?? t('crear.amigo.tituloRetar')}</Text>
           <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
             <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -157,7 +162,7 @@ function AmigoModal({ visible, onClose, onSelect, onIrRanking, titulo = '¿A qu�
             <Ionicons name="search" size={18} color={colors.textSecondary} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Buscar amigo"
+              placeholder={t('crear.amigo.buscar')}
               placeholderTextColor={colors.textSecondary}
               value={search}
               onChangeText={setSearch}
@@ -171,12 +176,10 @@ function AmigoModal({ visible, onClose, onSelect, onIrRanking, titulo = '¿A qu�
         ) : amigos.length === 0 ? (
           <View style={styles.amigosEmpty}>
             <Ionicons name="people-outline" size={44} color={colors.textSecondary} />
-            <Text style={styles.amigosEmptyTitle}>Aún no tienes amigos</Text>
-            <Text style={styles.amigosEmptyText}>
-              Envía solicitudes de amistad desde el perfil de los jugadores del ranking.
-            </Text>
+            <Text style={styles.amigosEmptyTitle}>{t('crear.amigo.sinAmigos')}</Text>
+            <Text style={styles.amigosEmptyText}>{t('crear.amigo.sinAmigosTexto')}</Text>
             <TouchableOpacity style={[styles.accentBtn, { paddingHorizontal: 40 }]} onPress={onIrRanking}>
-              <Text style={styles.accentBtnText}>Ir al ranking</Text>
+              <Text style={styles.accentBtnText}>{t('crear.amigo.irRanking')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -188,7 +191,7 @@ function AmigoModal({ visible, onClose, onSelect, onIrRanking, titulo = '¿A qu�
                   <Text style={styles.courtName} numberOfLines={1}>{a.nombre_completo}</Text>
                   <View style={styles.addressRow}>
                     <Ionicons name="trophy" size={13} color={colors.textSecondary} />
-                    <Text style={styles.courtAddress}> {a.posicion_ranking ?? 'N/R'}   {Number(a.puntaje_total ?? 0).toFixed(1)} pts</Text>
+                    <Text style={styles.courtAddress}> {a.posicion_ranking ?? t('header.sinRanking')}   {Number(a.puntaje_total ?? 0).toFixed(1)} pts</Text>
                   </View>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
@@ -202,19 +205,18 @@ function AmigoModal({ visible, onClose, onSelect, onIrRanking, titulo = '¿A qu�
 }
 
 function SuccessScreen({ onPress }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.successContainer}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.successCircle}>
           <MaterialCommunityIcons name="tennis" size={72} color={colors.dark} />
         </View>
-        <Text style={styles.successTitle}>{'¡Genial!\nHas creado una partida'}</Text>
-        <Text style={styles.successSubtitle}>
-          Acepta al jugador con el que desees jugar desde "Mis Solicitudes"
-        </Text>
+        <Text style={styles.successTitle}>{t('crear.exito.titulo')}</Text>
+        <Text style={styles.successSubtitle}>{t('crear.exito.subtitulo')}</Text>
       </View>
       <TouchableOpacity style={styles.accentBtn} onPress={() => onPress('MisSolicitudes')}>
-        <Text style={styles.accentBtnText}>Ir a mis solicitudes</Text>
+        <Text style={styles.accentBtnText}>{t('crear.exito.irSolicitudes')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -222,20 +224,19 @@ function SuccessScreen({ onPress }) {
 
 // NUEVO: confirmación del reto directo
 function RetoEnviadoScreen({ amigo, onPress }) {
-  const firstName = (amigo?.nombre_completo ?? 'tu amigo').split(' ')[0];
+  const { t } = useTranslation();
+  const firstName = (amigo?.nombre_completo ?? t('crear.exito.tuAmigo')).split(' ')[0];
   return (
     <View style={styles.successContainer}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.successCircle}>
           <Image source={getAvatarSource(amigo?.foto_perfil_url)} style={styles.successAvatar} />
         </View>
-        <Text style={styles.successTitle}>{`Reto enviado a\n${firstName}`}</Text>
-        <Text style={styles.successSubtitle}>
-          Cuando {firstName} lo acepte, el partido quedará confirmado y podrán coordinar por el chat.
-        </Text>
+        <Text style={styles.successTitle}>{t('crear.exito.retoEnviado', { nombre: firstName })}</Text>
+        <Text style={styles.successSubtitle}>{t('crear.exito.retoEnviadoTexto', { nombre: firstName })}</Text>
       </View>
       <TouchableOpacity style={styles.accentBtn} onPress={onPress}>
-        <Text style={styles.accentBtnText}>Ir a mis partidos</Text>
+        <Text style={styles.accentBtnText}>{t('crear.exito.irPartidos')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -243,23 +244,25 @@ function RetoEnviadoScreen({ amigo, onPress }) {
 
 // NUEVO: confirmación al crear un partido de dobles
 function DoblesCreadoScreen({ mensaje, onPress }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.successContainer}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <View style={styles.successCircle}>
           <Ionicons name="people" size={72} color={colors.dark} />
         </View>
-        <Text style={styles.successTitle}>{'¡Partido de dobles\ncreado!'}</Text>
+        <Text style={styles.successTitle}>{t('crear.exito.doblesCreado')}</Text>
         <Text style={styles.successSubtitle}>{mensaje}</Text>
       </View>
       <TouchableOpacity style={styles.accentBtn} onPress={onPress}>
-        <Text style={styles.accentBtnText}>Ir a mis solicitudes</Text>
+        <Text style={styles.accentBtnText}>{t('crear.exito.irSolicitudes')}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 function AmigoSlot({ label, amigo, hint, onPress }) {
+  const { t } = useTranslation();
   return (
     <TouchableOpacity style={styles.canchaCard} onPress={onPress} activeOpacity={0.8}>
       {amigo ? (
@@ -271,7 +274,7 @@ function AmigoSlot({ label, amigo, hint, onPress }) {
       )}
       <View style={{ flex: 1 }}>
         <Text style={styles.slotLabel}>{label}</Text>
-        <Text style={styles.canchaName} numberOfLines={1}>{amigo ? amigo.nombre_completo : 'Selecciona un amigo'}</Text>
+        <Text style={styles.canchaName} numberOfLines={1}>{amigo ? amigo.nombre_completo : t('crear.amigo.seleccionar')}</Text>
         {!!hint && <Text style={styles.canchaHint}>{hint}</Text>}
       </View>
       <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
@@ -280,6 +283,8 @@ function AmigoSlot({ label, amigo, hint, onPress }) {
 }
 
 export function CrearPartidoScreen({ navigation, route }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
+  const mesesCortos = t('fechas.mesesCortos', { returnObjects: true });
   const tipo = route?.params?.tipo ?? 'Rankeado';
   const amigoInicial = route?.params?.amigo ?? null; // llega desde PlayerProfile o AmigosScreen
   // NUEVO: reto de liga (llega desde LigaDetalle con { liga, rival })
@@ -312,6 +317,7 @@ export function CrearPartidoScreen({ navigation, route }) {
   const [doblesCreado, setDoblesCreado] = useState(null);          // mensaje del backend
 
   const esDirecto = esAmistoso && modalidad === 'amigo';
+  const textoTipoJuego = (v) => (v === 'Dobles' ? t('partidos.dobles') : t('partidos.singles'));
 
   // --- CANCHAS REALES DESDE LA API ---
   const [canchas, setCanchas] = useState([]);
@@ -373,7 +379,7 @@ export function CrearPartidoScreen({ navigation, route }) {
           hora:        datos.hora,
           numSets,
         });
-        setDoblesCreado(res?.mensaje ?? 'Invitaciones enviadas.');
+        setDoblesCreado(res?.mensaje ?? t('crear.exito.invitacionesEnviadas'));
         return;
       }
 
@@ -395,7 +401,7 @@ export function CrearPartidoScreen({ navigation, route }) {
       }
       setSuccess(true);
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'No se pudo crear el partido.');
+      Alert.alert(t('comun.error'), e.message ?? t('crear.errorCrear'));
     } finally {
       setCreando(false);
     }
@@ -454,6 +460,11 @@ export function CrearPartidoScreen({ navigation, route }) {
     );
   }
 
+  const tituloPantalla = esLiga ? t('crear.titulos.liga')
+    : esDoblesAmistoso ? t('crear.titulos.dobles')
+    : esDirecto ? t('crear.titulos.directo')
+    : tipo === 'Rankeado' ? t('crear.titulos.rankeado') : t('crear.titulos.amistoso');
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* Header */}
@@ -461,9 +472,7 @@ export function CrearPartidoScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {esLiga ? 'Reto de liga' : esDoblesAmistoso ? 'Partido de dobles' : esDirecto ? 'Retar a un amigo' : `Crear Partido ${tipo}`}
-        </Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{tituloPantalla}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -473,19 +482,19 @@ export function CrearPartidoScreen({ navigation, route }) {
           <View style={styles.matchmakingCard}>
             <View style={styles.matchmakingHeader}>
               <Ionicons name="shield-checkmark-outline" size={20} color={colors.accent} />
-              <Text style={styles.matchmakingTitle}>Reglas de matchmaking</Text>
+              <Text style={styles.matchmakingTitle}>{t('crear.matchmaking.titulo')}</Text>
             </View>
             <View style={styles.matchmakingRow}>
               <Ionicons name="trophy-outline" size={15} color={colors.textSecondary} />
-              <Text style={styles.matchmakingText}>Se emparejará con jugadores dentro de ±3 posiciones de tu ranking</Text>
+              <Text style={styles.matchmakingText}>{t('crear.matchmaking.posiciones')}</Text>
             </View>
             <View style={styles.matchmakingRow}>
               <Ionicons name="ribbon-outline" size={15} color={colors.textSecondary} />
-              <Text style={styles.matchmakingText}>El resultado afecta tu posición en el ranking global</Text>
+              <Text style={styles.matchmakingText}>{t('crear.matchmaking.global')}</Text>
             </View>
             <View style={styles.matchmakingRow}>
               <Ionicons name="time-outline" size={15} color={colors.textSecondary} />
-              <Text style={styles.matchmakingText}>Debes ingresar el resultado dentro de 12 horas del partido</Text>
+              <Text style={styles.matchmakingText}>{t('crear.matchmaking.tiempo')}</Text>
             </View>
           </View>
         )}
@@ -493,15 +502,15 @@ export function CrearPartidoScreen({ navigation, route }) {
         {/* NUEVO: tipo de juego primero en amistoso (define el resto del formulario) */}
         {esAmistoso && (
           <>
-            <Text style={styles.sectionTitle}>Selecciona tipo de juego</Text>
+            <Text style={styles.sectionTitle}>{t('crear.tipoJuego')}</Text>
             <View style={[styles.toggle, { marginBottom: 20 }]}>
-              {['Singles', 'Dobles'].map(t => (
+              {['Singles', 'Dobles'].map(tj => (
                 <TouchableOpacity
-                  key={t}
-                  style={[styles.toggleBtn, tipoJuego === t && styles.toggleBtnActive]}
-                  onPress={() => setTipoJuego(t)}
+                  key={tj}
+                  style={[styles.toggleBtn, tipoJuego === tj && styles.toggleBtnActive]}
+                  onPress={() => setTipoJuego(tj)}
                 >
-                  <Text style={[styles.toggleText, tipoJuego === t && styles.toggleTextActive]}>{t}</Text>
+                  <Text style={[styles.toggleText, tipoJuego === tj && styles.toggleTextActive]}>{textoTipoJuego(tj)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -511,17 +520,17 @@ export function CrearPartidoScreen({ navigation, route }) {
         {/* NUEVO: dobles — compañero y rivales */}
         {esDoblesAmistoso && (
           <>
-            <Text style={styles.sectionTitle}>Tu pareja</Text>
+            <Text style={styles.sectionTitle}>{t('crear.tuPareja')}</Text>
             <AmigoSlot
-              label="COMPAÑERO"
+              label={t('crear.companero')}
               amigo={companero}
-              hint={companero ? 'Toca para cambiar' : 'Debe aceptar la invitación'}
+              hint={companero ? t('crear.tocaCambiar') : t('crear.debeAceptar')}
               onPress={() => setSlotAmigo('companero')}
             />
 
-            <Text style={[styles.sectionTitle, { marginTop: 8 }]}>¿Cómo eliges a los rivales?</Text>
+            <Text style={[styles.sectionTitle, { marginTop: 8 }]}>{t('crear.comoRivales')}</Text>
             <View style={[styles.toggle, { marginBottom: 12 }]}>
-              {[{ key: 'convocatoria', label: 'Convocatoria' }, { key: 'directo', label: 'Elegir rivales' }].map(m => (
+              {[{ key: 'convocatoria', label: t('crear.convocatoria') }, { key: 'directo', label: t('crear.elegirRivales') }].map(m => (
                 <TouchableOpacity
                   key={m.key}
                   style={[styles.toggleBtn, modoRivales === m.key && styles.toggleBtnActive]}
@@ -534,17 +543,12 @@ export function CrearPartidoScreen({ navigation, route }) {
 
             {modoRivales === 'directo' ? (
               <>
-                <AmigoSlot label="RIVAL 1" amigo={rival1} onPress={() => setSlotAmigo('rival1')} />
-                <AmigoSlot label="RIVAL 2" amigo={rival2} onPress={() => setSlotAmigo('rival2')} />
-                <Text style={styles.mandatoryNote}>
-                  Tu compañero y los 2 rivales recibirán la invitación. El partido se confirma cuando los 3 acepten.
-                </Text>
+                <AmigoSlot label={t('crear.rival1')} amigo={rival1} onPress={() => setSlotAmigo('rival1')} />
+                <AmigoSlot label={t('crear.rival2')} amigo={rival2} onPress={() => setSlotAmigo('rival2')} />
+                <Text style={styles.mandatoryNote}>{t('crear.notaDirecto')}</Text>
               </>
             ) : (
-              <Text style={styles.mandatoryNote}>
-                Cuando tu compañero acepte, la convocatoria se publicará. Otra pareja podrá retarlos
-                y el partido se confirma cuando tú y tu compañero la aprueben.
-              </Text>
+              <Text style={styles.mandatoryNote}>{t('crear.notaConvocatoria')}</Text>
             )}
           </>
         )}
@@ -552,7 +556,7 @@ export function CrearPartidoScreen({ navigation, route }) {
         {/* NUEVO: ¿Con quién? — solo Amistoso singles */}
         {esAmistoso && !esDoblesAmistoso && (
           <>
-            <Text style={styles.sectionTitle}>¿Con quién quieres jugar?</Text>
+            <Text style={styles.sectionTitle}>{t('crear.conQuien')}</Text>
             <View style={[styles.toggle, { marginBottom: 12 }]}>
               {MODALIDADES.map(m => (
                 <TouchableOpacity
@@ -560,7 +564,7 @@ export function CrearPartidoScreen({ navigation, route }) {
                   style={[styles.toggleBtn, modalidad === m.key && styles.toggleBtnActive]}
                   onPress={() => setModalidad(m.key)}
                 >
-                  <Text style={[styles.toggleText, modalidad === m.key && styles.toggleTextActive]}>{m.label}</Text>
+                  <Text style={[styles.toggleText, modalidad === m.key && styles.toggleTextActive]}>{t(m.label)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -575,17 +579,15 @@ export function CrearPartidoScreen({ navigation, route }) {
                   </View>
                 )}
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.canchaName}>{amigo ? amigo.nombre_completo : 'Selecciona un amigo'}</Text>
+                  <Text style={styles.canchaName}>{amigo ? amigo.nombre_completo : t('crear.amigo.seleccionar')}</Text>
                   <Text style={styles.canchaHint}>
-                    {amigo ? 'Toca para cambiar' : 'Solo él recibirá el reto'}
+                    {amigo ? t('crear.tocaCambiar') : t('crear.soloEl')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             ) : (
-              <Text style={styles.mandatoryNote}>
-                Cualquier jugador podrá postularse y tú eliges a quién aceptar.
-              </Text>
+              <Text style={styles.mandatoryNote}>{t('crear.notaAbierta')}</Text>
             )}
           </>
         )}
@@ -600,16 +602,14 @@ export function CrearPartidoScreen({ navigation, route }) {
             <View style={styles.canchaCard}>
               <Image source={getAvatarSource(rivalLiga?.foto_perfil_url)} style={styles.amigoAvatar} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.canchaName}>{rivalLiga?.nombre_completo ?? 'Rival'}</Text>
+                <Text style={styles.canchaName}>{rivalLiga?.nombre_completo ?? t('crear.rival')}</Text>
                 <Text style={styles.canchaHint}>
-                  {rivalLiga?.posicion ? `${rivalLiga.posicion}° en la tabla` : 'Rival de liga'}
+                  {rivalLiga?.posicion ? t('crear.posicionTabla', { pos: rivalLiga.posicion }) : t('crear.rivalLiga')}
                   {rivalLiga?.puntos != null ? ` · ${rivalLiga.puntos} pts` : ''}
                 </Text>
               </View>
             </View>
-            <Text style={styles.mandatoryNote}>
-              Singles al mejor de 5 sets. El resultado suma o resta puntos de liga (3-0: ±3, 3-1: ±2, 3-2: ±1).
-            </Text>
+            <Text style={styles.mandatoryNote}>{t('crear.notaLiga')}</Text>
           </>
         )}
 
@@ -624,20 +624,18 @@ export function CrearPartidoScreen({ navigation, route }) {
           )}
           <View style={{ flex: 1 }}>
             <Text style={styles.canchaName}>
-              {cancha ? (cancha.nombre ?? cancha.name) : 'Selecciona una cancha'}
+              {cancha ? (cancha.nombre ?? cancha.name) : t('crear.cancha.seleccionar')}
             </Text>
             <Text style={styles.canchaHint}>
-              {cancha ? 'Toca para cambiar' : 'Toca para seleccionar una cancha'}
+              {cancha ? t('crear.cancha.tocaCambiar') : t('crear.cancha.tocaSeleccionar')}
             </Text>
           </View>
         </TouchableOpacity>
 
-        <Text style={styles.mandatoryNote}>
-          Es mandatorio para el anfitrión del partido separar la cancha elegida por un medio independiente.
-        </Text>
+        <Text style={styles.mandatoryNote}>{t('crear.notaCancha')}</Text>
 
         {/* Selección de Fecha */}
-        <Text style={styles.sectionTitle}>Selecciona una fecha cercana</Text>
+        <Text style={styles.sectionTitle}>{t('crear.fecha')}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -653,14 +651,16 @@ export function CrearPartidoScreen({ navigation, route }) {
                 onPress={() => setFecha(d)}
               >
                 <Text style={[styles.dateChipNum, active && styles.dateChipNumActive]}>{d.day}</Text>
-                <Text style={[styles.dateChipMonth, active && styles.dateChipMonthActive]}>{d.month}</Text>
+                <Text style={[styles.dateChipMonth, active && styles.dateChipMonthActive]}>
+                  {Array.isArray(mesesCortos) ? mesesCortos[d.mes] : ''}
+                </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
 
         {/* Selección de Hora */}
-        <Text style={styles.sectionTitle}>Selecciona horas disponibles</Text>
+        <Text style={styles.sectionTitle}>{t('crear.horas')}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -684,15 +684,15 @@ export function CrearPartidoScreen({ navigation, route }) {
         {/* Tipo de juego — Rankeado (en amistoso va arriba; en liga siempre es singles) */}
         {!esLiga && !esAmistoso && (
           <>
-            <Text style={styles.sectionTitle}>Selecciona tipo de juego</Text>
+            <Text style={styles.sectionTitle}>{t('crear.tipoJuego')}</Text>
             <View style={styles.toggle}>
-              {['Singles', 'Dobles'].map(t => (
+              {['Singles', 'Dobles'].map(tj => (
                 <TouchableOpacity
-                  key={t}
-                  style={[styles.toggleBtn, tipoJuego === t && styles.toggleBtnActive]}
-                  onPress={() => setTipoJuego(t)}
+                  key={tj}
+                  style={[styles.toggleBtn, tipoJuego === tj && styles.toggleBtnActive]}
+                  onPress={() => setTipoJuego(tj)}
                 >
-                  <Text style={[styles.toggleText, tipoJuego === t && styles.toggleTextActive]}>{t}</Text>
+                  <Text style={[styles.toggleText, tipoJuego === tj && styles.toggleTextActive]}>{textoTipoJuego(tj)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -702,7 +702,7 @@ export function CrearPartidoScreen({ navigation, route }) {
         {/* Formato de sets — solo Amistoso */}
         {esAmistoso && (
           <>
-            <Text style={styles.sectionTitle}>Formato de partido</Text>
+            <Text style={styles.sectionTitle}>{t('crear.formato')}</Text>
             <View style={styles.toggle}>
               {[3, 5].map(n => (
                 <TouchableOpacity
@@ -711,7 +711,7 @@ export function CrearPartidoScreen({ navigation, route }) {
                   onPress={() => setNumSets(n)}
                 >
                   <Text style={[styles.toggleText, numSets === n && styles.toggleTextActive]}>
-                    {n === 3 ? '2 de 3' : '3 de 5'}
+                    {n === 3 ? t('partidos.sets3') : t('partidos.sets5')}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -733,7 +733,7 @@ export function CrearPartidoScreen({ navigation, route }) {
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
             <Text style={[styles.confirmBtnText, !canConfirm && styles.confirmBtnTextDisabled]}>
-              {esDoblesAmistoso ? 'Enviar invitaciones' : esDirecto || esLiga ? 'Enviar reto' : 'Confirmar'}
+              {esDoblesAmistoso ? t('crear.enviarInvitaciones') : esDirecto || esLiga ? t('crear.enviarReto') : t('crear.confirmar')}
             </Text>
           )}
         </TouchableOpacity>
@@ -757,7 +757,7 @@ export function CrearPartidoScreen({ navigation, route }) {
       {/* NUEVO: selección de compañero / rivales para dobles */}
       <AmigoModal
         visible={!!slotAmigo}
-        titulo={slotAmigo === 'companero' ? '¿Quién será tu compañero?' : '¿A quién quieres retar?'}
+        titulo={slotAmigo === 'companero' ? t('crear.amigo.tituloCompanero') : t('crear.amigo.tituloRival')}
         excluir={[companero, rival1, rival2]
           .filter(Boolean)
           .filter(x => x !== { companero, rival1, rival2 }[slotAmigo])

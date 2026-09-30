@@ -6,6 +6,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { usuarioService } from '../../services/usuarioService';
 import { resultadoService } from '../../services/resultadoService';
@@ -15,6 +16,12 @@ const SCREEN_W   = Dimensions.get('window').width;
 const COVER_H    = 220;
 const AVATAR_SIZE = 126;
 const TABS = ['Estadísticas', 'Detalles', 'Resultados'];
+// NUEVO (idiomas): valor interno de cada pestaña -> clave del texto visible
+const CLAVE_TAB = {
+  'Estadísticas': 'perfil.tabs.estadisticas',
+  'Detalles':     'perfil.tabs.detalles',
+  'Resultados':   'perfil.tabs.resultados',
+};
 
 // Cover por defecto (esta sí es una imagen remota real, se queda igual)
 const COVER_DEFAULT = 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80';
@@ -92,10 +99,11 @@ function ScoreChip({ value, highlight }) {
 }
 
 function ResultadoCard({ match }) {
+  const { t } = useTranslation();
   const fecha = match.fecha_partido ? new Date(match.fecha_partido) : null;
-  const months = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+  const months = t('fechas.mesesCortos', { returnObjects: true });
   const day   = fecha ? fecha.getDate() : '--';
-  const month = fecha ? months[fecha.getMonth()] : '';
+  const month = fecha && Array.isArray(months) ? months[fecha.getMonth()] : '';
 
   const sL = match.sets_local     ?? 0;
   const sV = match.sets_visitante ?? 0;
@@ -108,11 +116,11 @@ function ResultadoCard({ match }) {
       </View>
       <View style={{ flex: 1 }}>
         <View style={styles.matchPlayerRow}>
-          <Text style={styles.matchName}>{match.jugador_local ?? 'Local'}</Text>
+          <Text style={styles.matchName}>{match.jugador_local ?? t('perfil.local')}</Text>
           <ScoreChip value={sL} highlight={sL > sV} />
         </View>
         <View style={[styles.matchPlayerRow, { marginTop: 6 }]}>
-          <Text style={styles.matchName}>{match.jugador_visitante ?? 'Visitante'}</Text>
+          <Text style={styles.matchName}>{match.jugador_visitante ?? t('perfil.visitante')}</Text>
           <ScoreChip value={sV} highlight={sV > sL} />
         </View>
       </View>
@@ -122,6 +130,7 @@ function ResultadoCard({ match }) {
 
 // NUEVO: calificación como jugador y, si aplica, como profesor
 function Calificaciones({ p }) {
+  const { t } = useTranslation();
   const fmt = (v) => (v != null ? Number(v).toFixed(1) : '—');
   return (
     <View style={styles.califRow}>
@@ -129,7 +138,7 @@ function Calificaciones({ p }) {
         <Ionicons name="star" size={14} color={colors.accent} />
         <Text style={styles.califValor}>{fmt(p.califJugador)}</Text>
         <Text style={styles.califTexto}>
-          {p.totalCalifJugador > 0 ? `jugador · ${p.totalCalifJugador}` : 'sin calificaciones'}
+          {p.totalCalifJugador > 0 ? t('perfil.califJugador', { n: p.totalCalifJugador }) : t('perfil.sinCalificaciones')}
         </Text>
       </View>
       {p.esProfesor && (
@@ -137,7 +146,7 @@ function Calificaciones({ p }) {
           <Ionicons name="school" size={14} color={colors.accent} />
           <Text style={styles.califValor}>{fmt(p.califProfesor)}</Text>
           <Text style={styles.califTexto}>
-            {p.totalCalifProfesor > 0 ? `profesor · ${p.totalCalifProfesor}` : 'profesor'}
+            {p.totalCalifProfesor > 0 ? t('perfil.califProfesor', { n: p.totalCalifProfesor }) : t('perfil.profesor')}
           </Text>
         </View>
       )}
@@ -146,15 +155,16 @@ function Calificaciones({ p }) {
 }
 
 function EstadisticasTab({ p }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.tabContent}>
       <View style={styles.statCardsRow}>
         <View style={[styles.statCard, { flex: 1, marginRight: 8 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
-            <Text style={styles.bigNum}>{p.ranking ?? 'N/R'}</Text>
+            <Text style={styles.bigNum}>{p.ranking ?? t('header.sinRanking')}</Text>
             <Ionicons name="trophy" size={18} color={colors.textPrimary} style={{ marginLeft: 6, marginTop: 8 }} />
           </View>
-          <Text style={styles.statCardLabel}>Ranking</Text>
+          <Text style={styles.statCardLabel}>{t('perfil.ranking')}</Text>
         </View>
         <View style={[styles.statCard, { flex: 1, marginLeft: 8 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -164,25 +174,26 @@ function EstadisticasTab({ p }) {
               <Text style={styles.nivelPts}>{Number(p.pts ?? 0).toFixed(1)} pts</Text>
             </View>
           </View>
-          <Text style={styles.statCardLabel}>Nivel</Text>
+          <Text style={styles.statCardLabel}>{t('perfil.nivel')}</Text>
         </View>
       </View>
 
-      <StatRow mci icon="tennis"         label="Partidos"            value={p.partidos} />
-      <StatRow     icon="trophy-outline" label="Partidos rankeados"  value={p.partidosRankeados} />
-      <StatRow     icon="ribbon-outline" label="Victorias rankeadas" value={p.victoriasRankeadas} />
-      <StatRow     icon="ribbon-outline" label="Victorias"           value={p.victorias} />
+      <StatRow mci icon="tennis"         label={t('perfil.partidos')}           value={p.partidos} />
+      <StatRow     icon="trophy-outline" label={t('perfil.partidosRankeados')}  value={p.partidosRankeados} />
+      <StatRow     icon="ribbon-outline" label={t('perfil.victoriasRankeadas')} value={p.victoriasRankeadas} />
+      <StatRow     icon="ribbon-outline" label={t('perfil.victorias')}          value={p.victorias} />
     </View>
   );
 }
 
 function DetallesTab({ p }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.tabContent}>
-      <StatRow mci icon="tennis" label="Deporte Favorito" value={p.deporte ?? 'Frontón'} />
+      <StatRow mci icon="tennis" label={t('perfil.deporteFavorito')} value={p.deporte ?? t('deportes.fronton')} />
       {p.sobreMi ? (
         <View style={styles.sobreMiCard}>
-          <Text style={styles.sobreMiTitle}>Sobre mí</Text>
+          <Text style={styles.sobreMiTitle}>{t('perfil.sobreMi')}</Text>
           <Text style={styles.sobreMiText}>{p.sobreMi}</Text>
         </View>
       ) : null}
@@ -191,11 +202,12 @@ function DetallesTab({ p }) {
 }
 
 function ResultadosTab({ resultados, loading }) {
+  const { t } = useTranslation();
   if (loading) return <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 32 }} />;
   if (!resultados.length) return (
     <View style={styles.emptyState}>
       <Ionicons name="trophy-outline" size={40} color={colors.textSecondary} />
-      <Text style={styles.emptyText}>Sin resultados registrados</Text>
+      <Text style={styles.emptyText}>{t('perfil.sinResultados')}</Text>
     </View>
   );
   return (
@@ -206,6 +218,7 @@ function ResultadosTab({ resultados, loading }) {
 }
 
 export function ProfileScreen({ navigation }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const [activeTab, setActiveTab]   = useState('Estadísticas');
   const [profile, setProfile]       = useState(null);
   const [resultados, setResultados] = useState([]);
@@ -231,7 +244,7 @@ export function ProfileScreen({ navigation }) {
           if (isMounted) {
             if (resPerfil) {
               setProfile({
-                nombre:             resPerfil.nombre_completo      ?? resPerfil.nombre             ?? 'Mi perfil',
+                nombre:             resPerfil.nombre_completo      ?? resPerfil.nombre             ?? null,
                 avatar:             resPerfil.foto_perfil_url      ?? null,
                 coverUri:           null,
                 ranking:            resPerfil.posicion_ranking     ?? resPerfil.ranking            ?? null,
@@ -242,7 +255,7 @@ export function ProfileScreen({ navigation }) {
                 partidosRankeados:  resPerfil.partidos_rankeados   ?? 0,
                 victorias:          resPerfil.victorias_totales    ?? resPerfil.victorias          ?? 0,
                 victoriasRankeadas: resPerfil.victorias_rankeadas  ?? 0,
-                deporte:            resPerfil.deporte_nombre       ?? resPerfil.deporte            ?? 'Frontón',
+                deporte:            resPerfil.deporte_nombre       ?? resPerfil.deporte            ?? null,
                 sobreMi:            resPerfil.bio_profesor         ?? resPerfil.descripcion        ?? null,
                 calificacion:       resPerfil.calificacion_promedio != null
                                       ? Number(resPerfil.calificacion_promedio).toFixed(1)
@@ -325,10 +338,10 @@ export function ProfileScreen({ navigation }) {
 
           <View style={styles.rankBadge}>
             <Ionicons name="trophy" size={14} color={colors.primary} />
-            <Text style={styles.rankBadgeText}>{p.ranking ?? 'N/R'}</Text>
+            <Text style={styles.rankBadgeText}>{p.ranking ?? t('header.sinRanking')}</Text>
           </View>
 
-          <Text style={styles.name}>{p.nombre ?? 'Mi perfil'}</Text>
+          <Text style={styles.name}>{p.nombre ?? t('perfil.miPerfil')}</Text>
           <Text style={styles.ptsText}>{Number(p.pts ?? 0).toFixed(1)} pts</Text>
 
           {/* NUEVO: calificaciones */}
@@ -338,11 +351,11 @@ export function ProfileScreen({ navigation }) {
           <View style={styles.socialRow}>
             <TouchableOpacity style={styles.socialBtn} onPress={() => navigation.navigate('Amigos')}>
               <Ionicons name="people-outline" size={18} color={colors.textPrimary} />
-              <Text style={styles.socialBtnText}>Amigos</Text>
+              <Text style={styles.socialBtnText}>{t('perfil.amigos')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.socialBtn} onPress={() => navigation.navigate('SolicitudesAmistad')}>
               <Ionicons name="person-add-outline" size={18} color={colors.textPrimary} />
-              <Text style={styles.socialBtnText}>Solicitudes</Text>
+              <Text style={styles.socialBtnText}>{t('perfil.solicitudes')}</Text>
               {solicitudesAmistad > 0 && (
                 <View style={styles.socialBadge}>
                   <Text style={styles.socialBadgeText}>{solicitudesAmistad > 9 ? '9+' : solicitudesAmistad}</Text>
@@ -354,7 +367,7 @@ export function ProfileScreen({ navigation }) {
           <View style={styles.tabBar}>
             {TABS.map(tab => (
               <TouchableOpacity key={tab} style={styles.tabItem} onPress={() => setActiveTab(tab)}>
-                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{t(CLAVE_TAB[tab])}</Text>
                 {activeTab === tab && <View style={styles.tabIndicator} />}
               </TouchableOpacity>
             ))}

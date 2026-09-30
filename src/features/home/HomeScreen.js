@@ -6,6 +6,7 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { ACTION_CARDS } from '../../data/homeData';
@@ -35,6 +36,10 @@ function NivelProgress({ percent = 0, size = 54 }) {
 }
 
 function PhotoCard({ card, onPress }) {
+  const { t } = useTranslation();
+  // NUEVO (idiomas): si existe traducción para esta tarjeta se usa; si no, el texto original
+  const titulo    = t(`home.tarjetas.${card.id}.titulo`,    { defaultValue: card.title });
+  const subtitulo = card.subtitle ? t(`home.tarjetas.${card.id}.subtitulo`, { defaultValue: card.subtitle }) : null;
   return (
     <TouchableOpacity
       style={[styles.photoCard, { height: card.height }]}
@@ -44,11 +49,11 @@ function PhotoCard({ card, onPress }) {
       <ImageBackground source={{ uri: card.uri }} style={StyleSheet.absoluteFillObject} imageStyle={{ borderRadius: 16 }}>
         <View style={styles.cardOverlay} />
         <View style={styles.cardContent}>
-          <Text style={styles.cardTitle}>{card.title}</Text>
-          {card.subtitle && (
+          <Text style={styles.cardTitle}>{titulo}</Text>
+          {subtitulo && (
             <View style={styles.cardSubRow}>
               <View style={styles.greenDot} />
-              <Text style={styles.cardSub}>{card.subtitle}</Text>
+              <Text style={styles.cardSub}>{subtitulo}</Text>
             </View>
           )}
         </View>
@@ -58,6 +63,7 @@ function PhotoCard({ card, onPress }) {
 }
 
 export function HomeScreen({ navigation }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -123,21 +129,21 @@ export function HomeScreen({ navigation }) {
             contentContainerStyle={styles.scrollContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
           >
-            <Text style={styles.sectionTitle}>Tus estadísticas</Text>
+            <Text style={styles.sectionTitle}>{t('home.tusEstadisticas')}</Text>
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
                 <View style={styles.statTopRow}>
-                  <Text style={styles.statNumber}>{usuario?.ranking ?? 'N/R'}</Text>
+                  <Text style={styles.statNumber}>{usuario?.ranking ?? t('header.sinRanking')}</Text>
                   <Ionicons name="trophy" size={20} color={colors.textPrimary} style={{ marginLeft: 6, marginTop: 6 }} />
                 </View>
-                <Text style={styles.statLabel}>Ranking</Text>
+                <Text style={styles.statLabel}>{t('perfil.ranking')}</Text>
               </View>
 
               <View style={styles.statCard}>
                 <View style={styles.statTopRow}>
                   <View>
                     <Text style={styles.statNumber}>{usuario?.nivel ?? '--'}</Text>
-                    <Text style={styles.statLabel}>Nivel</Text>
+                    <Text style={styles.statLabel}>{t('perfil.nivel')}</Text>
                   </View>
                   <View style={{ alignItems: 'center', marginLeft: 'auto' }}>
                     <View style={styles.progressWrapper}>
@@ -150,7 +156,7 @@ export function HomeScreen({ navigation }) {
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>¿Qué deseas hacer hoy?</Text>
+            <Text style={styles.sectionTitle}>{t('home.queDeseas')}</Text>
             <View style={styles.grid}>
               <View style={styles.gridCol}>
                 {leftCards.map((c) => (

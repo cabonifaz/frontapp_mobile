@@ -4,12 +4,14 @@ import {
   SafeAreaView, Image, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { partidoService } from '../../services/partidoService';
 import { usuarioService } from '../../services/usuarioService';
 import { getAvatarSource } from '../../utils/avatars';
 
 function SuccessScreen({ player, miAvatar, onVolver }) {
+  const { t } = useTranslation();
   const firstName = player.name?.split(' ')[0] ?? player.name;
   return (
     <View style={styles.successContainer}>
@@ -19,21 +21,20 @@ function SuccessScreen({ player, miAvatar, onVolver }) {
           <Text style={styles.vsText}>vs</Text>
           <Image source={getAvatarSource(player.avatar)} style={styles.vsAvatar} />
         </View>
-        <Text style={styles.successTitle}>{'Has retado a\n'}{firstName}</Text>
-        <Text style={styles.successSubtitle}>
-          Espera a que {firstName} responda para poder ponerte de acuerdo con él.
-        </Text>
+        <Text style={styles.successTitle}>{t('retar.hasRetado', { nombre: firstName })}</Text>
+        <Text style={styles.successSubtitle}>{t('retar.espera', { nombre: firstName })}</Text>
       </View>
       <TouchableOpacity style={styles.accentBtn} onPress={onVolver}>
-        <Text style={styles.accentBtnText}>Volver</Text>
+        <Text style={styles.accentBtnText}>{t('retar.volver')}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 export function RetarScreen({ navigation, route }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const player = route?.params?.player ?? {};
-  const firstName = player.name?.split(' ')[0] ?? 'este jugador';
+  const firstName = player.name?.split(' ')[0] ?? t('retar.esteJugador');
   const [success, setSuccess] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
   const [miAvatar, setMiAvatar] = useState(getAvatarSource(null));
@@ -53,15 +54,16 @@ export function RetarScreen({ navigation, route }) {
       setSuccess(true);
     } catch (e) {
       const msg = e.message ?? '';
+      // YA_RECHAZADO / YA_PENDIENTE son códigos del backend: no se traducen
       if (msg.includes('YA_RECHAZADO')) {
         setConfirmando(false);
         Alert.alert(
-          'Ya retaste a este jugador',
-          `Anteriormente ${firstName} te rechazó. ¿Quieres intentarlo de nuevo?`,
+          t('retar.yaRetaste'),
+          t('retar.teRechazo', { nombre: firstName }),
           [
-            { text: 'No', style: 'cancel' },
+            { text: t('retar.no'), style: 'cancel' },
             {
-              text: 'Sí, intentar',
+              text: t('retar.siIntentar'),
               onPress: async () => {
                 try {
                   setConfirmando(true);
@@ -69,7 +71,7 @@ export function RetarScreen({ navigation, route }) {
                   route.params?.onRetadoExitoso?.();
                   setSuccess(true);
                 } catch (err) {
-                  Alert.alert('Error', err.message || 'No se pudo enviar el reto.');
+                  Alert.alert(t('comun.error'), err.message || t('retar.errorEnviar'));
                 } finally {
                   setConfirmando(false);
                 }
@@ -82,7 +84,7 @@ export function RetarScreen({ navigation, route }) {
         route.params?.onRetadoExitoso?.();
         setSuccess(true);
       } else {
-        Alert.alert('Error', msg || 'No se pudo enviar el reto.');
+        Alert.alert(t('comun.error'), msg || t('retar.errorEnviar'));
       }
     } finally {
       setConfirmando(false);
@@ -103,7 +105,7 @@ export function RetarScreen({ navigation, route }) {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Retar a {firstName}</Text>
+        <Text style={styles.headerTitle}>{t('retar.titulo', { nombre: firstName })}</Text>
       </View>
 
       <View style={styles.content}>
@@ -127,12 +129,12 @@ export function RetarScreen({ navigation, route }) {
         </TouchableOpacity>
 
         {/* Detalles del partido */}
-        <Text style={styles.sectionTitle}>Detalles del partido</Text>
+        <Text style={styles.sectionTitle}>{t('retar.detalles')}</Text>
 
         <View style={styles.detailCard}>
           <Ionicons name="location-outline" size={18} color={colors.textPrimary} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.detailMain}>{player.club}</Text>
+            <Text style={styles.detailMain}>{player.club ?? t('partidos.canchaNoEspecificada')}</Text>
           </View>
         </View>
 
@@ -154,14 +156,12 @@ export function RetarScreen({ navigation, route }) {
           </View>
         )}
 
-        <Text style={styles.note}>
-          Al confirmar le enviarás un reto a {firstName}. Él podrá aceptarlo o rechazarlo.
-        </Text>
+        <Text style={styles.note}>{t('retar.nota', { nombre: firstName })}</Text>
       </View>
 
       <View style={styles.bottomBar}>
         <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirmar} disabled={confirmando}>
-          <Text style={styles.confirmBtnText}>{confirmando ? 'Enviando...' : 'Confirmar reto'}</Text>
+          <Text style={styles.confirmBtnText}>{confirmando ? t('retar.enviando') : t('retar.confirmar')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

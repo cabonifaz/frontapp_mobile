@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { rankingService } from '../../services/rankingService';
 import { amistadService } from '../../services/amistadService';
@@ -14,6 +15,11 @@ const SCREEN_W = Dimensions.get('window').width;
 const COVER_H  = 220;
 const AVATAR_SIZE = 126;
 const TABS = ['Estadísticas', 'Detalles'];
+// NUEVO (idiomas): valor interno de cada pestaña -> clave del texto visible
+const CLAVE_TAB = {
+  'Estadísticas': 'perfil.tabs.estadisticas',
+  'Detalles':     'perfil.tabs.detalles',
+};
 
 const COVER_DEFAULT = 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80';
 
@@ -56,15 +62,16 @@ function StatRow({ icon, mci, label, value }) {
 }
 
 function EstadisticasTab({ p }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.tabContent}>
       <View style={styles.statCardsRow}>
         <View style={[styles.statCard, { flex: 1, marginRight: 8 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
-            <Text style={styles.bigNum}>{p.ranking ?? 'N/R'}</Text>
+            <Text style={styles.bigNum}>{p.ranking ?? t('header.sinRanking')}</Text>
             <Ionicons name="trophy" size={18} color={colors.textPrimary} style={{ marginLeft: 6, marginTop: 8 }} />
           </View>
-          <Text style={styles.statCardLabel}>Ranking</Text>
+          <Text style={styles.statCardLabel}>{t('perfil.ranking')}</Text>
         </View>
         <View style={[styles.statCard, { flex: 1, marginLeft: 8 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -74,24 +81,25 @@ function EstadisticasTab({ p }) {
               <Text style={styles.nivelPts}>{Number(p.pts ?? 0).toFixed(1)} pts</Text>
             </View>
           </View>
-          <Text style={styles.statCardLabel}>Nivel</Text>
+          <Text style={styles.statCardLabel}>{t('perfil.nivel')}</Text>
         </View>
       </View>
-      <StatRow mci icon="tennis"         label="Partidos"            value={p.partidos} />
-      <StatRow     icon="trophy-outline" label="Partidos rankeados"  value={p.partidosRankeados} />
-      <StatRow     icon="ribbon-outline" label="Victorias rankeadas" value={p.victoriasRankeadas} />
-      <StatRow     icon="ribbon-outline" label="Victorias"           value={p.victorias} />
+      <StatRow mci icon="tennis"         label={t('perfil.partidos')}           value={p.partidos} />
+      <StatRow     icon="trophy-outline" label={t('perfil.partidosRankeados')}  value={p.partidosRankeados} />
+      <StatRow     icon="ribbon-outline" label={t('perfil.victoriasRankeadas')} value={p.victoriasRankeadas} />
+      <StatRow     icon="ribbon-outline" label={t('perfil.victorias')}          value={p.victorias} />
     </View>
   );
 }
 
 function DetallesTab({ p }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.tabContent}>
-      <StatRow mci icon="tennis" label="Deporte Favorito" value={p.deporte ?? 'Frontón'} />
+      <StatRow mci icon="tennis" label={t('perfil.deporteFavorito')} value={p.deporte ?? t('deportes.fronton')} />
       {p.sobreMi ? (
         <View style={styles.sobreMiCard}>
-          <Text style={styles.sobreMiTitle}>Sobre mí</Text>
+          <Text style={styles.sobreMiTitle}>{t('perfil.sobreMi')}</Text>
           <Text style={styles.sobreMiText}>{p.sobreMi}</Text>
         </View>
       ) : null}
@@ -101,6 +109,7 @@ function DetallesTab({ p }) {
 
 // NUEVO: calificación como jugador y, si aplica, como profesor
 function Calificaciones({ p }) {
+  const { t } = useTranslation();
   const fmt = (v) => (v != null ? Number(v).toFixed(1) : '—');
   return (
     <View style={styles.califRow}>
@@ -108,7 +117,7 @@ function Calificaciones({ p }) {
         <Ionicons name="star" size={14} color={colors.accent} />
         <Text style={styles.califValor}>{fmt(p.califJugador)}</Text>
         <Text style={styles.califTexto}>
-          {p.totalCalifJugador > 0 ? `jugador · ${p.totalCalifJugador}` : 'sin calificaciones'}
+          {p.totalCalifJugador > 0 ? t('perfil.califJugador', { n: p.totalCalifJugador }) : t('perfil.sinCalificaciones')}
         </Text>
       </View>
       {p.esProfesor && (
@@ -116,7 +125,7 @@ function Calificaciones({ p }) {
           <Ionicons name="school" size={14} color={colors.accent} />
           <Text style={styles.califValor}>{fmt(p.califProfesor)}</Text>
           <Text style={styles.califTexto}>
-            {p.totalCalifProfesor > 0 ? `profesor · ${p.totalCalifProfesor}` : 'profesor'}
+            {p.totalCalifProfesor > 0 ? t('perfil.califProfesor', { n: p.totalCalifProfesor }) : t('perfil.profesor')}
           </Text>
         </View>
       )}
@@ -126,6 +135,7 @@ function Calificaciones({ p }) {
 
 // NUEVO: acciones de amistad según el estado de la relación
 function AmistadAcciones({ estado, cargando, nombre, onAgregar, onCancelar, onAceptar, onRechazar, onEliminar }) {
+  const { t } = useTranslation();
   if (!estado || estado === 'MISMO_USUARIO') return null;
 
   if (cargando) {
@@ -139,24 +149,25 @@ function AmistadAcciones({ estado, cargando, nombre, onAgregar, onCancelar, onAc
   if (estado === 'PENDIENTE_RECIBIDA') {
     return (
       <View style={styles.amistadRecibida}>
-        <Text style={styles.amistadRecibidaText}>{nombre} te envió una solicitud de amistad</Text>
+        <Text style={styles.amistadRecibidaText}>{t('perfil.amistad.teEnvioSolicitud', { nombre })}</Text>
         <View style={styles.amistadRow}>
           <TouchableOpacity style={[styles.amistadBtn, styles.amistadBtnFilled]} onPress={onAceptar}>
             <Ionicons name="checkmark" size={16} color={colors.primary} />
-            <Text style={styles.amistadBtnTextFilled}>Aceptar</Text>
+            <Text style={styles.amistadBtnTextFilled}>{t('perfil.amistad.aceptar')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.amistadBtn} onPress={onRechazar}>
-            <Text style={styles.amistadBtnText}>Rechazar</Text>
+            <Text style={styles.amistadBtnText}>{t('perfil.amistad.rechazar')}</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
+  // Los estados (NINGUNA, AMIGOS...) vienen del backend y no se traducen; solo sus textos
   const config = {
-    NINGUNA:           { icon: 'person-add-outline', label: 'Agregar amigo',    onPress: onAgregar },
-    PENDIENTE_ENVIADA: { icon: 'time-outline',       label: 'Solicitud enviada', onPress: onCancelar },
-    AMIGOS:            { icon: 'people',             label: 'Amigos',           onPress: onEliminar },
+    NINGUNA:           { icon: 'person-add-outline', label: t('perfil.amistad.agregar'), onPress: onAgregar },
+    PENDIENTE_ENVIADA: { icon: 'time-outline',       label: t('perfil.amistad.enviada'), onPress: onCancelar },
+    AMIGOS:            { icon: 'people',             label: t('perfil.amistad.amigos'),  onPress: onEliminar },
   }[estado];
 
   if (!config) return null;
@@ -176,7 +187,7 @@ function AmistadAcciones({ estado, cargando, nombre, onAgregar, onCancelar, onAc
 
 function buildBasicProfile(basicData) {
   return {
-    nombre:             basicData.nombre   ?? 'Jugador',
+    nombre:             basicData.nombre   ?? null,
     avatar:             basicData.avatar   ?? null,
     coverUri:           COVER_DEFAULT,
     ranking:            basicData.ranking  ?? null,
@@ -187,12 +198,13 @@ function buildBasicProfile(basicData) {
     partidosRankeados:  0,
     victorias:          0,
     victoriasRankeadas: 0,
-    deporte:            'Frontón',
+    deporte:            null,
     sobreMi:            null,
   };
 }
 
 export function PlayerProfileScreen({ navigation, route }) {
+  const { t } = useTranslation();   // NUEVO: idiomas
   const [activeTab, setActiveTab] = useState('Estadísticas');
   const basicData = route.params?.player ?? {};
   const idUsuario = basicData.id_usuario ?? null;
@@ -230,7 +242,7 @@ export function PlayerProfileScreen({ navigation, route }) {
           return;
         }
         setProfile({
-          nombre:             res.nombre_completo          ?? basicData.nombre  ?? 'Jugador',
+          nombre:             res.nombre_completo          ?? basicData.nombre  ?? null,
           avatar:             res.foto_perfil_url          ?? basicData.avatar  ?? null,
           coverUri:           COVER_DEFAULT,
           ranking:            res.posicion_ranking         ?? basicData.ranking ?? null,
@@ -241,7 +253,7 @@ export function PlayerProfileScreen({ navigation, route }) {
           partidosRankeados:  res.partidos_rankeados       ?? 0,
           victorias:          res.victorias_totales        ?? res.victorias     ?? 0,
           victoriasRankeadas: res.victorias_rankeadas      ?? 0,
-          deporte:            res.deporte_nombre           ?? res.deporte       ?? 'Frontón',
+          deporte:            res.deporte_nombre           ?? res.deporte       ?? null,
           sobreMi:            res.bio_profesor             ?? res.descripcion   ?? null,
           // NUEVO: calificaciones
           califJugador:       res.calificacion_jugador ?? null,
@@ -256,7 +268,8 @@ export function PlayerProfileScreen({ navigation, route }) {
   }, []);
 
   const p = profile ?? {};
-  const firstName = String(p.nombre ?? 'Jugador').split(' ')[0];
+  const nombreVisible = p.nombre ?? t('perfil.jugador');
+  const firstName = String(nombreVisible).split(' ')[0];
 
   async function ejecutarAccion(fn) {
     try {
@@ -264,7 +277,7 @@ export function PlayerProfileScreen({ navigation, route }) {
       await fn();
       await refrescarAmistad();
     } catch (e) {
-      Alert.alert('Error', e.message ?? 'No se pudo completar la acción.');
+      Alert.alert(t('comun.error'), e.message ?? t('perfil.amistad.errorAccion'));
       await refrescarAmistad();
     } finally {
       setAccionAmistad(false);
@@ -274,21 +287,21 @@ export function PlayerProfileScreen({ navigation, route }) {
   const onAgregar = () => ejecutarAccion(async () => {
     const res = await amistadService.enviarSolicitud(idUsuario);
     if (res?.estado === 'AMIGOS') {
-      Alert.alert('¡Ahora son amigos!', `${firstName} también te había enviado una solicitud.`);
+      Alert.alert(t('perfil.amistad.ahoraAmigos'), t('perfil.amistad.tambienTeEnvio', { nombre: firstName }));
     }
   });
 
-  const onCancelar = () => Alert.alert('Cancelar solicitud', `¿Quieres cancelar la solicitud enviada a ${firstName}?`, [
-    { text: 'No', style: 'cancel' },
-    { text: 'Sí, cancelar', style: 'destructive', onPress: () => ejecutarAccion(() => amistadService.eliminar(idUsuario)) },
+  const onCancelar = () => Alert.alert(t('perfil.amistad.cancelarTitulo'), t('perfil.amistad.cancelarMensaje', { nombre: firstName }), [
+    { text: t('perfil.amistad.no'), style: 'cancel' },
+    { text: t('perfil.amistad.siCancelar'), style: 'destructive', onPress: () => ejecutarAccion(() => amistadService.eliminar(idUsuario)) },
   ]);
 
   const onAceptar  = () => ejecutarAccion(() => amistadService.responder(idAmistad, true));
   const onRechazar = () => ejecutarAccion(() => amistadService.responder(idAmistad, false));
 
-  const onEliminar = () => Alert.alert('Eliminar amigo', `¿Quieres eliminar a ${firstName} de tus amigos?`, [
-    { text: 'Cancelar', style: 'cancel' },
-    { text: 'Eliminar', style: 'destructive', onPress: () => ejecutarAccion(() => amistadService.eliminar(idUsuario)) },
+  const onEliminar = () => Alert.alert(t('perfil.amistad.eliminarTitulo'), t('perfil.amistad.eliminarMensaje', { nombre: firstName }), [
+    { text: t('comun.cancelar'), style: 'cancel' },
+    { text: t('perfil.amistad.eliminar'), style: 'destructive', onPress: () => ejecutarAccion(() => amistadService.eliminar(idUsuario)) },
   ]);
 
   function retarAmistoso() {
@@ -339,10 +352,10 @@ export function PlayerProfileScreen({ navigation, route }) {
 
           <View style={styles.rankBadge}>
             <Ionicons name="trophy" size={14} color={colors.primary} />
-            <Text style={styles.rankBadgeText}>{p.ranking ?? 'N/R'}</Text>
+            <Text style={styles.rankBadgeText}>{p.ranking ?? t('header.sinRanking')}</Text>
           </View>
 
-          <Text style={styles.name}>{p.nombre ?? 'Jugador'}</Text>
+          <Text style={styles.name}>{nombreVisible}</Text>
           <Text style={styles.ptsText}>{Number(p.pts ?? 0).toFixed(1)} pts</Text>
 
           {/* NUEVO: calificaciones */}
@@ -362,7 +375,7 @@ export function PlayerProfileScreen({ navigation, route }) {
           <View style={styles.tabBar}>
             {TABS.map(tab => (
               <TouchableOpacity key={tab} style={styles.tabItem} onPress={() => setActiveTab(tab)}>
-                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{tab}</Text>
+                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>{t(CLAVE_TAB[tab])}</Text>
                 {activeTab === tab && <View style={styles.tabIndicator} />}
               </TouchableOpacity>
             ))}
@@ -376,14 +389,14 @@ export function PlayerProfileScreen({ navigation, route }) {
               <>
                 <TouchableOpacity style={styles.retarBtn} onPress={retarAmistoso} activeOpacity={0.85}>
                   <MaterialCommunityIcons name="tennis" size={20} color={colors.primary} />
-                  <Text style={styles.retarBtnText}>Retar a un amistoso</Text>
+                  <Text style={styles.retarBtnText}>{t('perfil.retarAmistoso')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.secondaryBtn}
                   onPress={() => navigation.navigate('RankedMatch')}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.secondaryBtnText}>Ver ligas de ranking</Text>
+                  <Text style={styles.secondaryBtnText}>{t('perfil.verLigas')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
@@ -393,7 +406,7 @@ export function PlayerProfileScreen({ navigation, route }) {
                 activeOpacity={0.85}
               >
                 <Ionicons name="trophy-outline" size={20} color={colors.primary} />
-                <Text style={styles.retarBtnText}>Ver ligas de ranking</Text>
+                <Text style={styles.retarBtnText}>{t('perfil.verLigas')}</Text>
               </TouchableOpacity>
             )
           )}

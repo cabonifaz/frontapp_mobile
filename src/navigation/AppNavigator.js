@@ -5,6 +5,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from 'react-i18next';
 import { colors } from '../constants';
 
 import { SplashScreen } from '../features/auth/splash/SplashScreen';
@@ -59,6 +60,7 @@ const Tab = createBottomTabNavigator();
 function MainTabs() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = 54 + insets.bottom;
+  const { t } = useTranslation();   // NUEVO: nombres de pestañas según el idioma
 
   return (
     <Tab.Navigator
@@ -98,11 +100,12 @@ function MainTabs() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
-      <Tab.Screen name="Ranking" component={RankingScreen} options={{ title: 'Ranking' }} />
-      <Tab.Screen name="Resultados" component={ResultadosScreen} options={{ title: 'Resultados' }} />
-      <Tab.Screen name="Partidos" component={PartidosScreen} options={{ title: 'Partidos' }} />
-      <Tab.Screen name="Perfil" component={ProfileScreen} options={{ title: 'Perfil' }} />
+      {/* Los "name" son rutas internas y NO se traducen; solo cambia el "title" visible */}
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: t('tabs.home') }} />
+      <Tab.Screen name="Ranking" component={RankingScreen} options={{ title: t('tabs.ranking') }} />
+      <Tab.Screen name="Resultados" component={ResultadosScreen} options={{ title: t('tabs.resultados') }} />
+      <Tab.Screen name="Partidos" component={PartidosScreen} options={{ title: t('tabs.partidos') }} />
+      <Tab.Screen name="Perfil" component={ProfileScreen} options={{ title: t('tabs.perfil') }} />
     </Tab.Navigator>
   );
 }
