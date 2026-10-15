@@ -52,7 +52,14 @@ const CLAVE_OPCION = {
   'Bajo':                'registro.opciones.bajo',
   'Normal':              'registro.opciones.normal',
   'Bueno':               'registro.opciones.bueno',
+  // NUEVO (036): mano dominante
+  'Diestro':             'mano.MANO_DIESTRO',
+  'Zurdo':               'mano.MANO_ZURDO',
+  'Ambidiestro':         'mano.MANO_AMBIDIESTRO',
 };
+
+// NUEVO (036): opción visible -> código que guarda el backend
+const MANO_MAP = { 'Diestro': 'MANO_DIESTRO', 'Zurdo': 'MANO_ZURDO', 'Ambidiestro': 'MANO_AMBIDIESTRO' };
 function useEtiquetaOpcion() {
   const { t } = useTranslation();
   return (opt) => (CLAVE_OPCION[opt] ? t(CLAVE_OPCION[opt]) : opt);
@@ -363,7 +370,7 @@ function Step2({ data, setData, onNext, onBack }) {
 
 function Step3({ data, setData, onNext, onBack }) {
   const { t } = useTranslation();
-  const canContinue = data.nivel && data.partidos_semana && data.lecciones && data.nivel_fisico;
+  const canContinue = data.nivel && data.partidos_semana && data.lecciones && data.nivel_fisico && data.mano;
 
   return (
     <ScrollView
@@ -397,6 +404,13 @@ function Step3({ data, setData, onNext, onBack }) {
         options={['Bajo', 'Normal', 'Bueno']}
         selected={data.nivel_fisico}
         onSelect={(v) => setData({ ...data, nivel_fisico: v })}
+      />
+      {/* NUEVO (036): mano dominante */}
+      <RadioGroup
+        question={t('registro.preguntaMano')}
+        options={['Diestro', 'Zurdo', 'Ambidiestro']}
+        selected={data.mano}
+        onSelect={(v) => setData({ ...data, mano: v })}
       />
 
       <CheckboxRow
@@ -557,7 +571,7 @@ export function RegisterScreen({ navigation }) {
     correo: '', celular: '', contrasena: '',
     terminos: false,
     deporte: '',
-    nivel: '', partidos_semana: '', lecciones: '', nivel_fisico: '',
+    nivel: '', partidos_semana: '', lecciones: '', nivel_fisico: '', mano: '',
     es_profesor: false, logros: '',
   });
 
@@ -655,6 +669,11 @@ export function RegisterScreen({ navigation }) {
         setPuntajeObtenido(resultado.puntajeInicial ?? null);
       } catch (e) {
         Alert.alert(t('registro.errores.cuestionario'), e.message ?? t('registro.errores.cuestionarioMensaje'));
+      }
+
+      // NUEVO (036): guardar mano dominante (si falla no detiene el registro)
+      if (MANO_MAP[data.mano]) {
+        try { await usuarioService.actualizarManoDominante(MANO_MAP[data.mano]); } catch (_) {}
       }
 
       // 5. Crear perfil de profesor si aplica

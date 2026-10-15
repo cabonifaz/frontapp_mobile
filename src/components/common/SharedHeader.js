@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { useUsuario } from '../../hooks/useUsuario';
+import { getAvatarSource } from '../../utils/avatars';
 
 export const HEADER_BG = colors.dark;
 
@@ -32,8 +33,9 @@ export function SharedHeader({ nombre, deporte, ranking, calificacion, nivel, pu
   const califJugador = usuario ? usuario.calificacion : null;
 
   const obtenerFoto = () => {
-    if (fotoPerfil && fotoPerfil.startsWith('http')) return { uri: fotoPerfil };
-    if (fotoPerfil && AVATARES[fotoPerfil]) return AVATARES[fotoPerfil];
+    // CORREGIDO: la base guarda 'avatar_masculino_2' (sin .png); antes no se reconocía
+    // y se mostraba un avatar al azar en vez del del usuario.
+    if (fotoPerfil) return getAvatarSource(fotoPerfil);
 
     const cantidadLetras = nombre ? nombre.length : 0;
     const masculinos = [

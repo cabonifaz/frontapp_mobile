@@ -38,6 +38,12 @@ import { SolicitudesAmistadScreen } from '../features/friends/SolicitudesAmistad
 // NUEVO: ligas de ranking
 import { LigaDetalleScreen } from '../features/ranking/LigaDetalleScreen';
 import { RankingGeneralScreen } from '../features/ranking/RankingGeneralScreen';
+// NUEVO (APP-AVO-041): bandeja de notificaciones
+import { NotificacionesScreen } from '../features/notifications/NotificacionesScreen';
+import { navigationRef } from './navigationRef';
+import { configurarNotificaciones } from '../utils/pushNotifications';
+
+configurarNotificaciones();
 
 const Stack = createNativeStackNavigator();
 
@@ -112,7 +118,7 @@ function MainTabs() {
 
 export function AppNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -147,6 +153,9 @@ export function AppNavigator() {
         {/* NUEVO: ligas de ranking */}
         <Stack.Screen name="LigaDetalle" component={LigaDetalleScreen} />
         <Stack.Screen name="RankingGeneral" component={RankingGeneralScreen} />
+
+        {/* NUEVO: notificaciones */}
+        <Stack.Screen name="Notificaciones" component={NotificacionesScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

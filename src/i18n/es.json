@@ -135,7 +135,8 @@
       "iniciarSesion": "Error al iniciar sesión",
       "cuestionario": "Error en cuestionario",
       "cuestionarioMensaje": "No se pudo completar el cuestionario."
-    }
+    },
+    "preguntaMano": "¿Cuál es tu mano dominante?"
   },
   "fechas": {
     "mesesCortos": [
@@ -206,6 +207,11 @@
       "clase": {
         "titulo": "Tomar clase"
       }
+    },
+    "ultimosResultados": "Últimos resultados",
+    "relacion": {
+      "amigo": "Amigo",
+      "siguiendo": "Siguiendo"
     }
   },
   "perfil": {
@@ -275,7 +281,11 @@
     "actualizado": "Perfil actualizado",
     "actualizadoMensaje": "Tus cambios han sido guardados.",
     "errorFoto": "No se pudo guardar la foto. Intenta de nuevo.",
-    "ok": "OK"
+    "ok": "OK",
+    "errorGuardar": "No se pudieron guardar los cambios. Intenta de nuevo.",
+    "errorNombre": "Ingresa tu nombre y apellidos.",
+    "errorFechaIncompleta": "Completa el día, mes y año de tu fecha de nacimiento.",
+    "errorFechaInvalida": "Esa fecha de nacimiento no existe."
   },
   "estados": {
     "pendiente": "Pendiente",
@@ -903,5 +913,55 @@
       "guardando": "Guardando...",
       "claseCompletada": "Clase completada"
     }
+  },
+  "mano": {
+    "titulo": "Mano dominante",
+    "sinDefinir": "Sin definir",
+    "MANO_DIESTRO": "Diestro",
+    "MANO_ZURDO": "Zurdo",
+    "MANO_AMBIDIESTRO": "Ambidiestro"
+  },
+  "seguir": {
+    "seguir": "Seguir",
+    "siguiendo": "Siguiendo",
+    "seguidores_one": "{{count}} seguidor",
+    "seguidores_other": "{{count}} seguidores"
+  },
+  "notif": {
+    "titulo": "Notificaciones",
+    "vacio": "No tienes notificaciones",
+    "generica": "Tienes una nueva notificación",
+    "tipos": {
+      "RESULTADO_POR_CONFIRMAR": "{{nombre}} registró el resultado de su partido. Confírmalo.",
+      "RESULTADO_CONFIRMADO": "{{nombre}} confirmó el resultado de su partido. Ya es oficial.",
+      "RESULTADO_AMIGO": "{{nombre}} tiene un nuevo resultado. ¡Míralo!",
+      "NUEVO_SEGUIDOR": "{{nombre}} empezó a seguirte."
+    },
+    "tiposSinNombre": {
+      "RESULTADO_POR_CONFIRMAR": "Tienes un resultado por confirmar.",
+      "RESULTADO_CONFIRMADO": "El resultado de tu partido ya es oficial.",
+      "RESULTADO_AMIGO": "Un jugador que sigues tiene un nuevo resultado.",
+      "NUEVO_SEGUIDOR": "Tienes un nuevo seguidor."
+    },
+    "tiempo": {
+      "ahora": "Ahora",
+      "minutos": "Hace {{n}} min",
+      "horas": "Hace {{n}} h",
+      "dias": "Hace {{n}} d"
+    }
+  },
+  "fotos": {
+    "titulo": "Fotos del encuentro",
+    "maximo": "Puedes subir hasta {{n}} fotos por partido.",
+    "permiso": "Necesitamos acceso a tu galería para subir fotos.",
+    "subiendo": "Subiendo fotos...",
+    "errorSubir": "Algunas fotos no se pudieron subir. Puedes agregarlas desde el detalle del resultado.",
+    "errorSubirDetalle": "Algunas fotos no se pudieron subir. Intenta de nuevo.",
+    "sinFotos": "Aún no hay fotos del encuentro",
+    "agregar": "Agregar",
+    "eliminarTitulo": "Eliminar foto",
+    "eliminarMensaje": "¿Quieres eliminar esta foto?",
+    "eliminar": "Eliminar",
+    "hintEliminar": "Mantén presionada una foto tuya para eliminarla."
   }
 }

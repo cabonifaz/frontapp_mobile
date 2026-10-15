@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { authService } from '../../services/authService';
 import { SelectorIdioma } from '../../components/common/SelectorIdioma';
+import { desregistrarPush } from '../../utils/pushNotifications';   // NUEVO (041)
 
 export function SettingsScreen({ navigation }) {
   const { t } = useTranslation();
@@ -19,6 +20,7 @@ export function SettingsScreen({ navigation }) {
         {
           text: t('ajustes.salir'),
           onPress: async () => {
+            await desregistrarPush();   // NUEVO (041): este celular deja de recibir avisos de la cuenta
             await authService.logout();
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           },
@@ -38,6 +40,7 @@ export function SettingsScreen({ navigation }) {
           text: t('ajustes.cambiarCuentaBoton'),
           style: 'destructive',
           onPress: async () => {
+            await desregistrarPush();   // NUEVO (041)
             await authService.logoutAndSwitch();
             navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
           },
@@ -60,7 +63,7 @@ export function SettingsScreen({ navigation }) {
         {/* NUEVO: idioma de la aplicación */}
         <SelectorIdioma />
 
-        <TouchableOpacity style={styles.optionRow} onPress={() => {}}>
+        <TouchableOpacity style={styles.optionRow} onPress={() => navigation.navigate('Notificaciones')}>
           <View style={styles.optionLeft}>
             <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
             <Text style={styles.optionText}>{t('ajustes.notificaciones')}</Text>

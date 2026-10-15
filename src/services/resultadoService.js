@@ -8,6 +8,29 @@ export const resultadoService = {
     return api.get(`/api/Resultado?${params}`);
   },
 
+  // NUEVO (APP-AVO-040): carrusel del Home (amigos y seguidos primero)
+  async feed(limite = 20) {
+    return api.get(`/api/Resultado/feed?limite=${limite}`);
+  },
+
+  // NUEVO (APP-AVO-039): resultados confirmados de otro jugador
+  async deJugador(idJugador, limite = 50) {
+    return api.get(`/api/Resultado/jugador/${idJugador}?limite=${limite}`);
+  },
+
+  // NUEVO (fotos del encuentro) -> { fotos: [...], puedeSubir }
+  async fotos(idPartido) {
+    return api.get(`/api/Resultado/${idPartido}/fotos`);
+  },
+
+  async agregarFoto(idPartido, url) {
+    return api.post(`/api/GestionResultado/${idPartido}/fotos`, { url });
+  },
+
+  async eliminarFoto(idFoto) {
+    return api.delete(`/api/GestionResultado/fotos/${idFoto}`);
+  },
+
   async detalle(idPartido) {
     return api.get(`/api/Resultado/${idPartido}`);
   },

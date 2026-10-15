@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, ImageBackground, ActivityIndicator, RefreshControl,
+  SafeAreaView, ImageBackground, ActivityIndicator, RefreshControl, Dimensions, Image,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
@@ -12,6 +12,56 @@ import { SharedHeader, HEADER_BG } from '../../components/common/SharedHeader';
 import { ACTION_CARDS } from '../../data/homeData';
 import { usuarioService } from '../../services/usuarioService';
 import { solicitudService } from '../../services/solicitudService';
+// NUEVO (040 / 041)
+import { resultadoService } from '../../services/resultadoService';
+import { notificacionService } from '../../services/notificacionService';
+import { MatchCard } from '../results/ResultadosScreen';
+import { registrarPush, abrirSiVinoDeNotificacion, actualizarBadge } from '../../utils/pushNotifications';
+
+const CARD_W = Math.round(Dimensions.get('window').width * 0.82);
+
+// NUEVO (040): carrusel de últimos resultados (amigos y seguidos primero)
+function CarruselResultados({ items, onPress }) {
+  const { t } = useTranslation();
+  if (!items.length) return null;
+  return (
+    <>
+      <Text style={styles.sectionTitle}>{t('home.ultimosResultados')}</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={CARD_W + 12}
+        decelerationRate="fast"
+        style={styles.carrusel}
+        contentContainerStyle={styles.carruselContent}
+      >
+        {items.map(m => (
+          <View key={m.id_resultado} style={{ width: CARD_W }}>
+            {m.relacion === 'AMIGO' || m.relacion === 'SIGUIENDO' ? (
+              <View style={styles.relacionChip}>
+                <Ionicons name={m.relacion === 'AMIGO' ? 'people' : 'eye'} size={11} color={colors.textSecondary} />
+                <Text style={styles.relacionText}>
+                  {m.relacion === 'AMIGO' ? t('home.relacion.amigo') : t('home.relacion.siguiendo')}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.relacionChip} />
+            )}
+            {/* NUEVO: si el partido tiene foto del encuentro, va arriba de la tarjeta */}
+            {m.foto_encuentro ? (
+              <TouchableOpacity activeOpacity={0.9} onPress={() => onPress(m)} style={styles.carruselFotoWrap}>
+                <Image source={{ uri: m.foto_encuentro }} style={styles.carruselFoto} />
+                <MatchCard match={m} onPress={() => onPress(m)} style={[styles.carruselCard, styles.carruselCardConFoto]} />
+              </TouchableOpacity>
+            ) : (
+              <MatchCard match={m} onPress={() => onPress(m)} style={styles.carruselCard} />
+            )}
+          </View>
+        ))}
+      </ScrollView>
+    </>
+  );
+}
 
 function NivelProgress({ percent = 0, size = 54 }) {
   const strokeWidth = 5;
@@ -68,6 +118,14 @@ export function HomeScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [solicitudesCount, setSolicitudesCount] = useState(0);
+  const [feed, setFeed] = useState([]);              // NUEVO (040)
+  const [notifCount, setNotifCount] = useState(0);   // NUEVO (041)
+
+  // NUEVO (041): registrar este celular para push y abrir la bandeja si se entró tocando un aviso
+  useEffect(() => {
+    registrarPush();
+    abrirSiVinoDeNotificacion();
+  }, []);
 
   const leftCards = [ACTION_CARDS[0], ACTION_CARDS[2]];
   const rightCards = [ACTION_CARDS[1], ACTION_CARDS[3]];
@@ -91,6 +149,16 @@ export function HomeScreen({ navigation }) {
           porcentaje_nivel: raw.progreso_nivel_pct ?? raw.progreso_nivel_porcentaje ?? raw.porcentaje_nivel ?? 0,
         });
       }
+
+      // NUEVO (040 / 041): carrusel y contador de notificaciones (si fallan, el Home sigue)
+      const [resFeed, resNotif] = await Promise.all([
+        resultadoService.feed(15).catch(() => []),
+        notificacionService.noLeidas().catch(() => null),
+      ]);
+      setFeed(Array.isArray(resFeed) ? resFeed : []);
+      const totalNotif = Number(resNotif?.total ?? 0);
+      setNotifCount(totalNotif);
+      actualizarBadge(totalNotif);
 
       const solicitudes = await solicitudService.listarPendientes();
       if (Array.isArray(solicitudes)) {
@@ -129,7 +197,22 @@ export function HomeScreen({ navigation }) {
             contentContainerStyle={styles.scrollContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
           >
-            <Text style={styles.sectionTitle}>{t('home.tusEstadisticas')}</Text>
+            {/* NUEVO (041): campana de notificaciones */}
+            <View style={styles.titleRow}>
+              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>{t('home.tusEstadisticas')}</Text>
+              <TouchableOpacity
+                style={styles.bellBtn}
+                onPress={() => navigation.navigate('Notificaciones')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name={notifCount > 0 ? 'notifications' : 'notifications-outline'} size={24} color={colors.textPrimary} />
+                {notifCount > 0 && (
+                  <View style={styles.bellBadge}>
+                    <Text style={styles.bellBadgeText}>{notifCount > 9 ? '9+' : notifCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
                 <View style={styles.statTopRow}>
@@ -155,6 +238,12 @@ export function HomeScreen({ navigation }) {
                 </View>
               </View>
             </View>
+
+            {/* NUEVO (040) */}
+            <CarruselResultados
+              items={feed}
+              onPress={(m) => navigation.navigate('DetalleResultado', { match: m })}
+            />
 
             <Text style={styles.sectionTitle}>{t('home.queDeseas')}</Text>
             <View style={styles.grid}>
@@ -206,6 +295,26 @@ const styles = StyleSheet.create({
   progressPct: { position: 'absolute', fontSize: 11, fontWeight: '700', color: colors.textPrimary },
   nivelPts: { fontSize: 11, color: colors.textSecondary, marginTop: 2 },
   grid: { flexDirection: 'row', gap: 12 },
+
+  // NUEVO (041): campana
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  bellBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  bellBadge: {
+    position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,
+    backgroundColor: '#E53935', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: colors.background,
+  },
+  bellBadgeText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
+
+  // NUEVO (040): carrusel
+  carrusel: { marginHorizontal: -20, marginBottom: 28 },
+  carruselContent: { paddingHorizontal: 20, gap: 12 },
+  carruselCard: { marginBottom: 0 },
+  carruselFotoWrap: { borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface },
+  carruselFoto: { width: '100%', height: 150 },
+  carruselCardConFoto: { borderTopLeftRadius: 0, borderTopRightRadius: 0 },
+  relacionChip: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 18, marginBottom: 4, marginLeft: 4 },
+  relacionText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
   gridCol: { flex: 1, gap: 12 },
   photoCard: { borderRadius: 16, overflow: 'hidden', backgroundColor: '#333' },
   cardOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.36)', borderRadius: 16 },

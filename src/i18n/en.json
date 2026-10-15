@@ -135,7 +135,8 @@
       "iniciarSesion": "Login error",
       "cuestionario": "Questionnaire error",
       "cuestionarioMensaje": "The questionnaire could not be completed."
-    }
+    },
+    "preguntaMano": "What is your dominant hand?"
   },
   "fechas": {
     "mesesCortos": [
@@ -206,6 +207,11 @@
       "clase": {
         "titulo": "Take a class"
       }
+    },
+    "ultimosResultados": "Latest results",
+    "relacion": {
+      "amigo": "Friend",
+      "siguiendo": "Following"
     }
   },
   "perfil": {
@@ -275,7 +281,11 @@
     "actualizado": "Profile updated",
     "actualizadoMensaje": "Your changes have been saved.",
     "errorFoto": "The photo could not be saved. Please try again.",
-    "ok": "OK"
+    "ok": "OK",
+    "errorGuardar": "Your changes could not be saved. Please try again.",
+    "errorNombre": "Enter your first and last name.",
+    "errorFechaIncompleta": "Complete the day, month and year of your date of birth.",
+    "errorFechaInvalida": "That date of birth does not exist."
   },
   "estados": {
     "pendiente": "Pending",
@@ -903,5 +913,55 @@
       "guardando": "Saving...",
       "claseCompletada": "Class completed"
     }
+  },
+  "mano": {
+    "titulo": "Dominant hand",
+    "sinDefinir": "Not set",
+    "MANO_DIESTRO": "Right-handed",
+    "MANO_ZURDO": "Left-handed",
+    "MANO_AMBIDIESTRO": "Ambidextrous"
+  },
+  "seguir": {
+    "seguir": "Follow",
+    "siguiendo": "Following",
+    "seguidores_one": "{{count}} follower",
+    "seguidores_other": "{{count}} followers"
+  },
+  "notif": {
+    "titulo": "Notifications",
+    "vacio": "You have no notifications",
+    "generica": "You have a new notification",
+    "tipos": {
+      "RESULTADO_POR_CONFIRMAR": "{{nombre}} posted your match result. Please confirm it.",
+      "RESULTADO_CONFIRMADO": "{{nombre}} confirmed your match result. It is now official.",
+      "RESULTADO_AMIGO": "{{nombre}} has a new result. Check it out!",
+      "NUEVO_SEGUIDOR": "{{nombre}} started following you."
+    },
+    "tiposSinNombre": {
+      "RESULTADO_POR_CONFIRMAR": "You have a result to confirm.",
+      "RESULTADO_CONFIRMADO": "Your match result is now official.",
+      "RESULTADO_AMIGO": "A player you follow has a new result.",
+      "NUEVO_SEGUIDOR": "You have a new follower."
+    },
+    "tiempo": {
+      "ahora": "Now",
+      "minutos": "{{n}} min ago",
+      "horas": "{{n}} h ago",
+      "dias": "{{n}} d ago"
+    }
+  },
+  "fotos": {
+    "titulo": "Match photos",
+    "maximo": "You can upload up to {{n}} photos per match.",
+    "permiso": "We need access to your gallery to upload photos.",
+    "subiendo": "Uploading photos...",
+    "errorSubir": "Some photos could not be uploaded. You can add them from the result details.",
+    "errorSubirDetalle": "Some photos could not be uploaded. Please try again.",
+    "sinFotos": "No match photos yet",
+    "agregar": "Add",
+    "eliminarTitulo": "Delete photo",
+    "eliminarMensaje": "Do you want to delete this photo?",
+    "eliminar": "Delete",
+    "hintEliminar": "Press and hold one of your photos to delete it."
   }
 }

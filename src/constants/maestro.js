@@ -113,3 +113,7 @@ export const CFG = {
 
 // Deporte por defecto de la app
 export const DEPORTE_DEFAULT = DEPORTES.FRONTON;
+
+// NUEVO (APP-AVO-036): CAT_MANO_DOMINANTE. Se envía y recibe por CÓDIGO (no por id),
+// así no depende de los ids que genere cada base de datos.
+export const MANOS_DOMINANTES = ['MANO_DIESTRO', 'MANO_ZURDO', 'MANO_AMBIDIESTRO'];

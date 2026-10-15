@@ -9,16 +9,20 @@ import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { rankingService } from '../../services/rankingService';
 import { amistadService } from '../../services/amistadService';
+import { seguimientoService } from '../../services/seguimientoService';   // NUEVO (037)
+import { resultadoService } from '../../services/resultadoService';       // NUEVO (039)
+import { MatchCard } from '../results/ResultadosScreen';                  // NUEVO (039)
 import { getAvatarSource } from '../../utils/avatars';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H  = 220;
 const AVATAR_SIZE = 126;
-const TABS = ['Estadísticas', 'Detalles'];
+const TABS = ['Estadísticas', 'Detalles', 'Resultados'];   // NUEVO (039): pestaña Resultados
 // NUEVO (idiomas): valor interno de cada pestaña -> clave del texto visible
 const CLAVE_TAB = {
   'Estadísticas': 'perfil.tabs.estadisticas',
   'Detalles':     'perfil.tabs.detalles',
+  'Resultados':   'perfil.tabs.resultados',
 };
 
 const COVER_DEFAULT = 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=800&q=80';
@@ -97,6 +101,9 @@ function DetallesTab({ p }) {
   return (
     <View style={styles.tabContent}>
       <StatRow mci icon="tennis" label={t('perfil.deporteFavorito')} value={p.deporte ?? t('deportes.fronton')} />
+      {/* NUEVO (036): mano dominante */}
+      <StatRow icon="hand-left-outline" label={t('mano.titulo')}
+        value={p.manoDominante ? t(`mano.${p.manoDominante}`) : t('mano.sinDefinir')} />
       {p.sobreMi ? (
         <View style={styles.sobreMiCard}>
           <Text style={styles.sobreMiTitle}>{t('perfil.sobreMi')}</Text>
@@ -104,6 +111,42 @@ function DetallesTab({ p }) {
         </View>
       ) : null}
     </View>
+  );
+}
+
+// NUEVO (039): resultados confirmados del jugador
+function ResultadosTab({ resultados, loading, onPress }) {
+  const { t } = useTranslation();
+  if (loading) return <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 32 }} />;
+  if (!resultados.length) {
+    return (
+      <View style={styles.emptyState}>
+        <Ionicons name="trophy-outline" size={40} color={colors.textSecondary} />
+        <Text style={styles.emptyText}>{t('perfil.sinResultados')}</Text>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.tabContent}>
+      {resultados.map(m => <MatchCard key={m.id_resultado} match={m} onPress={() => onPress(m)} />)}
+    </View>
+  );
+}
+
+// NUEVO (037): botón Seguir. Solo aparece si NO son amigos (los amigos ya ven sus resultados).
+function SeguirBoton({ siguiendo, cargando, onPress }) {
+  const { t } = useTranslation();
+  return (
+    <TouchableOpacity
+      style={[styles.amistadBtn, siguiendo && styles.amistadBtnAmigos]}
+      onPress={onPress}
+      disabled={cargando}
+    >
+      {cargando
+        ? <ActivityIndicator size="small" color={colors.textPrimary} />
+        : <Ionicons name={siguiendo ? 'eye' : 'eye-outline'} size={16} color={colors.textPrimary} />}
+      <Text style={styles.amistadBtnText}>{siguiendo ? t('seguir.siguiendo') : t('seguir.seguir')}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -134,7 +177,7 @@ function Calificaciones({ p }) {
 }
 
 // NUEVO: acciones de amistad según el estado de la relación
-function AmistadAcciones({ estado, cargando, nombre, onAgregar, onCancelar, onAceptar, onRechazar, onEliminar }) {
+function AmistadAcciones({ estado, cargando, nombre, onAgregar, onCancelar, onAceptar, onRechazar, onEliminar, extra }) {
   const { t } = useTranslation();
   if (!estado || estado === 'MISMO_USUARIO') return null;
 
@@ -181,6 +224,8 @@ function AmistadAcciones({ estado, cargando, nombre, onAgregar, onCancelar, onAc
         <Ionicons name={config.icon} size={16} color={colors.textPrimary} />
         <Text style={styles.amistadBtnText}>{config.label}</Text>
       </TouchableOpacity>
+      {/* NUEVO (037): botón Seguir al lado (no se muestra si ya son amigos) */}
+      {estado !== 'AMIGOS' && extra}
     </View>
   );
 }
@@ -216,6 +261,24 @@ export function PlayerProfileScreen({ navigation, route }) {
   const [idAmistad, setIdAmistad] = useState(null);
   const [accionAmistad, setAccionAmistad] = useState(false);
 
+  // NUEVO (037): seguir
+  const [siguiendo, setSiguiendo] = useState(false);
+  const [seguidores, setSeguidores] = useState(0);
+  const [accionSeguir, setAccionSeguir] = useState(false);
+
+  // NUEVO (039): resultados del jugador
+  const [resultados, setResultados] = useState([]);
+  const [loadingRes, setLoadingRes] = useState(true);
+
+  const refrescarSeguimiento = useCallback(async () => {
+    if (!idUsuario) return;
+    try {
+      const res = await seguimientoService.estado(idUsuario);
+      setSiguiendo(!!res?.siguiendo);
+      setSeguidores(Number(res?.seguidores ?? 0));
+    } catch {}
+  }, [idUsuario]);
+
   const refrescarAmistad = useCallback(async () => {
     if (!idUsuario) return;
     try {
@@ -229,6 +292,17 @@ export function PlayerProfileScreen({ navigation, route }) {
 
   useEffect(() => {
     refrescarAmistad();
+    refrescarSeguimiento();   // NUEVO (037)
+
+    // NUEVO (039)
+    if (idUsuario) {
+      resultadoService.deJugador(idUsuario)
+        .then(res => setResultados(Array.isArray(res) ? res : []))
+        .catch(() => setResultados([]))
+        .finally(() => setLoadingRes(false));
+    } else {
+      setLoadingRes(false);
+    }
 
     if (!idUsuario) {
       setProfile(buildBasicProfile(basicData));
@@ -254,13 +328,14 @@ export function PlayerProfileScreen({ navigation, route }) {
           victorias:          res.victorias_totales        ?? res.victorias     ?? 0,
           victoriasRankeadas: res.victorias_rankeadas      ?? 0,
           deporte:            res.deporte_nombre           ?? res.deporte       ?? null,
-          sobreMi:            res.bio_profesor             ?? res.descripcion   ?? null,
+          sobreMi:            res.sobre_mi ?? res.bio_profesor ?? res.descripcion ?? null,
           // NUEVO: calificaciones
           califJugador:       res.calificacion_jugador ?? null,
           totalCalifJugador:  res.total_calificaciones_jugador ?? 0,
           califProfesor:      res.calificacion_profesor ?? null,
           totalCalifProfesor: res.total_calificaciones_profesor ?? 0,
           esProfesor:         Number(res.es_profesor ?? 0) === 1,
+          manoDominante:      res.mano_dominante ?? null,   // NUEVO (036)
         });
       })
       .catch(() => setProfile(buildBasicProfile(basicData)))
@@ -303,6 +378,20 @@ export function PlayerProfileScreen({ navigation, route }) {
     { text: t('comun.cancelar'), style: 'cancel' },
     { text: t('perfil.amistad.eliminar'), style: 'destructive', onPress: () => ejecutarAccion(() => amistadService.eliminar(idUsuario)) },
   ]);
+
+  // NUEVO (037)
+  async function onSeguir() {
+    try {
+      setAccionSeguir(true);
+      if (siguiendo) await seguimientoService.dejarDeSeguir(idUsuario);
+      else await seguimientoService.seguir(idUsuario);
+    } catch (e) {
+      Alert.alert(t('comun.error'), e.message ?? t('perfil.amistad.errorAccion'));
+    } finally {
+      await refrescarSeguimiento();
+      setAccionSeguir(false);
+    }
+  }
 
   function retarAmistoso() {
     navigation.navigate('CrearPartido', {
@@ -357,6 +446,10 @@ export function PlayerProfileScreen({ navigation, route }) {
 
           <Text style={styles.name}>{nombreVisible}</Text>
           <Text style={styles.ptsText}>{Number(p.pts ?? 0).toFixed(1)} pts</Text>
+          {/* NUEVO (037): seguidores */}
+          {seguidores > 0 && (
+            <Text style={styles.seguidoresText}>{t('seguir.seguidores', { count: seguidores })}</Text>
+          )}
 
           {/* NUEVO: calificaciones */}
           <Calificaciones p={p} />
@@ -370,6 +463,7 @@ export function PlayerProfileScreen({ navigation, route }) {
             onAceptar={onAceptar}
             onRechazar={onRechazar}
             onEliminar={onEliminar}
+            extra={<SeguirBoton siguiendo={siguiendo} cargando={accionSeguir} onPress={onSeguir} />}
           />
 
           <View style={styles.tabBar}>
@@ -383,6 +477,13 @@ export function PlayerProfileScreen({ navigation, route }) {
 
           {activeTab === 'Estadísticas' && <EstadisticasTab p={p} />}
           {activeTab === 'Detalles'     && <DetallesTab     p={p} />}
+          {activeTab === 'Resultados'   && (
+            <ResultadosTab
+              resultados={resultados}
+              loading={loadingRes}
+              onPress={(m) => navigation.navigate('DetalleResultado', { match: m })}
+            />
+          )}
 
           {!esMiPerfil && (
             sonAmigos ? (
@@ -455,6 +556,9 @@ const styles = StyleSheet.create({
   rankBadgeText: { fontSize: 16, fontWeight: 'bold', color: colors.primary },
   name: { fontSize: 22, fontWeight: 'bold', color: colors.textPrimary, marginBottom: 4 },
   ptsText: { fontSize: 15, color: colors.textSecondary, marginBottom: 10 },
+  seguidoresText: { fontSize: 13, color: colors.textSecondary, marginTop: -6, marginBottom: 10 },
+  emptyState: { alignItems: 'center', marginTop: 32, gap: 10, width: '100%' },
+  emptyText: { fontSize: 14, color: colors.textSecondary },
 
   // NUEVO: calificaciones
   califRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap', justifyContent: 'center' },

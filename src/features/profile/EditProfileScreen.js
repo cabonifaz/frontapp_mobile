@@ -13,19 +13,12 @@ import { PrimaryButton } from '../../components/common';
 import { CircularCropModal } from '../../components/CircularCropModal';
 import { usuarioService } from '../../services/usuarioService';
 import { uploadImage } from '../../services/cloudinaryService';
-
-// "label" se mantiene en español: se usa para reconocer el deporte guardado en el perfil.
-// El texto visible sale de las traducciones (deportes.<id>).
-const DEPORTES = [
-  { id: 'tenis',      label: 'Tenis',         uri: 'https://images.unsplash.com/photo-1622279457486-62dcc4a431d6?w=400&q=80' },
-  { id: 'squash',     label: 'Squash',        uri: 'https://images.unsplash.com/photo-1740813402046-08ec3e0ce5d2?w=400&q=80' },
-  { id: 'tenis_mesa', label: 'Tenis de mesa', uri: 'https://images.unsplash.com/photo-1611251135345-18c56206b863?w=400&q=80' },
-  { id: 'padel',      label: 'Padel',         uri: 'https://images.unsplash.com/photo-1646649853703-7645147474ba?w=400&q=80' },
-];
+import { MANOS_DOMINANTES } from '../../constants/maestro';   // NUEVO (036)
+import { getAvatarSource } from '../../utils/avatars';
 
 const DIAS  = Array.from({ length: 31 }, (_, i) => String(i + 1));
 const currentYear = new Date().getFullYear();
-const AÑOS  = Array.from({ length: 80 }, (_, i) => String(currentYear - 13 - i));
+const AÑOS  = Array.from({ length: 83 }, (_, i) => String(currentYear - 18 - i));   // mínimo 18 años
 
 // ─── Underline field ──────────────────────────────────────────────────────────
 function UnderlineField({ label, value, onChangeText, placeholder, keyboardType = 'default', multiline }) {
@@ -91,27 +84,21 @@ function DropdownField({ label, value, options, onSelect, flex }) {
   );
 }
 
-// ─── Sport card ───────────────────────────────────────────────────────────────
-function SportGrid({ selected, onSelect }) {
+// NUEVO (036): selector de mano dominante (Diestro / Zurdo / Ambidiestro)
+function ManoDominanteSelector({ selected, onSelect }) {
   const { t } = useTranslation();
   return (
-    <View style={styles.sportGrid}>
-      {DEPORTES.map((d) => (
+    <View style={styles.manoRow}>
+      {MANOS_DOMINANTES.map((codigo) => (
         <TouchableOpacity
-          key={d.id}
-          style={[styles.sportCard, selected === d.id && styles.sportCardSelected]}
-          onPress={() => onSelect(d.id)}
+          key={codigo}
+          style={[styles.manoChip, selected === codigo && styles.manoChipSel]}
+          onPress={() => onSelect(codigo)}
           activeOpacity={0.8}
         >
-          <ImageBackground source={{ uri: d.uri }} style={styles.sportCardImage} imageStyle={{ borderRadius: 13 }}>
-            <View style={styles.sportOverlay} />
-            {selected === d.id && (
-              <View style={styles.sportCheck}>
-                <Text style={{ color: colors.white, fontWeight: 'bold' }}>✓</Text>
-              </View>
-            )}
-            <Text style={styles.sportLabel}>{t(`deportes.${d.id}`, { defaultValue: d.label })}</Text>
-          </ImageBackground>
+          <Text style={[styles.manoChipText, selected === codigo && styles.manoChipTextSel]}>
+            {t(`mano.${codigo}`)}
+          </Text>
         </TouchableOpacity>
       ))}
     </View>
@@ -124,23 +111,24 @@ export function EditProfileScreen({ navigation, route }) {
   const MESES = t('fechas.meses', { returnObjects: true });
   const initial = route.params?.profile ?? PROFILE_MOCK;
   const parts = (initial.nombre ?? '').split(' ');
+  // NUEVO: fecha guardada 'AAAA-MM-DD' -> día / mes / año de los selectores
+  const [fy, fm, fd] = (initial.fechaNacimiento ?? '').split('-');
 
-  const [nombre,    setNombre]    = useState(parts[0] ?? '');
-  const [apellidos, setApellidos] = useState(parts.slice(1).join(' '));
+  const [nombre,    setNombre]    = useState(initial.nombrePila ?? parts[0] ?? '');
+  const [apellidos, setApellidos] = useState(initial.apellidos ?? parts.slice(1).join(' '));
   const [telefono,  setTelefono]  = useState(initial.telefono ?? '');
   const [sobreMi,   setSobreMi]   = useState(initial.sobreMi ?? '');
-  const [deporte,   setDeporte]   = useState(
-    DEPORTES.find(d => d.label.toLowerCase() === initial.deporte?.toLowerCase())?.id ?? ''
-  );
 
-  const [dia,  setDia]  = useState('');
-  const [mes,  setMes]  = useState('');
-  const [año,  setAño]  = useState('');
+  const [dia,  setDia]  = useState(fd ? String(Number(fd)) : '');
+  const [mes,  setMes]  = useState(fm && Array.isArray(MESES) ? (MESES[Number(fm) - 1] ?? '') : '');
+  const [año,  setAño]  = useState(fy ?? '');
 
   const [avatarUri,   setAvatarUri]   = useState(initial.avatar ?? null);
   const [rawUri,      setRawUri]      = useState(null);
   const [cropParams,  setCropParams]  = useState(null);
+  const [fotoCambiada, setFotoCambiada] = useState(false);   // CORREGIDO: solo se sube si eligió una foto nueva
   const [saving,      setSaving]      = useState(false);
+  const [mano,        setMano]        = useState(initial.manoDominante ?? null);   // NUEVO (036)
 
   async function pickImage() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -159,23 +147,55 @@ export function EditProfileScreen({ navigation, route }) {
   }
 
   async function handleGuardar() {
+    // NUEVO: validaciones antes de enviar
+    if (!nombre.trim() || !apellidos.trim()) {
+      Alert.alert(t('comun.error'), t('editarPerfil.errorNombre'));
+      return;
+    }
+    const algunaFecha = dia || mes || año;
+    const fechaCompleta = dia && mes && año;
+    if (algunaFecha && !fechaCompleta) {
+      Alert.alert(t('comun.error'), t('editarPerfil.errorFechaIncompleta'));
+      return;
+    }
+    let fechaNacimiento = null;
+    if (fechaCompleta) {
+      const m = (Array.isArray(MESES) ? MESES.indexOf(mes) : -1) + 1;
+      const fecha = new Date(Number(año), m - 1, Number(dia));
+      if (m < 1 || fecha.getMonth() !== m - 1) {   // ej. 31 de febrero
+        Alert.alert(t('comun.error'), t('editarPerfil.errorFechaInvalida'));
+        return;
+      }
+      fechaNacimiento = `${año}-${String(m).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+    }
+
     setSaving(true);
     try {
-      const isNewPhoto = avatarUri && !avatarUri.startsWith('http');
+      // NUEVO: nombre, apellidos, celular, fecha de nacimiento y sobre mí
+      await usuarioService.actualizarPerfil({ nombre, apellidos, telefono, fechaNacimiento, sobreMi });
+
+      // CORREGIDO: antes un avatar de la app ('avatar_masculino_2') se tomaba como foto nueva
+      // y fallaba al subirlo; ahora solo se sube si el usuario eligió una foto.
+      const isNewPhoto = fotoCambiada && avatarUri;
       if (isNewPhoto) {
         const url = await uploadImage(avatarUri, cropParams);
         await usuarioService.actualizarFoto(url);
         setAvatarUri(url);
       }
+      // NUEVO (036): mano dominante
+      if (mano && mano !== (initial.manoDominante ?? null)) {
+        await usuarioService.actualizarManoDominante(mano);
+      }
       Alert.alert(t('editarPerfil.actualizado'), t('editarPerfil.actualizadoMensaje'), [
         { text: t('editarPerfil.ok'), onPress: () => navigation.goBack() },
       ]);
-    } catch {
-      Alert.alert(t('comun.error'), t('editarPerfil.errorFoto'));
+    } catch (e) {
+      Alert.alert(t('comun.error'), e?.message || t('editarPerfil.errorGuardar'));
     } finally {
       setSaving(false);
     }
   }
+
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -183,7 +203,7 @@ export function EditProfileScreen({ navigation, route }) {
         visible={!!rawUri}
         imageUri={rawUri}
         onCancel={() => setRawUri(null)}
-        onCrop={(uri, params) => { setAvatarUri(uri); setCropParams(params); setRawUri(null); }}
+        onCrop={(uri, params) => { setAvatarUri(uri); setCropParams(params); setRawUri(null); setFotoCambiada(true); }}
       />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
 
@@ -227,7 +247,7 @@ export function EditProfileScreen({ navigation, route }) {
                       />
                     );
                   }
-                  return <Image source={{ uri: avatarUri }} style={styles.avatar} />;
+                  return <Image source={fotoCambiada ? { uri: avatarUri } : getAvatarSource(avatarUri)} style={styles.avatar} />;
                 })()}
               </View>
               <TouchableOpacity style={styles.cameraBtn} onPress={pickImage}>
@@ -272,12 +292,9 @@ export function EditProfileScreen({ navigation, route }) {
             <DropdownField label={t('editarPerfil.anio')} value={año}  options={AÑOS}   onSelect={setAño}  flex={1.5} />
           </View>
 
-          {/* Deporte favorito */}
-          <Text style={styles.sectionTitle}>{t('editarPerfil.deporteFavorito')}</Text>
-          <Text style={[styles.fieldLabel, { color: colors.textSecondary, marginBottom: 0 }]}>
-            {t('editarPerfil.masDeportes')}
-          </Text>
-          <SportGrid selected={deporte} onSelect={setDeporte} />
+          {/* NUEVO (036): Mano dominante */}
+          <Text style={styles.sectionTitle}>{t('mano.titulo')}</Text>
+          <ManoDominanteSelector selected={mano} onSelect={setMano} />
 
           {/* Sobre mí */}
           <Text style={styles.sectionTitle}>{t('editarPerfil.sobreMi')}</Text>
@@ -359,6 +376,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.accent,
   },
+
+  // NUEVO (036): mano dominante
+  manoRow: { flexDirection: 'row', gap: 10, marginBottom: 20, marginTop: 4 },
+  manoChip: {
+    flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 24,
+    borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background,
+  },
+  manoChipSel: { backgroundColor: colors.accent, borderColor: colors.accent },
+  manoChipText: { fontSize: 14, fontWeight: '600', color: colors.textPrimary },
+  manoChipTextSel: { color: colors.primary, fontWeight: '700' },
 
   // Section title
   sectionTitle: {

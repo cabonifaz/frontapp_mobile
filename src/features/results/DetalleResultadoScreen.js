@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Image, ActivityIndicator,
+  SafeAreaView, Image, ActivityIndicator, Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,100 @@ import * as SecureStore from 'expo-secure-store';
 import { colors } from '../../constants';
 import { resultadoService } from '../../services/resultadoService';
 import { getAvatarSource } from '../../utils/avatars';
+// NUEVO: fotos del encuentro
+import { VisorFoto } from '../../components/common/VisorFoto';
+import { elegirFotos, subirFotosPartido, MAX_FOTOS } from '../../utils/fotosEncuentro';
+
+// NUEVO: galería de fotos del encuentro. Los jugadores del partido pueden agregar
+// (hasta 5) y borrar las suyas manteniendo presionada la foto.
+function FotosEncuentro({ idPartido }) {
+  const { t } = useTranslation();
+  const [fotos, setFotos] = useState([]);
+  const [puedeSubir, setPuedeSubir] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [subiendo, setSubiendo] = useState(false);
+  const [verUrl, setVerUrl] = useState(null);
+
+  const cargar = useCallback(async () => {
+    if (!idPartido) { setCargando(false); return; }
+    try {
+      const res = await resultadoService.fotos(idPartido);
+      setFotos(Array.isArray(res?.fotos) ? res.fotos : []);
+      setPuedeSubir(!!res?.puedeSubir);
+    } catch {
+      setFotos([]);
+    } finally {
+      setCargando(false);
+    }
+  }, [idPartido]);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  async function agregar() {
+    const uris = await elegirFotos(MAX_FOTOS - fotos.length);
+    if (!uris.length) return;
+    setSubiendo(true);
+    const ok = await subirFotosPartido(idPartido, uris);
+    setSubiendo(false);
+    if (ok < uris.length) Alert.alert(t('fotos.titulo'), t('fotos.errorSubirDetalle'));
+    cargar();
+  }
+
+  function eliminar(foto) {
+    if (Number(foto.es_mia) !== 1) return;
+    Alert.alert(t('fotos.eliminarTitulo'), t('fotos.eliminarMensaje'), [
+      { text: t('comun.cancelar'), style: 'cancel' },
+      {
+        text: t('fotos.eliminar'), style: 'destructive',
+        onPress: async () => {
+          try { await resultadoService.eliminarFoto(foto.id_partido_foto); } catch (e) { Alert.alert(t('comun.error'), e.message); }
+          cargar();
+        },
+      },
+    ]);
+  }
+
+  if (cargando) return <ActivityIndicator color={colors.accent} style={{ marginVertical: 24 }} />;
+
+  if (!fotos.length && !puedeSubir) {
+    return (
+      <View style={styles.photosPlaceholder}>
+        <Ionicons name="image-outline" size={36} color={colors.textSecondary} />
+        <Text style={styles.photosPlaceholderText}>{t('fotos.sinFotos')}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <Text style={styles.sectionTitle}>{t('colocar.fotosTitulo')}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galeria} style={styles.galeriaScroll}>
+        {fotos.map(f => (
+          <TouchableOpacity
+            key={f.id_partido_foto}
+            onPress={() => setVerUrl(f.url)}
+            onLongPress={() => eliminar(f)}
+            activeOpacity={0.85}
+          >
+            <Image source={{ uri: f.url }} style={styles.galeriaFoto} />
+          </TouchableOpacity>
+        ))}
+        {puedeSubir && (
+          <TouchableOpacity style={[styles.galeriaFoto, styles.galeriaAgregar]} onPress={agregar} disabled={subiendo}>
+            {subiendo
+              ? <ActivityIndicator color={colors.accent} />
+              : <>
+                  <Ionicons name="add" size={28} color={colors.textSecondary} />
+                  <Text style={styles.galeriaAgregarText}>{t('fotos.agregar')}</Text>
+                </>}
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+      {fotos.some(f => Number(f.es_mia) === 1) && <Text style={styles.galeriaHint}>{t('fotos.hintEliminar')}</Text>}
+      <VisorFoto url={verUrl} onClose={() => setVerUrl(null)} />
+    </>
+  );
+}
 
 function formatFecha(dateStr) {
   if (!dateStr) return '--';
@@ -193,10 +287,8 @@ export function DetalleResultadoScreen({ navigation, route }) {
               </>
             ) : (
               <>
-                <View style={styles.photosPlaceholder}>
-                  <Ionicons name="image-outline" size={36} color={colors.textSecondary} />
-                  <Text style={styles.photosPlaceholderText}>{t('detalleRes.fotos')}</Text>
-                </View>
+                {/* NUEVO: fotos del encuentro */}
+                <FotosEncuentro idPartido={match?.id_partido ?? d.id_partido} />
 
                 {/* Comentario: lo escribió quien publicó el resultado (lado local) */}
                 {d.comentario_rival ? (
@@ -217,7 +309,7 @@ export function DetalleResultadoScreen({ navigation, route }) {
                 <Text style={styles.sectionTitle}>{t('detalleRes.detalles')}</Text>
                 <View style={styles.detalleCard}>
                   <Text style={styles.canchaName}>{d.nombre_cancha ?? '--'}</Text>
-                  {d.cancha_direccion ? (
+                  {d.cancha_direccion && !String(d.cancha_direccion).startsWith('http') ? (
                     <View style={styles.detalleRow}>
                       <Ionicons name="location-outline" size={15} color={colors.textSecondary} />
                       <Text style={styles.detalleText}> {d.cancha_direccion}</Text>
@@ -315,6 +407,17 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 20,
   },
   photosPlaceholderText: { fontSize: 14, color: colors.textSecondary },
+
+  // NUEVO: galería de fotos del encuentro
+  galeriaScroll: { marginHorizontal: -20, marginBottom: 6 },
+  galeria: { paddingHorizontal: 20, gap: 10 },
+  galeriaFoto: { width: 150, height: 150, borderRadius: 14, backgroundColor: colors.surface },
+  galeriaAgregar: {
+    alignItems: 'center', justifyContent: 'center', gap: 4,
+    borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed',
+  },
+  galeriaAgregarText: { fontSize: 12, color: colors.textSecondary },
+  galeriaHint: { fontSize: 11, color: colors.textSecondary, marginBottom: 20 },
 
   comentarioCard: {
     flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14,

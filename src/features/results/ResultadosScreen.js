@@ -105,7 +105,8 @@ function FilaJugador({ nombre, foto, foto2, esDobles, puntos, setsGanados, mostr
   );
 }
 
-function MatchCard({ match, onPress }) {
+// NUEVO: exportada para reutilizarla en el carrusel del Home y en el perfil de otro jugador
+export function MatchCard({ match, onPress, style }) {
   const { t } = useTranslation();
   const { day, month } = formatDay(match.fecha_partido);
   const esDobles = Number(match.es_dobles ?? 0) === 1;
@@ -135,7 +136,7 @@ function MatchCard({ match, onPress }) {
   const orientado = match.soy_local != null;
 
   return (
-    <TouchableOpacity style={styles.matchCard} onPress={onPress} activeOpacity={0.75}>
+    <TouchableOpacity style={[styles.matchCard, style]} onPress={onPress} activeOpacity={0.75}>
       {/* Bloque de fecha */}
       <View style={styles.dateBlock}>
         <Text style={styles.dateDay}>{day}</Text>

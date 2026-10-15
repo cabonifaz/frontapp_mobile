@@ -9,15 +9,16 @@ import { colors } from '../../constants';
 import api from '../../services/api';
 import { resultadoService } from '../../services/resultadoService';
 import { authService } from '../../services/authService';
+import { getAvatarSource } from '../../utils/avatars';
+import { elegirFotos, subirFotosPartido, MAX_FOTOS } from '../../utils/fotosEncuentro';   // NUEVO: fotos
 
 const AVATAR_DEFAULT = require('../../../assets/avatar_general.png');
 const MAX_CORRECCIONES = 3; // igual que CFG_VIAJES_MAX_REVISION
 
+// CORREGIDO: antes solo aceptaba fotos de internet (http) y los avatares
+// de la app (ej. 'avatar_masculino_2') salían como el ícono genérico.
 function fuenteImagen(url) {
-  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-    return { uri: url };
-  }
-  return AVATAR_DEFAULT;
+  return url ? getAvatarSource(url) : AVATAR_DEFAULT;
 }
 
 // NUEVO: confirmar (con calificación) y corregir resultado
@@ -252,6 +253,13 @@ export function ColocarResultadosScreen({ navigation, route }) {
   const [comment, setComment] = useState('');
 
   const [publicando,  setPublicando]  = useState(false);
+  const [fotos, setFotos] = useState([]);              // NUEVO: fotos elegidas (aún en el celular)
+  const [subiendoFotos, setSubiendoFotos] = useState(false);
+
+  async function agregarFotos() {
+    const nuevas = await elegirFotos(MAX_FOTOS - fotos.length);
+    if (nuevas.length) setFotos(prev => [...prev, ...nuevas].slice(0, MAX_FOTOS));
+  }
   const [confirmando, setConfirmando] = useState(false);
 
   const [tipoResultado,  setTipoResultado]  = useState('normal');
@@ -334,9 +342,18 @@ export function ColocarResultadosScreen({ navigation, route }) {
         });
       }
 
+      // NUEVO: subir las fotos del encuentro (si alguna falla, el resultado ya quedó publicado)
+      let fallaron = 0;
+      if (idPartido && fotos.length) {
+        setSubiendoFotos(true);
+        const subidas = await subirFotosPartido(idPartido, fotos);
+        fallaron = fotos.length - subidas;
+        setSubiendoFotos(false);
+      }
+
       Alert.alert(
         t('colocar.publicado'),
-        t('colocar.publicadoMensaje'),
+        fallaron > 0 ? `${t('colocar.publicadoMensaje')}\n\n${t('fotos.errorSubir')}` : t('colocar.publicadoMensaje'),
         [{ text: t('colocar.entendido'), onPress: () => navigation.goBack() }]
       );
     } catch (e) {
@@ -608,10 +625,34 @@ export function ColocarResultadosScreen({ navigation, route }) {
                   />
 
                   <Text style={styles.sectionTitle}>{t('colocar.fotosTitulo')}</Text>
-                  <View style={styles.photoBox}>
-                    <Ionicons name="image-outline" size={32} color={colors.textSecondary} />
-                    <Text style={styles.photoBoxText}>{t('colocar.fotosTexto')}</Text>
-                  </View>
+                  {/* NUEVO: fotos del encuentro (hasta 5) */}
+                  {fotos.length === 0 ? (
+                    <TouchableOpacity style={styles.photoBox} onPress={agregarFotos} activeOpacity={0.8}>
+                      <Ionicons name="image-outline" size={32} color={colors.textSecondary} />
+                      <Text style={styles.photoBoxText}>{t('colocar.fotosTexto')}</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={styles.fotosGrid}>
+                      {fotos.map((uri, i) => (
+                        <View key={uri + i} style={styles.fotoThumbWrap}>
+                          <Image source={{ uri }} style={styles.fotoThumb} />
+                          <TouchableOpacity
+                            style={styles.fotoQuitar}
+                            onPress={() => setFotos(prev => prev.filter((_, j) => j !== i))}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          >
+                            <Ionicons name="close" size={14} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                      {fotos.length < MAX_FOTOS && (
+                        <TouchableOpacity style={[styles.fotoThumbWrap, styles.fotoAgregar]} onPress={agregarFotos}>
+                          <Ionicons name="add" size={28} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                  <Text style={styles.fotosHint}>{t('fotos.maximo', { n: MAX_FOTOS })}</Text>
                 </>
               )}
             </>
@@ -633,7 +674,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
                 color={canPublish ? colors.primary : colors.textSecondary}
               />
               <Text style={[styles.confirmBtnText, !canPublish && styles.confirmBtnTextDisabled]}>
-                {publicando ? t('colocar.enviando') : modoCorreccion ? t('colocar.enviarCorreccion') : t('colocar.confirmarResultados')}
+                {subiendoFotos ? t('fotos.subiendo') : publicando ? t('colocar.enviando') : modoCorreccion ? t('colocar.enviarCorreccion') : t('colocar.confirmarResultados')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -736,6 +777,17 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16,
   },
   photoBoxText: { fontSize: 14, color: colors.textSecondary },
+
+  // NUEVO: fotos del encuentro
+  fotosGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
+  fotoThumbWrap: { width: 96, height: 96, borderRadius: 12, overflow: 'hidden', backgroundColor: colors.surface },
+  fotoThumb: { width: '100%', height: '100%' },
+  fotoQuitar: {
+    position: 'absolute', top: 4, right: 4, width: 22, height: 22, borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center',
+  },
+  fotoAgregar: { alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: colors.border, borderStyle: 'dashed' },
+  fotosHint: { fontSize: 12, color: colors.textSecondary, marginBottom: 16 },
 
   bottomBar: { paddingHorizontal: 20, paddingVertical: 16 },
   confirmBtn: {

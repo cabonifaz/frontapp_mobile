@@ -191,6 +191,12 @@ function DetallesTab({ p }) {
   return (
     <View style={styles.tabContent}>
       <StatRow mci icon="tennis" label={t('perfil.deporteFavorito')} value={p.deporte ?? t('deportes.fronton')} />
+      {/* NUEVO (036): mano dominante */}
+      <StatRow icon="hand-left-outline" label={t('mano.titulo')}
+        value={p.manoDominante ? t(`mano.${p.manoDominante}`) : t('mano.sinDefinir')} />
+      {/* NUEVO: fecha de nacimiento (solo la ve el propio jugador) */}
+      <StatRow icon="calendar-outline" label={t('editarPerfil.fechaNacimiento')}
+        value={p.fechaNacimiento ? p.fechaNacimiento.split('-').reverse().join('/') : t('mano.sinDefinir')} />
       {p.sobreMi ? (
         <View style={styles.sobreMiCard}>
           <Text style={styles.sobreMiTitle}>{t('perfil.sobreMi')}</Text>
@@ -235,10 +241,11 @@ export function ProfileScreen({ navigation }) {
         setLoadingRes(true);
 
         try {
-          const [resPerfil, resResultados, resSolicitudes] = await Promise.all([
+          const [resPerfil, resResultados, resSolicitudes, misDatos] = await Promise.all([
             usuarioService.perfil().catch(() => null),
             resultadoService.listar().catch(() => []),
             amistadService.solicitudesRecibidas().catch(() => []), // NUEVO
+            usuarioService.misDatos().catch(() => null),           // NUEVO: datos de Editar perfil
           ]);
 
           if (isMounted) {
@@ -256,7 +263,7 @@ export function ProfileScreen({ navigation }) {
                 victorias:          resPerfil.victorias_totales    ?? resPerfil.victorias          ?? 0,
                 victoriasRankeadas: resPerfil.victorias_rankeadas  ?? 0,
                 deporte:            resPerfil.deporte_nombre       ?? resPerfil.deporte            ?? null,
-                sobreMi:            resPerfil.bio_profesor         ?? resPerfil.descripcion        ?? null,
+                sobreMi:            misDatos?.sobre_mi ?? resPerfil.sobre_mi ?? resPerfil.bio_profesor ?? resPerfil.descripcion ?? null,
                 calificacion:       resPerfil.calificacion_promedio != null
                                       ? Number(resPerfil.calificacion_promedio).toFixed(1)
                                       : null,
@@ -266,6 +273,12 @@ export function ProfileScreen({ navigation }) {
                 califProfesor:      resPerfil.calificacion_profesor ?? null,
                 totalCalifProfesor: resPerfil.total_calificaciones_profesor ?? 0,
                 esProfesor:         Number(resPerfil.es_profesor ?? 0) === 1,
+                manoDominante:      resPerfil.mano_dominante ?? null,   // NUEVO (036)
+                // NUEVO: datos privados (solo en mi perfil) que usa Editar perfil
+                nombrePila:         misDatos?.nombre ?? null,
+                apellidos:          misDatos?.apellidos ?? null,
+                telefono:           misDatos?.telefono ?? null,
+                fechaNacimiento:    misDatos?.fecha_nacimiento ?? null,
               });
             }
 
