@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   SafeAreaView, Image, ActivityIndicator, Alert,
@@ -13,6 +13,9 @@ import { getAvatarSource } from '../../utils/avatars';
 // NUEVO: fotos del encuentro
 import { VisorFoto } from '../../components/common/VisorFoto';
 import { elegirFotos, subirFotosPartido, MAX_FOTOS } from '../../utils/fotosEncuentro';
+// NUEVO (043): compartir el resultado en historias
+import { TarjetaHistoriaResultado } from '../../components/common/TarjetaHistoriaResultado';
+import { compartirTarjeta } from '../../utils/compartirHistoria';
 
 // NUEVO: galería de fotos del encuentro. Los jugadores del partido pueden agregar
 // (hasta 5) y borrar las suyas manteniendo presionada la foto.
@@ -149,6 +152,12 @@ export function DetalleResultadoScreen({ navigation, route }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Resultados');
   const [idUsuarioActual, setIdUsuarioActual] = useState(null);
+  // NUEVO (043): tarjeta para historias
+  const tarjetaRef = useRef(null);
+  const [mostrarTarjeta, setMostrarTarjeta] = useState(false);
+  const [fondoHistoria, setFondoHistoria] = useState(null);
+  const [compartiendo, setCompartiendo] = useState(false);
+  const imagenesListas = useRef(0);
 
   useEffect(() => {
     SecureStore.getItemAsync('id_usuario').then(id => setIdUsuarioActual(Number(id)));
@@ -197,6 +206,39 @@ export function DetalleResultadoScreen({ navigation, route }) {
     const partes = nombre.trim().split(' ');
     if (partes.length === 1) return partes[0];
     return `${partes[0][0]}. ${partes.slice(1).join(' ')}`;
+  }
+
+  // NUEVO (043): arma la tarjeta fuera de pantalla, espera las fotos y la comparte
+  async function compartirHistoria() {
+    if (compartiendo) return;
+    setCompartiendo(true);
+    try {
+      let fondo = null;
+      try {
+        const res = await resultadoService.fotos(match?.id_partido ?? d.id_partido);
+        fondo = res?.fotos?.[0]?.url ?? null;
+      } catch { fondo = null; }
+      const remotas = [fondo, fotoYo, fotoRival, esDobles ? fotoYo2 : null, esDobles ? fotoRival2 : null]
+        .filter(u => typeof u === 'string' && u.startsWith('http'));
+      await Promise.all(remotas.map(u => Promise.race([
+        Image.prefetch(u).catch(() => null),
+        new Promise(r => setTimeout(r, 6000)),
+      ])));
+
+      imagenesListas.current = 0;
+      setFondoHistoria(fondo);
+      setMostrarTarjeta(true);
+      const esperadas = (esDobles ? 4 : 2) + (fondo ? 1 : 0);
+      const inicio = Date.now();
+      while (imagenesListas.current < esperadas && Date.now() - inicio < 4000) {
+        await new Promise(r => setTimeout(r, 100));
+      }
+      await new Promise(r => setTimeout(r, 250));   // un cuadro extra para que termine de pintarse
+      await compartirTarjeta(tarjetaRef);
+    } finally {
+      setMostrarTarjeta(false);
+      setCompartiendo(false);
+    }
   }
 
   const formatPts = (v) => (v === '--' || v == null ? '--' : Number(v).toFixed(1));
@@ -284,6 +326,21 @@ export function DetalleResultadoScreen({ navigation, route }) {
                     ))}
                   </>
                 )}
+
+                {/* NUEVO (043): compartir en historias */}
+                {sets.length > 0 && (
+                  <TouchableOpacity
+                    style={[styles.historiaBtn, compartiendo && { opacity: 0.6 }]}
+                    onPress={compartirHistoria}
+                    disabled={compartiendo}
+                    activeOpacity={0.85}
+                  >
+                    {compartiendo
+                      ? <ActivityIndicator size="small" color={colors.primary} />
+                      : <Ionicons name="logo-instagram" size={20} color={colors.primary} />}
+                    <Text style={styles.historiaBtnText}>{t('historia.boton')}</Text>
+                  </TouchableOpacity>
+                )}
               </>
             ) : (
               <>
@@ -334,12 +391,40 @@ export function DetalleResultadoScreen({ navigation, route }) {
           </ScrollView>
         )}
       </View>
+
+      {/* NUEVO (043): tarjeta fuera de la pantalla, solo mientras se comparte */}
+      {mostrarTarjeta && (
+        <View style={styles.fueraDePantalla} pointerEvents="none">
+          <TarjetaHistoriaResultado
+            ref={tarjetaRef}
+            yo={{ nombre: abreviar(jugadorYo), foto: fotoYo, foto2: fotoYo2 }}
+            rival={{ nombre: abreviar(jugadorRival), foto: fotoRival, foto2: fotoRival2 }}
+            setsYo={setsYo}
+            setsRival={setsRival}
+            sets={sets}
+            esDobles={esDobles}
+            fecha={formatFecha(d.fecha_partido ?? match?.fecha_partido)}
+            tipo={t(esDobles ? 'historia.dobles' : 'historia.individual')}
+            fondo={fondoHistoria}
+            textos={{ gane: t('historia.victoria'), perdi: t('historia.derrota'), final: t('historia.resultadoFinal') }}
+            onImagenLista={() => { imagenesListas.current += 1; }}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.dark },
+
+  // NUEVO (043)
+  historiaBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 14, marginTop: 24,
+  },
+  historiaBtnText: { fontSize: 15, fontWeight: '800', color: colors.primary },
+  fueraDePantalla: { position: 'absolute', left: -10000, top: 0 },
 
   hero: { backgroundColor: colors.dark, paddingTop: 8, paddingBottom: 28, paddingHorizontal: 20 },
   backBtn: { marginBottom: 12 },

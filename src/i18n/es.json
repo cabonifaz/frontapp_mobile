@@ -963,5 +963,17 @@
     "eliminarMensaje": "¿Quieres eliminar esta foto?",
     "eliminar": "Eliminar",
     "hintEliminar": "Mantén presionada una foto tuya para eliminarla."
+  },
+  "historia": {
+    "boton": "Compartir en historias",
+    "titulo": "Compartir resultado",
+    "victoria": "VICTORIA",
+    "derrota": "DERROTA",
+    "resultadoFinal": "RESULTADO FINAL",
+    "individual": "Individual",
+    "dobles": "Dobles",
+    "error": "No se pudo crear la imagen. Inténtalo de nuevo.",
+    "noDisponible": "Tu teléfono no permite compartir imágenes desde la app.",
+    "actualizaApp": "Para compartir en historias necesitas instalar la última versión de Ranked."
   }
 }
