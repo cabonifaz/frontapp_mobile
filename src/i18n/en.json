@@ -23,7 +23,8 @@
     "salir": "Log out",
     "cambiarCuenta": "Switch account",
     "cambiarCuentaMensaje": "Your Google/Facebook session on this device will be closed so you can choose another account.",
-    "cambiarCuentaBoton": "Switch account"
+    "cambiarCuentaBoton": "Switch account",
+    "cambiarDeporte": "Switch sport"
   },
   "tabs": {
     "home": "Home",
@@ -935,13 +936,25 @@
       "RESULTADO_POR_CONFIRMAR": "{{nombre}} posted your match result. Please confirm it.",
       "RESULTADO_CONFIRMADO": "{{nombre}} confirmed your match result. It is now official.",
       "RESULTADO_AMIGO": "{{nombre}} has a new result. Check it out!",
-      "NUEVO_SEGUIDOR": "{{nombre}} started following you."
+      "NUEVO_SEGUIDOR": "{{nombre}} started following you.",
+      "RETO_RECIBIDO": "{{nombre}} wants to play your match. Accept or decline the challenge.",
+      "RETO_DIRECTO": "{{nombre}} challenged you to a match.",
+      "RETO_ACEPTADO": "{{nombre}} confirmed the match. See you on court!",
+      "PARTIDO_AMIGO": "{{nombre}} has a confirmed match.",
+      "PARTIDO_EN_VIVO": "{{nombre}} is playing right now. Follow the score live!"
     },
     "tiposSinNombre": {
       "RESULTADO_POR_CONFIRMAR": "You have a result to confirm.",
       "RESULTADO_CONFIRMADO": "Your match result is now official.",
       "RESULTADO_AMIGO": "A player you follow has a new result.",
-      "NUEVO_SEGUIDOR": "You have a new follower."
+      "NUEVO_SEGUIDOR": "You have a new follower.",
+      "RETO_RECIBIDO": "You have a new challenge for your match.",
+      "RETO_DIRECTO": "You've been challenged to a match.",
+      "RETO_ACEPTADO": "Your match is confirmed.",
+      "PARTIDO_AMIGO": "A player you follow has a confirmed match.",
+      "PARTIDO_EN_VIVO": "A player you follow is playing live.",
+      "INSCRIPCION_ACTIVA": "Your payment was approved. You're now in the league.",
+      "INSCRIPCION_RECHAZADA": "We couldn't validate your league payment. Contact us for help."
     },
     "tiempo": {
       "ahora": "Now",
@@ -975,5 +988,107 @@
     "error": "Couldn't create the image. Please try again.",
     "noDisponible": "Your phone doesn't allow sharing images from the app.",
     "actualizaApp": "To share to stories you need to install the latest version of Ranked."
+  },
+  "elegirDeporte": {
+    "titulo": "What are you playing?",
+    "subtitulo": "Each sport has its own ranking, level, matches and results.",
+    "miNivel": "Level {{nivel}} · {{pts}} pts",
+    "sinPerfil": "You don't have a {{deporte}} profile yet. Soon you'll be able to create one here.",
+    "sinPerfilCorto": "You don't have a profile in this sport yet",
+    "proximamente": "COMING SOON",
+    "nota": "You can switch sports anytime from Settings."
+  },
+  "imagen": {
+    "titulo": "Add photo",
+    "tituloPerfil": "Profile photo",
+    "camara": "Take photo",
+    "galeria": "Choose from gallery",
+    "permisoCamara": "We need camera access to take the photo. Enable it in your phone settings.",
+    "permisoGaleria": "We need access to your gallery to choose the photo. Enable it in your phone settings.",
+    "error": "Couldn't get the photo. Please try again."
+  },
+  "reglasSet": {
+    "invalido": "Enter a valid score.",
+    "empate": "A set can't end in a tie.",
+    "incompleto": "The set isn't over yet: it's played to {{meta}} points.",
+    "diferencia": "Sets are played to {{meta}}. From {{empate}}-{{empate}} you must win by 2 (for example {{ejemplo}}).",
+    "recordatorio": "Played to {{meta}} points. From {{empate}}-{{empate}} win by 2."
+  },
+  "vivo": {
+    "boton": "Live match",
+    "titulo": "Live match",
+    "enVivo": "LIVE",
+    "enVivoCorto": "Live",
+    "enVivoN": "Live ({{n}})",
+    "finalizado": "FINISHED",
+    "sets": "SETS",
+    "set": "Set {{n}}",
+    "setDe": "Set {{n}} of {{total}}",
+    "aPuntos": "to {{n}} points",
+    "desempate": "{{n}} all! Win by 2 points.",
+    "marcadorSets": "Score by set",
+    "enJuego": "IN PLAY",
+    "iniciar": "Start live match",
+    "iniciarCorto": "Start",
+    "explicacionIniciar": "Your friends and followers will see the score as you update it. When you finish, post the official result as usual.",
+    "aunNo": "This match isn't live yet. We'll let you know when it starts.",
+    "terminoTitulo": "Match over!",
+    "terminoMensaje": "To count for the ranking, the players must post and confirm the official result from the match.",
+    "terminar": "End live coverage",
+    "terminarTitulo": "End live coverage",
+    "terminarMensaje": "The match will no longer be shown live. Continue?",
+    "corregirSet": "Fix set {{n}}",
+    "guardar": "Save",
+    "errorMarcar": "Couldn't update the score.",
+    "errorIniciar": "Couldn't start the live match.",
+    "listaTitulo": "Live",
+    "ahora": "Playing now",
+    "sinVivos": "None of your friends or players you follow are playing right now.",
+    "paraIniciar": "Today's matches to go live",
+    "recientes": "Recently finished",
+    "dobles": "Doubles",
+    "rankeado": "Ranked",
+    "tocaParaMarcar": "Tap to keep score",
+    "reanudar": "Resume live coverage"
+  },
+  "admin": {
+    "titulo": "Admin",
+    "intro": "Options available only to admin accounts.",
+    "vivoTitulo": "Live matches",
+    "vivoDetalle": "Start and keep score of any match today.",
+    "sinVivos": "There are no live matches right now.",
+    "pagosTitulo": "Payments and registrations",
+    "pagosDetalle": "Approve payments and review players registered in ranked leagues.",
+    "configTitulo": "Settings",
+    "configDetalle": "Points per win, deadlines to confirm results, points per set and more.",
+    "configIntro": "Changes apply immediately for every player.",
+    "filtros": {
+      "PENDIENTES": "Payment pending",
+      "ACTIVAS": "Active",
+      "TODAS": "All"
+    },
+    "vacio": {
+      "PENDIENTES": "No payments waiting for approval.",
+      "ACTIVAS": "No active registrations.",
+      "TODAS": "No registrations yet."
+    },
+    "conCompanero": "With {{nombre}}",
+    "cuota": "Fee",
+    "inscrito": "Registered",
+    "pagado": "Paid",
+    "llamar": "Call",
+    "validarPago": "Approve payment",
+    "rechazar": "Decline",
+    "rechazarTitulo": "Decline registration",
+    "rechazarMensaje": "Decline {{nombre}}'s registration in {{liga}}? They'll get a notification.",
+    "montoRecibido": "Amount received",
+    "referencia": "Reference (optional)",
+    "referenciaEjemplo": "e.g. Yape 123456",
+    "montoInvalido": "Enter a valid amount.",
+    "pagoValidado": "Payment approved. Registration active.",
+    "confirmar": "Confirm",
+    "valorInvalido": "Enter a valid number.",
+    "guardado": "Setting saved.",
+    "guardar": "Save"
   }
 }

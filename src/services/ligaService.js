@@ -1,9 +1,9 @@
 import api from './api';
-import { DEPORTE_DEFAULT } from '../constants/maestro';
+import { deporteActivo } from '../utils/deporteActivo';   // NUEVO (07): deporte elegido al entrar
 
 export const ligaService = {
   // Ligas de un deporte y modalidad (idTipoJuego: 45 singles, 46 dobles)
-  async listar({ idDeporte = DEPORTE_DEFAULT, idTipoJuego = null } = {}) {
+  async listar({ idDeporte = deporteActivo(), idTipoJuego = null } = {}) {
     const params = new URLSearchParams({ id_deporte: idDeporte });
     if (idTipoJuego) params.append('id_tipo_juego', idTipoJuego);
     return api.get(`/api/Liga?${params}`);

@@ -1,10 +1,10 @@
 import api from './api';
-import { DEPORTE_DEFAULT } from '../constants/maestro';
+import { deporteActivo } from '../utils/deporteActivo';   // NUEVO (07): deporte elegido al entrar
 
 // Partidos de dobles (amistoso)
 export const doblesService = {
   // Convocatoria: sin idRival1/idRival2. Directo: con ambos rivales.
-  async crear({ idCompanero, idRival1 = null, idRival2 = null, idCancha, fecha, hora, numSets = 5, idDeporte = DEPORTE_DEFAULT }) {
+  async crear({ idCompanero, idRival1 = null, idRival2 = null, idCancha, fecha, hora, numSets = 5, idDeporte = deporteActivo() }) {
     return api.post('/api/PartidoAmistoso/crear-dobles', {
       id_companero: idCompanero,
       id_rival1:    idRival1,
@@ -18,12 +18,12 @@ export const doblesService = {
   },
 
   // Convocatorias de dobles publicadas (para Buscar partido)
-  async convocatorias(idDeporte = DEPORTE_DEFAULT) {
+  async convocatorias(idDeporte = deporteActivo()) {
     return api.get(`/api/Dobles/convocatorias?id_deporte=${idDeporte}`);
   },
 
   // Invitaciones recibidas + parejas que retan mis convocatorias
-  async pendientes(idDeporte = DEPORTE_DEFAULT) {
+  async pendientes(idDeporte = deporteActivo()) {
     return api.get(`/api/Dobles/pendientes?id_deporte=${idDeporte}`);
   },
 

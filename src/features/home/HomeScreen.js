@@ -17,6 +17,10 @@ import { resultadoService } from '../../services/resultadoService';
 import { notificacionService } from '../../services/notificacionService';
 import { MatchCard } from '../results/ResultadosScreen';
 import { registrarPush, abrirSiVinoDeNotificacion, actualizarBadge } from '../../utils/pushNotifications';
+// NUEVO (07): en vivo y deporte activo
+import { enVivoService } from '../../services/enVivoService';
+import { nombreDeporteActivo } from '../../utils/deporteActivo';
+import { PuntoEnVivo } from '../live/PartidoEnVivoScreen';
 
 const CARD_W = Math.round(Dimensions.get('window').width * 0.82);
 
@@ -120,6 +124,7 @@ export function HomeScreen({ navigation }) {
   const [solicitudesCount, setSolicitudesCount] = useState(0);
   const [feed, setFeed] = useState([]);              // NUEVO (040)
   const [notifCount, setNotifCount] = useState(0);   // NUEVO (041)
+  const [vivosCount, setVivosCount] = useState(0);   // NUEVO (07)
 
   // NUEVO (041): registrar este celular para push y abrir la bandeja si se entró tocando un aviso
   useEffect(() => {
@@ -141,7 +146,7 @@ export function HomeScreen({ navigation }) {
           nombre:           raw.nombre_usuario ?? raw.nombre ?? raw.nombre_completo?.split(' ')[0] ?? null,
           foto_perfil_url:  raw.foto_perfil_url ?? null,
           genero:           raw.genero ?? raw.sexo ?? null,
-          deporte:          raw.deporte ?? 'Frontón',
+          deporte:          raw.deporte ?? nombreDeporteActivo() ?? 'Frontón',
           ranking:          raw.posicion_ranking ?? raw.ranking ?? null,
           calificacion:     raw.calificacion_promedio ?? raw.calificacion ?? null,
           nivel:            raw.nivel_actual ?? raw.nivel_calculado ?? raw.nivel ?? null,
@@ -151,10 +156,12 @@ export function HomeScreen({ navigation }) {
       }
 
       // NUEVO (040 / 041): carrusel y contador de notificaciones (si fallan, el Home sigue)
-      const [resFeed, resNotif] = await Promise.all([
+      const [resFeed, resNotif, resVivos] = await Promise.all([
         resultadoService.feed(15).catch(() => []),
         notificacionService.noLeidas().catch(() => null),
+        enVivoService.listar().catch(() => []),   // NUEVO (07)
       ]);
+      setVivosCount(Array.isArray(resVivos) ? resVivos.filter(v => v.estado_vivo === 'EN_JUEGO').length : 0);
       setFeed(Array.isArray(resFeed) ? resFeed : []);
       const totalNotif = Number(resNotif?.total ?? 0);
       setNotifCount(totalNotif);
@@ -199,7 +206,18 @@ export function HomeScreen({ navigation }) {
           >
             {/* NUEVO (041): campana de notificaciones */}
             <View style={styles.titleRow}>
-              <Text style={[styles.sectionTitle, { marginBottom: 0 }]}>{t('home.tusEstadisticas')}</Text>
+              <Text style={[styles.sectionTitle, { marginBottom: 0, flex: 1 }]}>{t('home.tusEstadisticas')}</Text>
+              {/* NUEVO (07): partidos en vivo de amigos y seguidos */}
+              <TouchableOpacity
+                style={[styles.vivoBtn, vivosCount > 0 && styles.vivoBtnActivo]}
+                onPress={() => navigation.navigate('EnVivo')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                {vivosCount > 0 ? <PuntoEnVivo size={8} /> : <Ionicons name="radio-outline" size={16} color={colors.textPrimary} />}
+                <Text style={[styles.vivoBtnTxt, vivosCount > 0 && { color: '#FFFFFF' }]}>
+                  {vivosCount > 0 ? t('vivo.enVivoN', { n: vivosCount }) : t('vivo.enVivoCorto')}
+                </Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 style={styles.bellBtn}
                 onPress={() => navigation.navigate('Notificaciones')}
@@ -298,6 +316,12 @@ const styles = StyleSheet.create({
 
   // NUEVO (041): campana
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  vivoBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, borderRadius: 20, paddingHorizontal: 12,
+    backgroundColor: colors.surface, marginRight: 8,
+  },
+  vivoBtnActivo: { backgroundColor: colors.dark },
+  vivoBtnTxt: { fontSize: 13, fontWeight: '700', color: colors.textPrimary },
   bellBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   bellBadge: {
     position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 4,

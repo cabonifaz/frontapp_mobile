@@ -83,6 +83,12 @@ export function DetallePartidoScreen({ navigation, route }) {
   const idCreador     = item.id_creador ?? item.id_usuario_creador ?? null;
   const idParticipante = item.id_usuario_rival ?? item.id_rival ?? item.id_usuario ?? null;
 
+  // NUEVO (07): tocar la foto de un jugador abre su perfil
+  function verPerfil(idUsuario, nombre, foto) {
+    if (!idUsuario || Number(idUsuario) === Number(usuarioActualId)) return;
+    navigation.navigate('PlayerProfile', { player: { id_usuario: idUsuario, nombre, avatar: foto } });
+  }
+
   const esMiCreacion =
     idParticipante != null && usuarioActualId != null
       ? Number(usuarioActualId) !== Number(idParticipante)
@@ -285,7 +291,13 @@ export function DetallePartidoScreen({ navigation, route }) {
                       <Text style={styles.playerPts}>{t('detalle.buscandoPareja')}</Text>
                     </View>
                   ) : lado.lista.map(j => (
-                    <View key={j.id_usuario} style={styles.dobleJugador}>
+                    <TouchableOpacity
+                      key={j.id_usuario}
+                      style={styles.dobleJugador}
+                      activeOpacity={0.7}
+                      disabled={Number(j.es_yo) === 1}
+                      onPress={() => verPerfil(j.id_usuario, j.nombre ?? j.nombre_completo, j.foto_perfil_url)}
+                    >
                       <Image source={getAvatarSource(j.foto_perfil_url, j.nombre)} style={styles.dobleAvatar} />
                       <View style={{ flexShrink: 1 }}>
                         <Text style={styles.dobleNombre} numberOfLines={1}>
@@ -295,7 +307,7 @@ export function DetallePartidoScreen({ navigation, route }) {
                           {j.estado_codigo === 'PART_INVITADO' ? t('detalle.porAceptar') : `${Number(j.puntaje_total ?? 0).toFixed(1)} pts`}
                         </Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
               </React.Fragment>
@@ -333,13 +345,17 @@ export function DetallePartidoScreen({ navigation, route }) {
             </View>
           ) : (
             <View style={styles.playerCol}>
-              <View style={styles.avatarWrap}>
+              <TouchableOpacity
+                style={styles.avatarWrap}
+                activeOpacity={0.8}
+                onPress={() => verPerfil(rival.id, rival.name, rival.avatar)}
+              >
                 <Image source={getAvatarSource(rival.avatar, rival.name)} style={styles.avatar} />
                 <View style={styles.rankBadge}>
                   <Ionicons name="trophy" size={11} color={colors.primary} />
                   <Text style={styles.rankBadgeText}> {rival.ranking}</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
               <Text style={styles.playerName} numberOfLines={1}>{String(rival.name).split(' ')[0]}</Text>
               <Text style={styles.playerPts}>{rival.pts} pts</Text>
             </View>
@@ -515,6 +531,17 @@ export function DetallePartidoScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
+        {/* NUEVO (07): seguir / anotar el marcador en vivo */}
+        {!esFinalizado && !esBuscando && !esPendiente && !item.id_resultado && (
+          <TouchableOpacity
+            style={styles.vivoBtn}
+            onPress={() => navigation.navigate('PartidoEnVivo', { idPartido: partido.id })}
+          >
+            <View style={styles.vivoPunto} />
+            <Text style={styles.vivoBtnText}>{t('vivo.boton')}</Text>
+          </TouchableOpacity>
+        )}
+
         {!esFinalizado && !esBuscando && !esPendiente && (
           <TouchableOpacity
             style={styles.resultadosBtn}
@@ -678,6 +705,13 @@ const styles = StyleSheet.create({
     width: '100%', marginBottom: 12,
   },
   cancelBtnText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+  // NUEVO (07)
+  vivoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    backgroundColor: colors.dark, borderRadius: 30, paddingVertical: 16, marginBottom: 12, width: '100%',
+  },
+  vivoPunto: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#FF3B30' },
+  vivoBtnText: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
   resultadosBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8,

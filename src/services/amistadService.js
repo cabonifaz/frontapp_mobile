@@ -1,14 +1,14 @@
 import api from './api';
-import { DEPORTE_DEFAULT } from '../constants/maestro';
+import { deporteActivo } from '../utils/deporteActivo';   // NUEVO (07): deporte elegido al entrar
 
 export const amistadService = {
   // Lista de amigos aceptados (con ranking/puntaje del deporte)
-  async listarAmigos(idDeporte = DEPORTE_DEFAULT) {
+  async listarAmigos(idDeporte = deporteActivo()) {
     return api.get(`/api/Amistad?id_deporte=${idDeporte}`);
   },
 
   // Solicitudes que otros jugadores me enviaron y están pendientes
-  async solicitudesRecibidas(idDeporte = DEPORTE_DEFAULT) {
+  async solicitudesRecibidas(idDeporte = deporteActivo()) {
     return api.get(`/api/Amistad/solicitudes-recibidas?id_deporte=${idDeporte}`);
   },
 

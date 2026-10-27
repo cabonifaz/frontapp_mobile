@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { RankedLogo, RANKED_LIME } from '../../../components/common/RankedLogo';
 import { authService } from '../../../services/authService';
 import { cargarIdiomaGuardado } from '../../../i18n';
+import { cargarDeporteActivo } from '../../../utils/deporteActivo';   // NUEVO (07)
 
 const BG = '#0D1C27';
 
@@ -15,7 +16,10 @@ export function SplashScreen({ navigation }) {
       // NUEVO: aplica el idioma que eligió el usuario antes de mostrar la app
       await cargarIdiomaGuardado();
       const loggedIn = await authService.isLoggedIn();
-      navigation.replace(loggedIn ? 'MainTabs' : 'Login');
+      if (!loggedIn) { navigation.replace('Login'); return; }
+      // NUEVO (07): con sesión abierta entra al deporte que eligió; si no eligió, se le pregunta
+      const deporte = await cargarDeporteActivo();
+      navigation.replace(deporte ? 'MainTabs' : 'ElegirDeporte');
     })();
   }, []);
 

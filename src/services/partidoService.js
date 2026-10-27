@@ -1,8 +1,8 @@
 import api from './api';
-import { DEPORTE_DEFAULT } from '../constants/maestro';
+import { deporteActivo } from '../utils/deporteActivo';   // NUEVO (07): deporte elegido al entrar
 
 export const partidoService = {
-  async buscarRankeado({ idDeporte = DEPORTE_DEFAULT, idCancha = null, fecha = null, hora = null, idTipoJuego = null } = {}) {
+  async buscarRankeado({ idDeporte = deporteActivo(), idCancha = null, fecha = null, hora = null, idTipoJuego = null } = {}) {
     const params = new URLSearchParams({ id_deporte: idDeporte });
     if (idCancha) params.append('id_cancha', idCancha);
     if (fecha) params.append('fecha', fecha);
@@ -11,7 +11,7 @@ export const partidoService = {
     return api.get(`/api/PartidoRankeado/buscar?${params}`);
   },
 
-  async buscarAmistoso({ idDeporte = DEPORTE_DEFAULT, idCancha = null, fecha = null, hora = null, idTipoJuego = null } = {}) {
+  async buscarAmistoso({ idDeporte = deporteActivo(), idCancha = null, fecha = null, hora = null, idTipoJuego = null } = {}) {
     const params = new URLSearchParams({ id_deporte: idDeporte });
     if (idCancha) params.append('id_cancha', idCancha);
     if (fecha) params.append('fecha', fecha);
@@ -34,7 +34,7 @@ export const partidoService = {
   },
 
   // NUEVO: retos directos que me enviaron mis amigos
-  async retosRecibidos(idDeporte = DEPORTE_DEFAULT) {
+  async retosRecibidos(idDeporte = deporteActivo()) {
     return api.get(`/api/Partido/retos-recibidos?id_deporte=${idDeporte}`);
   },
 
@@ -60,7 +60,7 @@ export const partidoService = {
     return api.post(`/api/Partido/${idPartido}/cancelar`);
   },
 
-  async listarMisPartidos(idDeporte = DEPORTE_DEFAULT) {
+  async listarMisPartidos(idDeporte = deporteActivo()) {
     return api.get(`/api/GestionPartido?id_deporte=${idDeporte}`);
   },
 

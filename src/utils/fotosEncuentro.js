@@ -1,6 +1,6 @@
-// NUEVO: fotos del encuentro (elegir de la galería, reducir tamaño y subir a Cloudinary)
+// NUEVO: fotos del encuentro (tomar con la cámara o elegir de la galería, reducir tamaño y subir a Cloudinary)
 import { Alert } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirImagenes } from './elegirImagen';   // NUEVO (07): cámara o galería
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import i18n from '../i18n';
 import { uploadImage } from '../services/cloudinaryService';
@@ -8,25 +8,13 @@ import { resultadoService } from '../services/resultadoService';
 
 export const MAX_FOTOS = 5;
 
-// Abre la galería y devuelve las rutas locales elegidas (hasta "cupo")
+// Pregunta "Tomar foto / Elegir de la galería" y devuelve las rutas locales (hasta "cupo")
 export async function elegirFotos(cupo) {
   if (cupo <= 0) {
     Alert.alert(i18n.t('fotos.titulo'), i18n.t('fotos.maximo', { n: MAX_FOTOS }));
     return [];
   }
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
-    Alert.alert(i18n.t('fotos.titulo'), i18n.t('fotos.permiso'));
-    return [];
-  }
-  const res = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ['images'],
-    allowsMultipleSelection: true,
-    selectionLimit: cupo,
-    quality: 1,
-  });
-  if (res.canceled) return [];
-  return (res.assets ?? []).slice(0, cupo).map(a => a.uri);
+  return elegirImagenes({ cupo, titulo: i18n.t('fotos.titulo') });
 }
 
 // Reduce la foto (máx. 1280 px de ancho, JPG 70%) para que suba rápido

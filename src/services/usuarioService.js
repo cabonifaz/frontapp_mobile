@@ -1,8 +1,8 @@
 import api from './api';
-import { DEPORTE_DEFAULT } from '../constants/maestro';
+import { deporteActivo } from '../utils/deporteActivo';   // NUEVO (07): deporte elegido al entrar
 
 export const usuarioService = {
-  async menuPrincipal(idDeporte = DEPORTE_DEFAULT) {
+  async menuPrincipal(idDeporte = deporteActivo()) {
     return api.get(`/api/Usuario/menu-principal?id_deporte=${idDeporte}`);
   },
 
@@ -22,7 +22,7 @@ export const usuarioService = {
     return api.put('/api/Usuario/foto-perfil', { foto_perfil_url: fotoPerfliUrl });
   },
 
-  async perfil(idDeporte = DEPORTE_DEFAULT) {
+  async perfil(idDeporte = deporteActivo()) {
     return api.get(`/api/Usuario/perfil?id_deporte=${idDeporte}`);
   },
 

@@ -11,6 +11,7 @@ import { resultadoService } from '../../services/resultadoService';
 import { authService } from '../../services/authService';
 import { getAvatarSource } from '../../utils/avatars';
 import { elegirFotos, subirFotosPartido, MAX_FOTOS } from '../../utils/fotosEncuentro';   // NUEVO: fotos
+import { validarSet, puntosParaGanar, cargarReglasSet } from '../../utils/reglasSet';   // NUEVO (07): reglas del set
 
 const AVATAR_DEFAULT = require('../../../assets/avatar_general.png');
 const MAX_CORRECCIONES = 3; // igual que CFG_VIAJES_MAX_REVISION
@@ -243,6 +244,10 @@ export function ColocarResultadosScreen({ navigation, route }) {
     return s.my === '0' && s.rival === '0' ? null : s;
   }).filter(Boolean);
 
+  // NUEVO (07): puntos por set según la configuración del servidor (15 / 21 por defecto)
+  const [, setReglasListas] = useState(false);
+  useEffect(() => { cargarReglasSet().then(() => setReglasListas(true)); }, []);
+
   // ── Formulario ────────────────────────────────────────────────────────────
   const [modoCorreccion, setModoCorreccion] = useState(false);
   const [confirmedSets, setConfirmedSets] = useState([]); // [{ my, rival }]
@@ -270,10 +275,11 @@ export function ColocarResultadosScreen({ navigation, route }) {
   const matchDone = myWins >= setsToWin || rivalWins >= setsToWin;
   const currentSetNum = confirmedSets.length + 1;
 
-  const canConfirmSet =
-    curMy.trim() !== '' && curRival.trim() !== '' &&
-    !isNaN(Number(curMy)) && !isNaN(Number(curRival)) &&
-    Number(curMy) !== Number(curRival);
+  // NUEVO (07): sin empates; a 15 (dobles a 21) y desde 14-14 (20-20) se gana por 2
+  const setCompleto = curMy.trim() !== '' && curRival.trim() !== '';
+  const errorSet = setCompleto ? validarSet(curMy.trim(), curRival.trim(), esDoblesPartido) : null;
+  const canConfirmSet = setCompleto && !errorSet;
+  const puntosWO = puntosParaGanar(esDoblesPartido);   // walkover / abandono: 15-0 o 21-0
 
   function handleConfirmSet() {
     if (!canConfirmSet || matchDone) return;
@@ -297,8 +303,8 @@ export function ColocarResultadosScreen({ navigation, route }) {
   function setsParaEnviar() {
     if (!modoCorreccion && tipoResultado === 'walkover') {
       return Array.from({ length: numSets }, () => ({
-        mi_puntaje:    jugadorEspecial === 'yo' ? 0 : 15,
-        puntaje_rival: jugadorEspecial === 'yo' ? 15 : 0,
+        mi_puntaje:    jugadorEspecial === 'yo' ? 0 : puntosWO,
+        puntaje_rival: jugadorEspecial === 'yo' ? puntosWO : 0,
       }));
     }
     if (!modoCorreccion && tipoResultado === 'abandono') {
@@ -307,8 +313,8 @@ export function ColocarResultadosScreen({ navigation, route }) {
         puntaje_rival: Number(s.rival) || 0,
       }));
       const remaining = Array.from({ length: numSets - confirmedSets.length }, () => ({
-        mi_puntaje:    jugadorEspecial === 'yo' ? 0 : 15,
-        puntaje_rival: jugadorEspecial === 'yo' ? 15 : 0,
+        mi_puntaje:    jugadorEspecial === 'yo' ? 0 : puntosWO,
+        puntaje_rival: jugadorEspecial === 'yo' ? puntosWO : 0,
       }));
       return [...played, ...remaining];
     }
@@ -523,8 +529,8 @@ export function ColocarResultadosScreen({ navigation, route }) {
               </View>
               <View style={styles.scoresCol}>
                 {Array.from({ length: numSets }, () => ({
-                  my:    jugadorEspecial === 'yo' ? '0' : jugadorEspecial === 'rival' ? '15' : '',
-                  rival: jugadorEspecial === 'rival' ? '0' : jugadorEspecial === 'yo' ? '15' : '',
+                  my:    jugadorEspecial === 'yo' ? '0' : jugadorEspecial === 'rival' ? String(puntosWO) : '',
+                  rival: jugadorEspecial === 'rival' ? '0' : jugadorEspecial === 'yo' ? String(puntosWO) : '',
                 })).map((s, i) => (
                   <ScoreRow key={i} index={i} myScore={s.my} rivalScore={s.rival} readonly />
                 ))}
@@ -584,6 +590,13 @@ export function ColocarResultadosScreen({ navigation, route }) {
                       <Text style={styles.playerPts}>{rival.pts} pts</Text>
                     </View>
                   </View>
+
+                  {/* NUEVO (07): explica por qué el marcador no es válido */}
+                  {errorSet ? (
+                    <Text style={styles.errorSet}>{t(errorSet.clave, errorSet.params)}</Text>
+                  ) : (
+                    <Text style={styles.reglaSet}>{t('reglasSet.recordatorio', { meta: puntosWO, empate: puntosWO - 1 })}</Text>
+                  )}
 
                   <TouchableOpacity
                     style={[styles.confirmSetBtn, !canConfirmSet && styles.confirmBtnDisabled]}
@@ -685,6 +698,9 @@ export function ColocarResultadosScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  // NUEVO (07)
+  errorSet: { color: '#D93025', fontSize: 13, fontWeight: '600', textAlign: 'center', marginTop: 4, marginBottom: 8, paddingHorizontal: 12 },
+  reglaSet: { color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 4, marginBottom: 8, paddingHorizontal: 12 },
   safe: { flex: 1, backgroundColor: colors.background },
 
   header: {

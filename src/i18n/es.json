@@ -23,7 +23,8 @@
     "salir": "Salir",
     "cambiarCuenta": "Cambiar de cuenta",
     "cambiarCuentaMensaje": "Se cerrará la sesión de Google/Facebook en este dispositivo para que puedas elegir otra cuenta.",
-    "cambiarCuentaBoton": "Cambiar cuenta"
+    "cambiarCuentaBoton": "Cambiar cuenta",
+    "cambiarDeporte": "Cambiar deporte"
   },
   "tabs": {
     "home": "Home",
@@ -935,13 +936,25 @@
       "RESULTADO_POR_CONFIRMAR": "{{nombre}} registró el resultado de su partido. Confírmalo.",
       "RESULTADO_CONFIRMADO": "{{nombre}} confirmó el resultado de su partido. Ya es oficial.",
       "RESULTADO_AMIGO": "{{nombre}} tiene un nuevo resultado. ¡Míralo!",
-      "NUEVO_SEGUIDOR": "{{nombre}} empezó a seguirte."
+      "NUEVO_SEGUIDOR": "{{nombre}} empezó a seguirte.",
+      "RETO_RECIBIDO": "{{nombre}} quiere jugar tu convocatoria. Acepta o rechaza el reto.",
+      "RETO_DIRECTO": "{{nombre}} te retó a un partido.",
+      "RETO_ACEPTADO": "{{nombre}} confirmó el partido. ¡Nos vemos en la cancha!",
+      "PARTIDO_AMIGO": "{{nombre}} tiene un partido confirmado.",
+      "PARTIDO_EN_VIVO": "{{nombre}} está jugando ahora. ¡Sigue el marcador en vivo!"
     },
     "tiposSinNombre": {
       "RESULTADO_POR_CONFIRMAR": "Tienes un resultado por confirmar.",
       "RESULTADO_CONFIRMADO": "El resultado de tu partido ya es oficial.",
       "RESULTADO_AMIGO": "Un jugador que sigues tiene un nuevo resultado.",
-      "NUEVO_SEGUIDOR": "Tienes un nuevo seguidor."
+      "NUEVO_SEGUIDOR": "Tienes un nuevo seguidor.",
+      "RETO_RECIBIDO": "Tienes un nuevo reto en tu convocatoria.",
+      "RETO_DIRECTO": "Te retaron a un partido.",
+      "RETO_ACEPTADO": "Tu partido quedó confirmado.",
+      "PARTIDO_AMIGO": "Un jugador que sigues tiene un partido confirmado.",
+      "PARTIDO_EN_VIVO": "Un jugador que sigues está jugando en vivo.",
+      "INSCRIPCION_ACTIVA": "Validamos tu pago. Ya estás inscrito en la liga.",
+      "INSCRIPCION_RECHAZADA": "No pudimos validar el pago de tu liga. Escríbenos para ayudarte."
     },
     "tiempo": {
       "ahora": "Ahora",
@@ -975,5 +988,107 @@
     "error": "No se pudo crear la imagen. Inténtalo de nuevo.",
     "noDisponible": "Tu teléfono no permite compartir imágenes desde la app.",
     "actualizaApp": "Para compartir en historias necesitas instalar la última versión de Ranked."
+  },
+  "elegirDeporte": {
+    "titulo": "¿Qué vas a jugar?",
+    "subtitulo": "Cada deporte tiene su propio ranking, nivel, partidos y resultados.",
+    "miNivel": "Nivel {{nivel}} · {{pts}} pts",
+    "sinPerfil": "Aún no tienes perfil de {{deporte}}. Muy pronto podrás crearlo desde aquí.",
+    "sinPerfilCorto": "Aún no tienes perfil en este deporte",
+    "proximamente": "PRÓXIMAMENTE",
+    "nota": "Puedes cambiar de deporte cuando quieras desde Ajustes."
+  },
+  "imagen": {
+    "titulo": "Agregar foto",
+    "tituloPerfil": "Foto de perfil",
+    "camara": "Tomar foto",
+    "galeria": "Elegir de la galería",
+    "permisoCamara": "Necesitamos acceso a la cámara para tomar la foto. Actívalo en los ajustes del celular.",
+    "permisoGaleria": "Necesitamos acceso a tu galería para elegir la foto. Actívalo en los ajustes del celular.",
+    "error": "No se pudo obtener la foto. Intenta de nuevo."
+  },
+  "reglasSet": {
+    "invalido": "Ingresa un marcador válido.",
+    "empate": "Un set no puede terminar empatado.",
+    "incompleto": "El set aún no termina: se juega a {{meta}} puntos.",
+    "diferencia": "Se juega a {{meta}}. Desde {{empate}}-{{empate}} se gana por 2 puntos (por ejemplo {{ejemplo}}).",
+    "recordatorio": "Se juega a {{meta}} puntos. Desde {{empate}}-{{empate}} se gana por 2."
+  },
+  "vivo": {
+    "boton": "Partido en vivo",
+    "titulo": "Partido en vivo",
+    "enVivo": "EN VIVO",
+    "enVivoCorto": "En vivo",
+    "enVivoN": "En vivo ({{n}})",
+    "finalizado": "FINALIZADO",
+    "sets": "SETS",
+    "set": "Set {{n}}",
+    "setDe": "Set {{n}} de {{total}}",
+    "aPuntos": "a {{n}} puntos",
+    "desempate": "¡{{n}} iguales! Se gana por 2 puntos.",
+    "marcadorSets": "Marcador por set",
+    "enJuego": "EN JUEGO",
+    "iniciar": "Iniciar partido en vivo",
+    "iniciarCorto": "Iniciar",
+    "explicacionIniciar": "Tus amigos y seguidores verán el marcador mientras lo vas anotando. Al terminar, publiquen el resultado oficial como siempre.",
+    "aunNo": "Este partido aún no está en vivo. Te avisaremos cuando empiece.",
+    "terminoTitulo": "¡Partido terminado!",
+    "terminoMensaje": "Para que cuente en el ranking, los jugadores deben publicar y confirmar el resultado oficial desde el partido.",
+    "terminar": "Terminar transmisión",
+    "terminarTitulo": "Terminar transmisión",
+    "terminarMensaje": "El partido dejará de verse en vivo. ¿Continuar?",
+    "corregirSet": "Corregir set {{n}}",
+    "guardar": "Guardar",
+    "errorMarcar": "No se pudo actualizar el marcador.",
+    "errorIniciar": "No se pudo iniciar el partido en vivo.",
+    "listaTitulo": "En vivo",
+    "ahora": "Jugando ahora",
+    "sinVivos": "Ninguno de tus amigos o jugadores que sigues está jugando en este momento.",
+    "paraIniciar": "Partidos de hoy para transmitir",
+    "recientes": "Terminados hace poco",
+    "dobles": "Dobles",
+    "rankeado": "Rankeado",
+    "tocaParaMarcar": "Toca para anotar",
+    "reanudar": "Reanudar transmisión"
+  },
+  "admin": {
+    "titulo": "Administración",
+    "intro": "Opciones disponibles solo para cuentas administradoras.",
+    "vivoTitulo": "Partidos en vivo",
+    "vivoDetalle": "Inicia y anota el marcador de cualquier partido de hoy.",
+    "sinVivos": "No hay partidos en vivo en este momento.",
+    "pagosTitulo": "Pagos e inscripciones",
+    "pagosDetalle": "Valida pagos y revisa a los jugadores inscritos en las ligas rankeadas.",
+    "configTitulo": "Configuración",
+    "configDetalle": "Puntos por victoria, plazos para confirmar resultados, puntos por set y más.",
+    "configIntro": "Los cambios se aplican de inmediato para todos los jugadores.",
+    "filtros": {
+      "PENDIENTES": "Pago pendiente",
+      "ACTIVAS": "Activas",
+      "TODAS": "Todas"
+    },
+    "vacio": {
+      "PENDIENTES": "No hay pagos pendientes por validar.",
+      "ACTIVAS": "No hay inscripciones activas.",
+      "TODAS": "Aún no hay inscripciones."
+    },
+    "conCompanero": "Con {{nombre}}",
+    "cuota": "Cuota",
+    "inscrito": "Inscrito",
+    "pagado": "Pagado",
+    "llamar": "Llamar",
+    "validarPago": "Validar pago",
+    "rechazar": "Rechazar",
+    "rechazarTitulo": "Rechazar inscripción",
+    "rechazarMensaje": "¿Rechazar la inscripción de {{nombre}} en {{liga}}? Se le avisará por notificación.",
+    "montoRecibido": "Monto recibido",
+    "referencia": "Referencia (opcional)",
+    "referenciaEjemplo": "Ej. Yape 123456",
+    "montoInvalido": "Ingresa un monto válido.",
+    "pagoValidado": "Pago validado. Inscripción activa.",
+    "confirmar": "Confirmar",
+    "valorInvalido": "Ingresa un número válido.",
+    "guardado": "Configuración guardada.",
+    "guardar": "Guardar"
   }
 }

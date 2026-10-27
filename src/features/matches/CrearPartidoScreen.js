@@ -12,7 +12,8 @@ import { amistadService } from '../../services/amistadService';
 import { ligaService } from '../../services/ligaService';
 import { doblesService } from '../../services/doblesService';
 import { getAvatarSource } from '../../utils/avatars';
-import { TIPOS_JUEGO, DEPORTE_DEFAULT } from '../../constants/maestro';
+import { TIPOS_JUEGO } from '../../constants/maestro';
+import { deporteActivo } from '../../utils/deporteActivo';   // NUEVO (07)
 
 const HORAS = [
   '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
@@ -366,7 +367,7 @@ export function CrearPartidoScreen({ navigation, route }) {
         fecha: fecha.iso,
         hora,
         id_tipo_juego: TIPO_JUEGO_MAP[tipoJuego] ?? TIPOS_JUEGO.SINGLES,
-        id_deporte: DEPORTE_DEFAULT,
+        id_deporte: deporteActivo(),
       };
 
       if (esDoblesAmistoso) {

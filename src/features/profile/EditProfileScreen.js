@@ -4,7 +4,7 @@ import {
   TextInput, Image, SafeAreaView, KeyboardAvoidingView,
   Platform, Alert, ImageBackground, ActivityIndicator,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirUnaImagen } from '../../utils/elegirImagen';   // NUEVO (07): cámara o galería
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
@@ -131,19 +131,9 @@ export function EditProfileScreen({ navigation, route }) {
   const [mano,        setMano]        = useState(initial.manoDominante ?? null);   // NUEVO (036)
 
   async function pickImage() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(t('registro.permisoTitulo'), t('editarPerfil.permisoMensaje'));
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 1,
-    });
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      setRawUri(result.assets[0].uri);
-    }
+    // NUEVO (07): tomar la foto con la cámara o elegirla de la galería
+    const uri = await elegirUnaImagen(t('imagen.tituloPerfil'));
+    if (uri) setRawUri(uri);
   }
 
   async function handleGuardar() {

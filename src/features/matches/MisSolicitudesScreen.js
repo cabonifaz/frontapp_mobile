@@ -115,6 +115,12 @@ export function MisSolicitudesScreen({ navigation, route }) {
   const [claseAceptada, setClaseAceptada] = useState(null);
   const [accionClaseLoading, setAccionClaseLoading] = useState(null);
 
+  // NUEVO (07): tocar la foto o el nombre de un retador abre su perfil (estadísticas)
+  function verPerfil(idUsuario, nombre, foto) {
+    if (!idUsuario) return;
+    navigation.navigate('PlayerProfile', { player: { id_usuario: idUsuario, nombre, avatar: foto } });
+  }
+
   // NUEVO: retos directos de amigos
   const [retosAmigos, setRetosAmigos] = useState([]);
   const [accionRetoLoading, setAccionRetoLoading] = useState(null);
@@ -444,11 +450,17 @@ export function MisSolicitudesScreen({ navigation, route }) {
                       <View key={clave} style={[styles.retadorCard, styles.retoAmigoCard]}>
                         {esPareja ? (
                           <View style={styles.parejaAvatares}>
-                            <Image source={getAvatarSource(item.foto_retador)} style={[styles.parejaAvatar, { top: 0, left: 0 }]} />
-                            <Image source={getAvatarSource(item.foto_companero_retador)} style={[styles.parejaAvatar, { bottom: 0, right: 0 }]} />
+                            <TouchableOpacity style={[styles.parejaAvatarTap, { top: 0, left: 0 }]} onPress={() => verPerfil(item.id_lider, item.nombre_retador, item.foto_retador)}>
+                              <Image source={getAvatarSource(item.foto_retador)} style={[styles.parejaAvatar, styles.parejaAvatarDentro]} />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.parejaAvatarTap, { bottom: 0, right: 0 }]} onPress={() => verPerfil(item.id_companero_retador, item.nombre_companero_retador, item.foto_companero_retador)}>
+                              <Image source={getAvatarSource(item.foto_companero_retador)} style={[styles.parejaAvatar, styles.parejaAvatarDentro]} />
+                            </TouchableOpacity>
                           </View>
                         ) : (
-                          <Image source={getAvatarSource(item.foto_invitador)} style={styles.retadorAvatar} />
+                          <TouchableOpacity onPress={() => verPerfil(item.id_invitador, item.nombre_invitador, item.foto_invitador)}>
+                            <Image source={getAvatarSource(item.foto_invitador)} style={styles.retadorAvatar} />
+                          </TouchableOpacity>
                         )}
                         <View style={styles.retadorInfo}>
                           <View style={[styles.tipoRetoChip, styles.tipoRetoLiga]}>
@@ -520,10 +532,12 @@ export function MisSolicitudesScreen({ navigation, route }) {
                   const cargandoReto = accionRetoLoading === r.id_partido;
                   return (
                     <View key={`reto-${r.id_partido}`} style={[styles.retadorCard, styles.retoAmigoCard]}>
-                      <Image source={getAvatarSource(r.foto_creador)} style={styles.retadorAvatar} />
+                      <TouchableOpacity onPress={() => verPerfil(r.id_creador, r.nombre_creador, r.foto_creador)}>
+                        <Image source={getAvatarSource(r.foto_creador)} style={styles.retadorAvatar} />
+                      </TouchableOpacity>
                       <View style={styles.retadorInfo}>
                         <View style={styles.nameRow}>
-                          <Text style={styles.retadorName} numberOfLines={1}>{r.nombre_creador ?? t('solicitudes.amigo')}</Text>
+                          <Text style={styles.retadorName} numberOfLines={1} onPress={() => verPerfil(r.id_creador, r.nombre_creador, r.foto_creador)}>{r.nombre_creador ?? t('solicitudes.amigo')}</Text>
                           <Ionicons name="trophy" size={13} color={colors.textPrimary} style={{ marginLeft: 6 }} />
                           <Text style={styles.retadorRanking}> {r.ranking_creador ?? '--'}</Text>
                         </View>
@@ -615,10 +629,16 @@ export function MisSolicitudesScreen({ navigation, route }) {
                   const cargando = accionLoading === idSolicitud;
                   return (
                     <View key={`${idSolicitud}-${s.id_usuario ?? i}`} style={styles.retadorCard}>
-                      <Image source={getAvatarSource(s.foto_perfil_url)} style={styles.retadorAvatar} />
+                      <TouchableOpacity onPress={() => verPerfil(s.id_usuario ?? s.id_usuario_retador, s.apellidos ? `${s.nombre ?? ''} ${s.apellidos}`.trim() : s.nombre, s.foto_perfil_url)}>
+                        <Image source={getAvatarSource(s.foto_perfil_url)} style={styles.retadorAvatar} />
+                      </TouchableOpacity>
                       <View style={styles.retadorInfo}>
                         <View style={styles.nameRow}>
-                          <Text style={styles.retadorName} numberOfLines={1}>
+                          <Text
+                            style={styles.retadorName}
+                            numberOfLines={1}
+                            onPress={() => verPerfil(s.id_usuario ?? s.id_usuario_retador, s.apellidos ? `${s.nombre ?? ''} ${s.apellidos}`.trim() : s.nombre, s.foto_perfil_url)}
+                          >
                             {s.apellidos ? `${s.nombre ?? ''} ${s.apellidos}`.trim() : (s.nombre ?? s.name ?? t('solicitudes.jugador'))}
                           </Text>
                           {s.ranking != null && (
@@ -796,6 +816,8 @@ const styles = StyleSheet.create({
   tipoRetoText: { fontSize: 11, fontWeight: '700', color: colors.textSecondary },
   tipoRetoTextLiga: { color: colors.accent },
   retadorAvatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#ccc' },
+  parejaAvatarTap: { position: 'absolute', width: 38, height: 38, zIndex: 1 },   // NUEVO (07)
+  parejaAvatarDentro: { position: 'relative' },
   retadorInfo: { flex: 1 },
   nameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
   retadorName: { fontSize: 14, fontWeight: '700', color: colors.textPrimary, flexShrink: 1 },

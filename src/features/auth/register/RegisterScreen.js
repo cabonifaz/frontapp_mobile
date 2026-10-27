@@ -4,7 +4,7 @@ import {
   ImageBackground, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { elegirUnaImagen } from '../../../utils/elegirImagen';   // NUEVO (07): cámara o galería
 import { useTranslation } from 'react-i18next';
 import { colors } from '../../../constants';
 import { PrimaryButton } from '../../../components/common';
@@ -12,6 +12,7 @@ import { CircularCropModal } from '../../../components/CircularCropModal';
 import { authService } from '../../../services/authService';
 import { usuarioService } from '../../../services/usuarioService';
 import { DEPORTES, GENEROS, DEPORTE_DEFAULT } from '../../../constants/maestro';
+import { guardarDeporteActivo } from '../../../utils/deporteActivo';   // NUEVO (07)
 import { uploadImage } from '../../../services/cloudinaryService';
 
 // NUEVO: edad mínima para usar la app (la base de datos también lo valida: CFG_EDAD_MINIMA)
@@ -454,19 +455,9 @@ function Step4({ onFinish, onBack, loading, fotoUri, setFotoUri, fotoCropParams,
   const [rawUri, setRawUri] = useState(null);
 
   async function pickImage() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(t('registro.permisoTitulo'), t('registro.permisoMensaje'));
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 1,
-    });
-    if (!result.canceled && result.assets?.[0]?.uri) {
-      setRawUri(result.assets[0].uri);
-    }
+    // NUEVO (07): tomar la foto con la cámara o elegirla de la galería
+    const uri = await elegirUnaImagen(t('imagen.tituloPerfil'));
+    if (uri) setRawUri(uri);
   }
 
   return (
@@ -700,7 +691,11 @@ export function RegisterScreen({ navigation }) {
       <StepNivel
         nivel={nivelObtenido || 1}
         puntaje={puntajeObtenido}
-        onStart={() => navigation.replace('MainTabs')}
+        onStart={async () => {
+          // NUEVO (07): entra directo al deporte con el que se registró
+          await guardarDeporteActivo(DEPORTE_MAP[data.deporte] ?? DEPORTE_DEFAULT);
+          navigation.replace('MainTabs');
+        }}
       />
     );
   }

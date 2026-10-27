@@ -18,6 +18,14 @@ const ICONO = {
   RESULTADO_CONFIRMADO:    'checkmark-circle',
   RESULTADO_AMIGO:         'trophy',
   NUEVO_SEGUIDOR:          'eye',
+  // NUEVO (07)
+  RETO_RECIBIDO:           'flash',
+  RETO_DIRECTO:            'flash',
+  RETO_ACEPTADO:           'calendar',
+  PARTIDO_AMIGO:           'calendar',
+  PARTIDO_EN_VIVO:         'radio',
+  INSCRIPCION_ACTIVA:      'checkmark-done',
+  INSCRIPCION_RECHAZADA:   'close-circle',
 };
 
 function tiempoRelativo(fecha, t) {
@@ -98,6 +106,26 @@ export function NotificacionesScreen({ navigation }) {
       case 'RESULTADO_CONFIRMADO':
       case 'RESULTADO_AMIGO':
         if (item.id_partido) navigation.navigate('DetalleResultado', { match: { id_partido: item.id_partido } });
+        break;
+      // NUEVO (07): retos → Mis solicitudes (si siguen pendientes) o el partido
+      case 'RETO_RECIBIDO':
+      case 'RETO_DIRECTO':
+        if (['ESTADO_BUSCANDO', 'ESTADO_PENDIENTE'].includes(item.estado_partido_codigo)) {
+          navigation.navigate('MisSolicitudes');
+        } else if (item.id_partido) {
+          navigation.navigate('DetallePartido', { partido: { id_partido: item.id_partido } });
+        }
+        break;
+      case 'RETO_ACEPTADO':
+        if (item.id_partido) navigation.navigate('DetallePartido', { partido: { id_partido: item.id_partido } });
+        break;
+      case 'PARTIDO_AMIGO':
+      case 'PARTIDO_EN_VIVO':
+        if (item.id_partido) navigation.navigate('PartidoEnVivo', { idPartido: item.id_partido });
+        break;
+      case 'INSCRIPCION_ACTIVA':
+      case 'INSCRIPCION_RECHAZADA':
+        navigation.navigate('MainTabs', { screen: 'Ranking' });
         break;
       case 'NUEVO_SEGUIDOR':
         if (item.id_actor) {

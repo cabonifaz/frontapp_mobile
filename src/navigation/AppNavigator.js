@@ -40,6 +40,13 @@ import { LigaDetalleScreen } from '../features/ranking/LigaDetalleScreen';
 import { RankingGeneralScreen } from '../features/ranking/RankingGeneralScreen';
 // NUEVO (APP-AVO-041): bandeja de notificaciones
 import { NotificacionesScreen } from '../features/notifications/NotificacionesScreen';
+// NUEVO (07): elegir deporte, en vivo y administración
+import { ElegirDeporteScreen } from '../features/auth/sport/ElegirDeporteScreen';
+import { EnVivoScreen } from '../features/live/EnVivoScreen';
+import { PartidoEnVivoScreen } from '../features/live/PartidoEnVivoScreen';
+import { AdminScreen } from '../features/admin/AdminScreen';
+import { AdminInscripcionesScreen } from '../features/admin/AdminInscripcionesScreen';
+import { AdminConfiguracionScreen } from '../features/admin/AdminConfiguracionScreen';
 import { navigationRef } from './navigationRef';
 import { configurarNotificaciones } from '../utils/pushNotifications';
 
@@ -156,6 +163,14 @@ export function AppNavigator() {
 
         {/* NUEVO: notificaciones */}
         <Stack.Screen name="Notificaciones" component={NotificacionesScreen} />
+
+        {/* NUEVO (07) */}
+        <Stack.Screen name="ElegirDeporte" component={ElegirDeporteScreen} />
+        <Stack.Screen name="EnVivo" component={EnVivoScreen} />
+        <Stack.Screen name="PartidoEnVivo" component={PartidoEnVivoScreen} />
+        <Stack.Screen name="Admin" component={AdminScreen} />
+        <Stack.Screen name="AdminInscripciones" component={AdminInscripcionesScreen} />
+        <Stack.Screen name="AdminConfiguracion" component={AdminConfiguracionScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

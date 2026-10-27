@@ -1,9 +1,9 @@
 import api from './api';
-import { DEPORTE_DEFAULT } from '../constants/maestro';
+import { deporteActivo } from '../utils/deporteActivo';   // NUEVO (07): deporte elegido al entrar
 
 export const claseService = {
   // NUEVO: duracionMinutos para descartar profesores con cruce de horario
-  async profesoresDisponibles({ idDeporte = DEPORTE_DEFAULT, idCancha, fecha, hora, duracionMinutos = 60 }) {
+  async profesoresDisponibles({ idDeporte = deporteActivo(), idCancha, fecha, hora, duracionMinutos = 60 }) {
     const params = new URLSearchParams({
       id_deporte: idDeporte,
       id_cancha: idCancha,
@@ -14,7 +14,7 @@ export const claseService = {
     return api.get(`/api/Clase/profesores-disponibles?${params}`);
   },
 
-  async solicitar({ idProfesor, idDeporte = DEPORTE_DEFAULT, idCancha, fecha, hora, duracionMinutos = 60 }) {
+  async solicitar({ idProfesor, idDeporte = deporteActivo(), idCancha, fecha, hora, duracionMinutos = 60 }) {
     return api.post('/api/Clase/solicitar', {
       id_profesor:       idProfesor,
       id_deporte:        idDeporte,
@@ -46,7 +46,7 @@ export const claseService = {
     return api.post(`/api/Clase/${idClase}/feedback`, { calificacion, comentario });
   },
 
-  async misClases(idDeporte = DEPORTE_DEFAULT) {
+  async misClases(idDeporte = deporteActivo()) {
     return api.get(`/api/Clase/mis-clases?id_deporte=${idDeporte}`);
   },
 
@@ -54,7 +54,7 @@ export const claseService = {
     return api.get(`/api/Clase/${idClase}`);
   },
 
-  async solicitudesProfesor(idDeporte = DEPORTE_DEFAULT) {
+  async solicitudesProfesor(idDeporte = deporteActivo()) {
     return api.get(`/api/Clase/solicitudes-profesor?id_deporte=${idDeporte}`);
   },
 };

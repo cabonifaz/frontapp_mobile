@@ -28,7 +28,8 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.CAMERA"
       ],
       "package": "com.chris_13.avosports",
       "usesCleartextTraffic": true
@@ -55,7 +56,14 @@
         }
       ],
       "expo-font",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ranked necesita acceso a tus fotos para tu foto de perfil y las fotos del encuentro.",
+          "cameraPermission": "Ranked necesita la cámara para tomar tu foto de perfil y las fotos del encuentro."
+        }
+      ]
     ],
     "extra": {
       "eas": {

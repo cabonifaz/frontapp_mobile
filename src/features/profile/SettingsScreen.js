@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -6,9 +6,16 @@ import { colors } from '../../constants';
 import { authService } from '../../services/authService';
 import { SelectorIdioma } from '../../components/common/SelectorIdioma';
 import { desregistrarPush } from '../../utils/pushNotifications';   // NUEVO (041)
+import { adminService } from '../../services/adminService';          // NUEVO (07)
+import { nombreDeporteActivo } from '../../utils/deporteActivo';     // NUEVO (07)
 
 export function SettingsScreen({ navigation }) {
   const { t } = useTranslation();
+  const [esAdmin, setEsAdmin] = useState(false);   // NUEVO (07)
+
+  useEffect(() => {
+    adminService.esAdmin({ refrescar: true }).then(setEsAdmin);
+  }, []);
 
   // Cierre de sesión normal (Un solo clic para volver a entrar)
   async function handleLogout() {
@@ -63,6 +70,29 @@ export function SettingsScreen({ navigation }) {
         {/* NUEVO: idioma de la aplicación */}
         <SelectorIdioma />
 
+        {/* NUEVO (07): cambiar el deporte (universo) en el que juego */}
+        <TouchableOpacity style={styles.optionRow} onPress={() => navigation.navigate('ElegirDeporte', { desdeAjustes: true })}>
+          <View style={styles.optionLeft}>
+            <Ionicons name="swap-horizontal" size={22} color={colors.textPrimary} />
+            <Text style={styles.optionText}>{t('ajustes.cambiarDeporte')}</Text>
+          </View>
+          <View style={styles.optionLeft}>
+            {nombreDeporteActivo() ? <Text style={styles.optionValue}>{nombreDeporteActivo()}</Text> : null}
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </View>
+        </TouchableOpacity>
+
+        {/* NUEVO (07): solo cuentas administradoras */}
+        {esAdmin && (
+          <TouchableOpacity style={styles.optionRow} onPress={() => navigation.navigate('Admin')}>
+            <View style={styles.optionLeft}>
+              <Ionicons name="shield-checkmark-outline" size={22} color={colors.textPrimary} />
+              <Text style={styles.optionText}>{t('admin.titulo')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity style={styles.optionRow} onPress={() => navigation.navigate('Notificaciones')}>
           <View style={styles.optionLeft}>
             <Ionicons name="notifications-outline" size={22} color={colors.textPrimary} />
@@ -110,6 +140,7 @@ const styles = StyleSheet.create({
   optionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16 },
   optionLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   optionText: { fontSize: 16, color: colors.textPrimary },
+  optionValue: { fontSize: 14, color: colors.textSecondary },   // NUEVO (07)
   divider: { height: 1, backgroundColor: colors.border, marginVertical: 16 },
 
   logoutBtn: {

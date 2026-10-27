@@ -10,7 +10,7 @@ import { colors } from '../../constants';
 import { COURTS, DATES, HOURS, MATCH_TYPES } from '../../data/buscarPartidoData';
 import { partidoService } from '../../services/partidoService';
 import { doblesService, esDobles } from '../../services/doblesService';
-import { DEPORTE_DEFAULT } from '../../constants/maestro';
+import { deporteActivo } from '../../utils/deporteActivo';   // NUEVO (07)
 import { getAvatarSource } from '../../utils/avatars';
 
 // Los partidos rankeados ahora se juegan dentro de las LIGAS (pestaña Ranking).
@@ -255,8 +255,8 @@ export function BuscarPartidoScreen({ navigation }) {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      partidoService.buscarAmistoso({ idDeporte: DEPORTE_DEFAULT }).catch(() => []),
-      doblesService.convocatorias(DEPORTE_DEFAULT).catch(() => []),   // NUEVO: dobles
+      partidoService.buscarAmistoso({ idDeporte: deporteActivo() }).catch(() => []),
+      doblesService.convocatorias(deporteActivo()).catch(() => []),   // NUEVO: dobles
     ])
       .then(([res, dobles]) => {
         const listaDobles = (Array.isArray(dobles) ? dobles : []).map(p => ({

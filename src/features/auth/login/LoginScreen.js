@@ -83,7 +83,7 @@ export function LoginScreen({ navigation }) {
     try {
       setLoading(true);
       await authService.login(correo, contrasena);
-      navigation.replace('MainTabs');
+      navigation.replace('ElegirDeporte');   // NUEVO (07): primero elige el deporte
     } catch (error) {
       Alert.alert(t('comun.error'), error.message);
     } finally {
@@ -96,7 +96,7 @@ export function LoginScreen({ navigation }) {
       setLoading(true);
       const data = await authService.iniciarSesionFacebook();
       if (data) {
-        navigation.replace('MainTabs');
+        navigation.replace('ElegirDeporte');   // NUEVO (07)
       }
     } catch (error) {
       Alert.alert(t('login.errorFacebook'), error.message || t('login.noSePudoIniciar'));
@@ -113,7 +113,7 @@ export function LoginScreen({ navigation }) {
       const idToken = userInfo.data?.idToken ?? userInfo.idToken;
       if (!idToken) throw new Error(t('login.noTokenGoogle'));
       await authService.loginGoogle(idToken);
-      navigation.replace('MainTabs');
+      navigation.replace('ElegirDeporte');   // NUEVO (07)
     } catch (error) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         // Usuario canceló, no hacemos nada

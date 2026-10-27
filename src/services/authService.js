@@ -4,6 +4,8 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { LoginManager, AccessToken } from 'react-native-fbsdk-next';
 import { Platform } from 'react-native';
 import api from './api';
+import { limpiarDeporteActivo } from '../utils/deporteActivo';   // NUEVO (07)
+import { adminService } from './adminService';                   // NUEVO (07)
 
 async function hashPassword(password) {
   return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, password);
@@ -102,12 +104,16 @@ export const authService = {
   async logout() {
     await SecureStore.deleteItemAsync('jwt_token');
     await SecureStore.deleteItemAsync('id_usuario');
+    await limpiarDeporteActivo();   // NUEVO (07): al volver a entrar elige deporte
+    adminService.olvidar();
   },
 
   // 2. Cierra sesión en la app Y BORRA las credenciales sociales para exigir elección de cuenta
   async logoutAndSwitch() {
     await SecureStore.deleteItemAsync('jwt_token');
     await SecureStore.deleteItemAsync('id_usuario');
+    await limpiarDeporteActivo();   // NUEVO (07)
+    adminService.olvidar();
 
     try {
       await GoogleSignin.signOut();
