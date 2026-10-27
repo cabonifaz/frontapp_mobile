@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "529275571742",
+    "project_id": "ranked-124f6",
+    "storage_bucket": "ranked-124f6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:529275571742:android:60b44d56356a18df01280f",
+        "android_client_info": {
+          "package_name": "com.chris_13.avosports"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfFMA7a3I8LfKykF_AMZubUZzkzjbApF0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
