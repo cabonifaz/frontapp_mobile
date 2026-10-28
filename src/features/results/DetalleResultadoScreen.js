@@ -16,6 +16,7 @@ import { elegirFotos, subirFotosPartido, MAX_FOTOS } from '../../utils/fotosEncu
 // NUEVO (043): compartir el resultado en historias
 import { TarjetaHistoriaResultado } from '../../components/common/TarjetaHistoriaResultado';
 import { compartirTarjeta } from '../../utils/compartirHistoria';
+import { doblesService } from '../../services/doblesService';   // CORREGIDO: saber si jugué en dobles
 
 // NUEVO: galería de fotos del encuentro. Los jugadores del partido pueden agregar
 // (hasta 5) y borrar las suyas manteniendo presionada la foto.
@@ -174,6 +175,22 @@ export function DetalleResultadoScreen({ navigation, route }) {
   const d = detalle ?? match ?? {};
   const esDobles = Number(d.es_dobles ?? 0) === 1;
 
+  // CORREGIDO (043): solo los jugadores del partido pueden compartirlo en sus historias.
+  // Singles: comparo con los dos jugadores del resultado. Dobles: pregunto quiénes jugaron.
+  const [jugueDobles, setJugueDobles] = useState(false);
+  const idPartidoActual = match?.id_partido ?? d.id_partido;
+  useEffect(() => {
+    if (!esDobles || !idPartidoActual) return;
+    doblesService.participantes(idPartidoActual)
+      .then(lista => setJugueDobles(Array.isArray(lista) && lista.some(j =>
+        Number(j.es_yo) === 1 && ['PART_CREADOR', 'PART_ACEPTADO'].includes(j.estado_codigo))))
+      .catch(() => setJugueDobles(false));
+  }, [esDobles, idPartidoActual]);
+  const soyJugador = esDobles
+    ? jugueDobles
+    : idUsuarioActual != null && [d.id_jugador_local, d.id_jugador_visitante]
+        .some(id => id != null && Number(id) === idUsuarioActual);
+
   // ¿Mi lado es el visitante? La base de datos lo indica (soy_local), también en dobles.
   // Respaldo: comparar con el jugador local (versión anterior del SP).
   const soyVisitante = d.soy_local != null
@@ -327,8 +344,8 @@ export function DetalleResultadoScreen({ navigation, route }) {
                   </>
                 )}
 
-                {/* NUEVO (043): compartir en historias */}
-                {sets.length > 0 && (
+                {/* NUEVO (043): compartir en historias (solo si jugué este partido) */}
+                {sets.length > 0 && soyJugador && (
                   <TouchableOpacity
                     style={[styles.historiaBtn, compartiendo && { opacity: 0.6 }]}
                     onPress={compartirHistoria}

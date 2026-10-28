@@ -635,7 +635,8 @@
     "fotosTexto": "Tap to upload photos",
     "enviando": "Sending...",
     "enviarCorreccion": "Send correction",
-    "confirmarResultados": "Confirm results"
+    "confirmarResultados": "Confirm results",
+    "desdeVivo": "Score loaded from the live match. Check it and, if it's right, confirm the results."
   },
   "chat": {
     "chat": "Chat",
@@ -1049,7 +1050,9 @@
     "dobles": "Doubles",
     "rankeado": "Ranked",
     "tocaParaMarcar": "Tap to keep score",
-    "reanudar": "Resume live coverage"
+    "reanudar": "Resume live coverage",
+    "publicarOficial": "Post official result",
+    "esperaAnfitrion": "The host will post the official result with this score. You'll get a notification to confirm it."
   },
   "admin": {
     "titulo": "Admin",

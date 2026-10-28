@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { RANKED_LIME } from '../../components/common/RankedLogo';
 import { enVivoService } from '../../services/enVivoService';
+import { authService } from '../../services/authService';
 import { getAvatarSource } from '../../utils/avatars';
 import { validarSet, cargarReglasSet } from '../../utils/reglasSet';
 
@@ -79,6 +80,8 @@ export function PartidoEnVivoScreen({ navigation, route }) {
   const enviando = useRef(0);
   const cola = useRef(Promise.resolve());
   const ultimoCambio = useRef(0);   // hora del último toque: descarta lecturas pedidas antes
+  const [idUsuario, setIdUsuario] = useState(null);   // para saber si soy jugador
+  useEffect(() => { authService.getUserId().then(id => setIdUsuario(id != null ? Number(id) : null)).catch(() => {}); }, []);
 
   const cargar = useCallback(async () => {
     if (!idPartido || enviando.current > 0) return;
@@ -121,8 +124,14 @@ export function PartidoEnVivoScreen({ navigation, route }) {
   const sets = (Array.isArray(d?.sets) ? d.sets : []).slice().sort((a, b) => a.numero_set - b.numero_set);
   const setActual = Number(d?.set_actual ?? 1);
   const actual = sets.find(s => Number(s.numero_set) === setActual) ?? { numero_set: setActual, puntos_lado1: 0, puntos_lado2: 0 };
+  const setsNecesarios = Math.ceil(Number(d?.num_sets ?? 5) / 2);
   const s1 = Number(d?.sets_lado1 ?? 0);
   const s2 = Number(d?.sets_lado2 ?? 0);
+  const decidido = s1 >= setsNecesarios || s2 >= setsNecesarios;
+  // El lado 1 es el del anfitrión (quien creó el partido; en dobles, su pareja). Solo ese lado publica el resultado.
+  const miLado = Number(jugadores.find(j => idUsuario != null && Number(j.id_usuario) === Number(idUsuario))?.lado ?? 0);
+  const soyAnfitrion = miLado === 1;
+  const soyRival = miLado === 2;
 
   // Botones + / −: se ve al instante y se envía SOLO el cambio (+1 / −1).
   // El servidor lo aplica al set que está en juego, así dos personas anotando no se pisan.
@@ -297,8 +306,25 @@ export function PartidoEnVivoScreen({ navigation, route }) {
           </View>
         )}
 
-        {/* Si se terminó por error, un jugador o admin puede reanudarlo */}
-        {finalizado && puedoMarcar && (
+        {/* CORREGIDO: si el marcador ya decidió el partido, el siguiente paso es el resultado oficial */}
+        {finalizado && decidido && soyAnfitrion && (
+          <TouchableOpacity
+            style={styles.btnPrincipal}
+            onPress={() => navigation.navigate('DetallePartido', { partido: { id_partido: idPartido } })}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="trophy-outline" size={20} color={colors.primary} />
+            <Text style={styles.btnPrincipalTxt}>{t('vivo.publicarOficial')}</Text>
+          </TouchableOpacity>
+        )}
+
+        {finalizado && decidido && soyRival && (
+          <Text style={styles.info}>{t('vivo.esperaAnfitrion')}</Text>
+        )}
+
+        {/* CORREGIDO: "Reanudar" solo cuando se terminó a mano sin que nadie haya ganado
+            (si el marcador ya decidió el partido, reanudar lo volvía a cerrar al instante) */}
+        {finalizado && !decidido && puedoMarcar && (
           <TouchableOpacity style={styles.btnSecundario} onPress={iniciar} disabled={iniciando}>
             <Ionicons name="play-circle-outline" size={20} color={colors.textPrimary} />
             <Text style={styles.btnSecundarioTxt}>{t('vivo.reanudar')}</Text>

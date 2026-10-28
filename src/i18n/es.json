@@ -635,7 +635,8 @@
     "fotosTexto": "Toca para subir fotos",
     "enviando": "Enviando...",
     "enviarCorreccion": "Enviar corrección",
-    "confirmarResultados": "Confirmar resultados"
+    "confirmarResultados": "Confirmar resultados",
+    "desdeVivo": "Marcador cargado del partido en vivo. Revísalo y, si está bien, confirma los resultados."
   },
   "chat": {
     "chat": "Chat",
@@ -1049,7 +1050,9 @@
     "dobles": "Dobles",
     "rankeado": "Rankeado",
     "tocaParaMarcar": "Toca para anotar",
-    "reanudar": "Reanudar transmisión"
+    "reanudar": "Reanudar transmisión",
+    "publicarOficial": "Publicar resultado oficial",
+    "esperaAnfitrion": "El anfitrión publicará el resultado oficial con este marcador. Te llegará una notificación para confirmarlo."
   },
   "admin": {
     "titulo": "Administración",

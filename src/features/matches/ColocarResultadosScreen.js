@@ -12,6 +12,7 @@ import { authService } from '../../services/authService';
 import { getAvatarSource } from '../../utils/avatars';
 import { elegirFotos, subirFotosPartido, MAX_FOTOS } from '../../utils/fotosEncuentro';   // NUEVO: fotos
 import { validarSet, puntosParaGanar, cargarReglasSet } from '../../utils/reglasSet';   // NUEVO (07): reglas del set
+import { enVivoService } from '../../services/enVivoService';   // NUEVO (07): marcador del partido en vivo
 
 const AVATAR_DEFAULT = require('../../../assets/avatar_general.png');
 const MAX_CORRECCIONES = 3; // igual que CFG_VIAJES_MAX_REVISION
@@ -256,6 +257,34 @@ export function ColocarResultadosScreen({ navigation, route }) {
 
   const [rating,  setRating]  = useState(0);
   const [comment, setComment] = useState('');
+
+  // NUEVO (07): si el partido se jugó EN VIVO, los sets terminados se cargan solos
+  // (desde mi lado de la cancha) para no volver a escribir el marcador.
+  const [desdeVivo, setDesdeVivo] = useState(false);
+  useEffect(() => {
+    if (!idPartido || !userIdListo || hayResultado) return;
+    let activo = true;
+    enVivoService.detalle(idPartido)
+      .then(v => {
+        if (!activo || !v || v.estado_vivo === 'SIN_INICIAR') return;
+        const yoEnVivo = (Array.isArray(v.jugadores) ? v.jugadores : [])
+          .find(j => userId != null && Number(j.id_usuario) === userId);
+        const miLado = yoEnVivo ? Number(yoEnVivo.lado) : (esCreador ? 1 : 2);
+        const setsVivo = (Array.isArray(v.sets) ? v.sets : [])
+          .filter(s => Number(s.terminado) === 1)
+          .sort((a, b) => Number(a.numero_set) - Number(b.numero_set))
+          .slice(0, numSets)
+          .map(s => (miLado === 1
+            ? { my: String(s.puntos_lado1), rival: String(s.puntos_lado2) }
+            : { my: String(s.puntos_lado2), rival: String(s.puntos_lado1) }));
+        if (setsVivo.length) {
+          setConfirmedSets(prev => (prev.length ? prev : setsVivo));
+          setDesdeVivo(true);
+        }
+      })
+      .catch(() => {});   // sin partido en vivo: se ingresa a mano como siempre
+    return () => { activo = false; };
+  }, [idPartido, userIdListo, hayResultado]);
 
   const [publicando,  setPublicando]  = useState(false);
   const [fotos, setFotos] = useState([]);              // NUEVO: fotos elegidas (aún en el celular)
@@ -557,10 +586,18 @@ export function ColocarResultadosScreen({ navigation, route }) {
                 <ScoreRow key={i} index={i} myScore={s.my} rivalScore={s.rival} readonly />
               ))}
 
+              {/* NUEVO (07): aviso cuando el marcador viene del partido en vivo */}
+              {desdeVivo && !modoCorreccion && tipoResultado === 'normal' && confirmedSets.length > 0 && (
+                <View style={styles.avisoVivo}>
+                  <Ionicons name="radio" size={16} color={colors.primary} />
+                  <Text style={styles.avisoVivoTxt}>{t('colocar.desdeVivo')}</Text>
+                </View>
+              )}
+
               {confirmedSets.length > 0 && (
                 <TouchableOpacity
                   style={styles.resetBtn}
-                  onPress={() => { setConfirmedSets([]); setCurMy(''); setCurRival(''); }}
+                  onPress={() => { setConfirmedSets([]); setCurMy(''); setCurRival(''); setDesdeVivo(false); }}
                 >
                   <Ionicons name="refresh" size={15} color={colors.textSecondary} />
                   <Text style={styles.resetText}>{t('colocar.reingresar')}</Text>
@@ -699,6 +736,8 @@ export function ColocarResultadosScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   // NUEVO (07)
+  avisoVivo: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.accentLight, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginTop: 8, marginBottom: 4 },
+  avisoVivoTxt: { flex: 1, fontSize: 13, color: colors.textPrimary, fontWeight: '600' },
   errorSet: { color: '#D93025', fontSize: 13, fontWeight: '600', textAlign: 'center', marginTop: 4, marginBottom: 8, paddingHorizontal: 12 },
   reglaSet: { color: colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 4, marginBottom: 8, paddingHorizontal: 12 },
   safe: { flex: 1, backgroundColor: colors.background },
