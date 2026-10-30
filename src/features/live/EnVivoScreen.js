@@ -46,6 +46,9 @@ function TarjetaVivo({ p, onPress }) {
         </View>
         {Number(p.es_dobles) === 1 && <Text style={styles.tag}>{t('vivo.dobles')}</Text>}
         {Number(p.es_rankeado) === 1 && <Text style={styles.tag}>{t('vivo.rankeado')}</Text>}
+        {/* NUEVO (08) */}
+        {p.abandono_lado != null && <Text style={[styles.tag, styles.tagAlerta]}>{t('vivo.tagAbandono')}</Text>}
+        {p.abandono_lado == null && Number(p.sustitutos_pendientes ?? 0) > 0 && <Text style={[styles.tag, styles.tagAlerta]}>{t('vivo.tagSustituto')}</Text>}
         <View style={{ flex: 1 }} />
         {enJuego && <Text style={styles.setTxt}>{t('vivo.set', { n: p.set_actual })}</Text>}
       </View>
@@ -179,6 +182,7 @@ const styles = StyleSheet.create({
   chipFin: { backgroundColor: 'rgba(255,255,255,0.15)' },
   chipTxt: { fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.8)', letterSpacing: 0.6 },
   tag: { fontSize: 11, fontWeight: '700', color: colors.accent, borderWidth: 1, borderColor: colors.accent, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  tagAlerta: { color: '#FF8A80', borderColor: '#FF8A80' },   // NUEVO (08)
   setTxt: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.7)' },
   fila: { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, gap: 10 },
   avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1E2433' },

@@ -56,6 +56,20 @@ export const partidoService = {
     return api.post(`/api/Partido/${idPartido}/repostular`);
   },
 
+  // NUEVO (08): retirarse de un partido confirmado (antes de empezar = retiro; en vivo = abandono)
+  async retirarse(idPartido) {
+    return api.post(`/api/Partido/${idPartido}/retirarse`);
+  },
+
+  // NUEVO (08): dobles — invitar a un amigo a reemplazar al compañero que se retiró
+  async invitarSustituto(idPartido, idAmigo) {
+    return api.post(`/api/Partido/${idPartido}/sustituto`, { id_amigo: idAmigo });
+  },
+
+  async responderSustituto(idPartido, aceptar) {
+    return api.post(`/api/Partido/${idPartido}/sustituto/responder`, { aceptar });
+  },
+
   async cancelar(idPartido) {
     return api.post(`/api/Partido/${idPartido}/cancelar`);
   },

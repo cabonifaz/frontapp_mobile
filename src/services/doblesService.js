@@ -4,7 +4,7 @@ import { deporteActivo } from '../utils/deporteActivo';   // NUEVO (07): deporte
 // Partidos de dobles (amistoso)
 export const doblesService = {
   // Convocatoria: sin idRival1/idRival2. Directo: con ambos rivales.
-  async crear({ idCompanero, idRival1 = null, idRival2 = null, idCancha, fecha, hora, numSets = 5, idDeporte = deporteActivo() }) {
+  async crear({ idCompanero, idRival1 = null, idRival2 = null, idCancha, fecha, hora, numSets = 3, idDeporte = deporteActivo() }) {
     return api.post('/api/PartidoAmistoso/crear-dobles', {
       id_companero: idCompanero,
       id_rival1:    idRival1,

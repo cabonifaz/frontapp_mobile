@@ -26,6 +26,12 @@ const ICONO = {
   PARTIDO_EN_VIVO:         'radio',
   INSCRIPCION_ACTIVA:      'checkmark-done',
   INSCRIPCION_RECHAZADA:   'close-circle',
+  // NUEVO (08)
+  JUGADOR_RETIRADO:        'exit',
+  SUSTITUTO_INVITACION:    'person-add',
+  SUSTITUTO_ACEPTADO:      'people',
+  SUSTITUTO_RECHAZADO:     'person-remove',
+  VIVO_DELEGADO:           'radio',
 };
 
 function tiempoRelativo(fecha, t) {
@@ -121,6 +127,16 @@ export function NotificacionesScreen({ navigation }) {
         break;
       case 'PARTIDO_AMIGO':
       case 'PARTIDO_EN_VIVO':
+        if (item.id_partido) navigation.navigate('PartidoEnVivo', { idPartido: item.id_partido });
+        break;
+      // NUEVO (08)
+      case 'JUGADOR_RETIRADO':
+      case 'SUSTITUTO_INVITACION':
+      case 'SUSTITUTO_ACEPTADO':
+      case 'SUSTITUTO_RECHAZADO':
+        if (item.id_partido) navigation.navigate('DetallePartido', { partido: { id_partido: item.id_partido } });
+        break;
+      case 'VIVO_DELEGADO':
         if (item.id_partido) navigation.navigate('PartidoEnVivo', { idPartido: item.id_partido });
         break;
       case 'INSCRIPCION_ACTIVA':

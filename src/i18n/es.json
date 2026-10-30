@@ -420,7 +420,8 @@
     "enviarInvitaciones": "Enviar invitaciones",
     "enviarReto": "Enviar reto",
     "confirmar": "Confirmar",
-    "errorCrear": "No se pudo crear el partido."
+    "errorCrear": "No se pudo crear el partido.",
+    "doblesSolo3": "Los partidos de dobles siempre se juegan al mejor de 3 sets."
   },
   "retar": {
     "titulo": "Retar a {{nombre}}",
@@ -560,8 +561,8 @@
     "resultadoFinal": "Resultado final",
     "set": "Set {{n}}",
     "sinSets": "Sin sets registrados",
-    "notaLiga": "Resultado a 3 de 5 sets. Suma o resta puntos de liga: 3-0 ±3, 3-1 ±2, 3-2 ±1. Colócalo hasta 12 hrs luego del encuentro.",
-    "notaAmistoso": "Es mandatorio para los competidores colocar los resultados hasta 12 hrs luego del encuentro.",
+    "notaLiga": "Suma o resta puntos de liga según el marcador (por ejemplo 3-0 o 2-0 dan ±3). El rival tiene 24 h para confirmarlo; si no, se confirma solo.",
+    "notaAmistoso": "Coloca el resultado después del encuentro. El rival tiene 24 h para confirmarlo; si no, se confirma solo.",
     "invitadoLiga": "Retaron a tu equipo en la liga. Basta con que uno de ustedes acepte para confirmar el partido.",
     "invitadoDobles": "Te invitaron a este partido de dobles. Acepta para confirmar tu lugar.",
     "convocatoriaPublicada": "Convocatoria publicada. Las parejas que quieran retarlos aparecerán en Mis solicitudes.",
@@ -636,7 +637,9 @@
     "enviando": "Enviando...",
     "enviarCorreccion": "Enviar corrección",
     "confirmarResultados": "Confirmar resultados",
-    "desdeVivo": "Marcador cargado del partido en vivo. Revísalo y, si está bien, confirma los resultados."
+    "desdeVivo": "Marcador cargado del partido en vivo. Revísalo y, si está bien, confirma los resultados.",
+    "retiroWalkover": "El rival se retiró antes del partido. Se propone walkover: confirma quién no se presentó y publica.",
+    "retiroAbandono": "Hubo un abandono durante el partido en vivo. Se respetan los sets jugados y el que se quedó gana los que faltaban."
   },
   "chat": {
     "chat": "Chat",
@@ -794,7 +797,8 @@
     "dobles": "Dobles",
     "singles": "Singles",
     "formato": "3 de 5 sets",
-    "conQuienEquipo": "¿Con quién formas tu equipo?"
+    "conQuienEquipo": "¿Con quién formas tu equipo?",
+    "lugar": "Lugar"
   },
   "resultados": {
     "titulo": "Resultados",
@@ -942,7 +946,12 @@
       "RETO_DIRECTO": "{{nombre}} te retó a un partido.",
       "RETO_ACEPTADO": "{{nombre}} confirmó el partido. ¡Nos vemos en la cancha!",
       "PARTIDO_AMIGO": "{{nombre}} tiene un partido confirmado.",
-      "PARTIDO_EN_VIVO": "{{nombre}} está jugando ahora. ¡Sigue el marcador en vivo!"
+      "PARTIDO_EN_VIVO": "{{nombre}} está jugando ahora. ¡Sigue el marcador en vivo!",
+      "JUGADOR_RETIRADO": "{{nombre}} se retiró de tu partido. Ábrelo para ver tus opciones.",
+      "SUSTITUTO_INVITACION": "{{nombre}} te invitó a reemplazar a su pareja en un partido de dobles.",
+      "SUSTITUTO_ACEPTADO": "{{nombre}} se unió a tu partido como sustituto.",
+      "SUSTITUTO_RECHAZADO": "{{nombre}} no puede ser sustituto. Invita a otro amigo.",
+      "VIVO_DELEGADO": "{{nombre}} te dio permiso para anotar en vivo el marcador de su partido."
     },
     "tiposSinNombre": {
       "RESULTADO_POR_CONFIRMAR": "Tienes un resultado por confirmar.",
@@ -955,7 +964,12 @@
       "PARTIDO_AMIGO": "Un jugador que sigues tiene un partido confirmado.",
       "PARTIDO_EN_VIVO": "Un jugador que sigues está jugando en vivo.",
       "INSCRIPCION_ACTIVA": "Validamos tu pago. Ya estás inscrito en la liga.",
-      "INSCRIPCION_RECHAZADA": "No pudimos validar el pago de tu liga. Escríbenos para ayudarte."
+      "INSCRIPCION_RECHAZADA": "No pudimos validar el pago de tu liga. Escríbenos para ayudarte.",
+      "JUGADOR_RETIRADO": "Un jugador se retiró de tu partido.",
+      "SUSTITUTO_INVITACION": "Te invitaron como sustituto en un partido de dobles.",
+      "SUSTITUTO_ACEPTADO": "Un sustituto se unió a tu partido.",
+      "SUSTITUTO_RECHAZADO": "El sustituto no puede jugar.",
+      "VIVO_DELEGADO": "Te dieron permiso para anotar un partido en vivo."
     },
     "tiempo": {
       "ahora": "Ahora",
@@ -991,13 +1005,24 @@
     "actualizaApp": "Para compartir en historias necesitas instalar la última versión de Ranked."
   },
   "elegirDeporte": {
-    "titulo": "¿Qué vas a jugar?",
+    "titulo": "Elige tu mundo",
     "subtitulo": "Cada deporte tiene su propio ranking, nivel, partidos y resultados.",
     "miNivel": "Nivel {{nivel}} · {{pts}} pts",
     "sinPerfil": "Aún no tienes perfil de {{deporte}}. Muy pronto podrás crearlo desde aquí.",
     "sinPerfilCorto": "Aún no tienes perfil en este deporte",
     "proximamente": "PRÓXIMAMENTE",
-    "nota": "Puedes cambiar de deporte cuando quieras desde Ajustes."
+    "nota": "Puedes cambiar de deporte cuando quieras desde Ajustes.",
+    "lemas": {
+      "fronton": "La pared es tu rival. ¿Quién la domina?",
+      "tenis": "Saque, volea y punto de partido.",
+      "padel": "Paredes de cristal, juego sin final."
+    },
+    "nivel": "NIVEL",
+    "puntos": "PUNTOS",
+    "ranking": "RANKING",
+    "proximamenteTexto": "{{deporte}} llegará muy pronto a Ranked.",
+    "entrar": "Entrar a {{deporte}}",
+    "bloqueado": "Próximamente"
   },
   "imagen": {
     "titulo": "Agregar foto",
@@ -1052,7 +1077,34 @@
     "tocaParaMarcar": "Toca para anotar",
     "reanudar": "Reanudar transmisión",
     "publicarOficial": "Publicar resultado oficial",
-    "esperaAnfitrion": "El anfitrión publicará el resultado oficial con este marcador. Te llegará una notificación para confirmarlo."
+    "esperaAnfitrion": "El anfitrión publicará el resultado oficial con este marcador. Te llegará una notificación para confirmarlo.",
+    "retirado": "{{nombre}} se retiró",
+    "esperandoSustituto": "Esperando a {{nombre}}",
+    "bannerAbandono": "Abandono: {{nombre}} dejó el partido. Gana el otro equipo.",
+    "bannerRetiro": "Un jugador se retiró. El partido espera a un sustituto o se definirá por walkover.",
+    "bannerEsperaSustituto": "Un jugador se retiró y su pareja invitó a un sustituto. Esperando su respuesta…",
+    "permisosTitulo": "Anotar desde otro celular",
+    "permisosTexto": "Dale permiso a un amigo que esté mirando el partido para que anote el marcador por ustedes.",
+    "darPermiso": "Dar permiso a un amigo",
+    "elegirDelegado": "¿Quién anotará el marcador?",
+    "delegarTitulo": "Permiso para anotar",
+    "quitarPermiso": "Quitar permiso",
+    "quitarPermisoMensaje": "{{nombre}} ya no podrá anotar el marcador.",
+    "quitar": "Quitar",
+    "eventosTitulo": "Lo que pasó en el partido",
+    "tagAbandono": "Abandono",
+    "tagSustituto": "Esperando sustituto",
+    "eventos": {
+      "RETIRO": "{{nombre}} se retiró del partido",
+      "ABANDONO": "{{nombre}} abandonó el partido",
+      "SUSTITUTO_INVITADO": "{{nombre}} invitó a {{otro}} como sustituto",
+      "SUSTITUTO_ACEPTADO": "{{nombre}} entra como sustituto",
+      "SUSTITUTO_RECHAZADO": "{{nombre}} no puede ser sustituto",
+      "VIVO_INICIO": "¡Empezó la transmisión en vivo!",
+      "VIVO_FIN": "Terminó la transmisión",
+      "DELEGADO": "{{otro}} anotará el marcador",
+      "CANCELADO": "El partido fue cancelado"
+    }
   },
   "admin": {
     "titulo": "Administración",
@@ -1064,7 +1116,7 @@
     "pagosDetalle": "Valida pagos y revisa a los jugadores inscritos en las ligas rankeadas.",
     "configTitulo": "Configuración",
     "configDetalle": "Puntos por victoria, plazos para confirmar resultados, puntos por set y más.",
-    "configIntro": "Los cambios se aplican de inmediato para todos los jugadores.",
+    "configIntro": "Valores principales de la app. Los cambios se aplican de inmediato para todos.",
     "filtros": {
       "PENDIENTES": "Pago pendiente",
       "ACTIVAS": "Activas",
@@ -1092,6 +1144,127 @@
     "confirmar": "Confirmar",
     "valorInvalido": "Ingresa un número válido.",
     "guardado": "Configuración guardada.",
-    "guardar": "Guardar"
+    "guardar": "Guardar",
+    "ligasTitulo": "Ligas y torneos",
+    "ligasDetalle": "Crea y edita ligas individuales y de dobles: fechas, lugar, premio, cuota y auspiciador.",
+    "secciones": {
+      "PUNTOS_INDIVIDUAL": {
+        "titulo": "Puntos · Amistosos individuales",
+        "texto": "Cuántos puntos de ranking gana el vencedor según el formato del partido."
+      },
+      "PUNTOS_DOBLES": {
+        "titulo": "Puntos · Amistosos de dobles",
+        "texto": "Los dobles siempre son al mejor de 3 y suman distinto que los individuales."
+      },
+      "PUNTOS_LIGA": {
+        "titulo": "Puntos · Ligas (rankeados)",
+        "texto": "Puntos de la tabla de cada liga según el marcador. El perdedor resta lo mismo."
+      },
+      "REGLAS": {
+        "titulo": "Reglas del set",
+        "texto": "A cuántos puntos se juega cada set."
+      },
+      "PARTIDOS": {
+        "titulo": "Partidos y resultados",
+        "texto": "Plazos para confirmar resultados y para cancelar partidos."
+      },
+      "CLASES": {
+        "titulo": "Clases",
+        "texto": "Reglas de las clases con profesores."
+      },
+      "REGISTRO": {
+        "titulo": "Registro",
+        "texto": "Requisitos para crear una cuenta."
+      }
+    },
+    "liga": {
+      "nueva": "Nueva liga",
+      "editar": "Editar liga",
+      "vacio": "Aún no hay ligas. Crea la primera.",
+      "individual": "Individual",
+      "dobles": "Dobles",
+      "oculta": "OCULTA",
+      "pagosPendientes": "{{n}} pagos por validar",
+      "seccionGeneral": "General",
+      "seccionCuando": "Cuándo y dónde",
+      "seccionParticipantes": "Participantes",
+      "seccionPago": "Inscripción y premio",
+      "seccionAuspiciador": "Auspiciador",
+      "nombre": "Nombre de la liga",
+      "nombreEjemplo": "Ej. Liga Primavera",
+      "modalidad": "Modalidad",
+      "ayudaIndividual": "Individual: partidos al mejor de 5 sets.",
+      "ayudaDobles": "Dobles: equipos de 2 y partidos al mejor de 3 sets.",
+      "estado": "Estado",
+      "estados": {
+        "LIGA_PROXIMAMENTE": "Próximamente",
+        "LIGA_INSCRIPCION_ABIERTA": "Inscripciones abiertas",
+        "LIGA_EN_CURSO": "En curso",
+        "LIGA_FINALIZADA": "Finalizada"
+      },
+      "visible": "Visible en la app",
+      "ayudaVisible": "Si la apagas, los jugadores no la verán.",
+      "descripcion": "Descripción",
+      "inicio": "Inicio",
+      "fin": "Fin",
+      "lugar": "Lugar",
+      "lugarEjemplo": "Ej. Club Regatas, Chorrillos",
+      "cupo": "Cupo de jugadores",
+      "cupoEquipos": "Cupo de equipos",
+      "ayudaCupo": "Vacío = sin límite.",
+      "niveles": "Niveles permitidos",
+      "cuota": "Cuota de inscripción (S/)",
+      "ayudaCuota": "Por jugador. 0 = gratis.",
+      "ayudaCuotaDobles": "Por equipo. 0 = gratis.",
+      "instrucciones": "Instrucciones de pago",
+      "instruccionesEjemplo": "Ej. Yape al 999 999 999 a nombre de Ranked",
+      "premio": "Premio",
+      "premioEjemplo": "Ej. Trofeo y S/ 500",
+      "imagen": "Imagen de la liga",
+      "subirImagen": "Subir imagen",
+      "cambiarImagen": "Cambiar imagen",
+      "auspiciador": "Nombre del auspiciador",
+      "ayudaAuspiciador": "Se muestra como \"presentado por\". Déjalo vacío si no hay auspiciador.",
+      "auspiciadorEjemplo": "Ej. Gatorade",
+      "logo": "Logo del auspiciador",
+      "subirLogo": "Subir logo",
+      "cambiarLogo": "Cambiar logo",
+      "web": "Página del auspiciador",
+      "ayudaWeb": "Al tocar el logo, la app abre este enlace.",
+      "guardar": "Guardar liga",
+      "inscritos": "Participantes ({{n}})",
+      "sinInscritos": "Todavía no hay inscritos.",
+      "irPagos": "Validar pagos pendientes",
+      "errorNombre": "Escribe el nombre de la liga.",
+      "errorFecha": "Revisa las fechas: usa el formato dd/mm/aaaa.",
+      "errorWeb": "El enlace del auspiciador debe empezar con https://"
+    }
+  },
+  "retiro": {
+    "boton": "Retirarme del partido",
+    "titulo": "Retirarte del partido",
+    "mensaje": "Tu nombre quedará en gris y tu rival podrá reclamar el partido por walkover. ¿Seguro?",
+    "mensajeDobles": "Tu nombre quedará en gris. Tu compañero podrá invitar a un sustituto; si nadie te reemplaza, los rivales podrán reclamar walkover. ¿Seguro?",
+    "confirmar": "Sí, retirarme",
+    "abandonarTitulo": "Abandonar el partido",
+    "abandonarMensaje": "El partido está en juego. Si abandonas, el otro equipo gana los sets que faltaban. ¿Seguro?",
+    "abandonar": "Abandonar partido",
+    "listo": "Listo",
+    "retirado": "Se retiró",
+    "sustitutoPorAceptar": "Sustituto · por aceptar",
+    "avisoRivalWalkover": "{{nombre}} se retiró del partido. Si nadie se presenta, reclama el partido por walkover.",
+    "avisoRivalSustituto": "{{nombre}} se retiró. Su compañero invitó a un sustituto; espera su respuesta o reclama walkover si no se presentan.",
+    "avisoMiCompanero": "{{nombre}} se retiró. Invita a un amigo como sustituto para jugar el partido.",
+    "avisoMiSustitutoPendiente": "Invitaste a un sustituto. Te avisaremos cuando responda.",
+    "avisoMeRetire": "Te retiraste de este partido.",
+    "teInvitanSustituto": "Te invitaron a reemplazar a un jugador que se retiró de este partido de dobles.",
+    "aceptarSustituto": "Aceptar y jugar",
+    "rechazarSustituto": "No puedo jugar",
+    "invitarSustituto": "Invitar a un sustituto",
+    "elegirSustituto": "Elige a tu sustituto",
+    "sustitutoTitulo": "Sustituto",
+    "sinAmigos": "Aún no tienes amigos para invitar.",
+    "reclamarWalkover": "Reclamar walkover",
+    "notaCancelar": "Ya no puedes cancelar: faltan menos de 5 horas para el partido. Si no podrás jugar, retírate."
   }
 }

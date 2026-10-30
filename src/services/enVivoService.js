@@ -35,6 +35,15 @@ export const enVivoService = {
     return api.post(`/api/EnVivo/${idPartido}/sumar`, { lado, delta });
   },
 
+  // NUEVO (08): dar / quitar permiso a un amigo para anotar el marcador
+  async delegar(idPartido, idAmigo) {
+    return api.post(`/api/EnVivo/${idPartido}/delegar`, { id_amigo: idAmigo });
+  },
+
+  async quitarDelegado(idPartido, idAmigo) {
+    return api.post(`/api/EnVivo/${idPartido}/delegar/quitar`, { id_amigo: idAmigo });
+  },
+
   async finalizar(idPartido) {
     return api.post(`/api/EnVivo/${idPartido}/finalizar`);
   },

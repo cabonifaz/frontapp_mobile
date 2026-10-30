@@ -378,7 +378,7 @@ export function CrearPartidoScreen({ navigation, route }) {
           idCancha:    datos.id_cancha,
           fecha:       datos.fecha,
           hora:        datos.hora,
-          numSets,
+          numSets:     3,   // NUEVO (08): los dobles siempre al mejor de 3
         });
         setDoblesCreado(res?.mensaje ?? t('crear.exito.invitacionesEnviadas'));
         return;
@@ -700,8 +700,21 @@ export function CrearPartidoScreen({ navigation, route }) {
           </>
         )}
 
-        {/* Formato de sets — solo Amistoso */}
-        {esAmistoso && (
+        {/* NUEVO (08): los dobles siempre se juegan 2 de 3 */}
+        {esDoblesAmistoso && (
+          <>
+            <Text style={styles.sectionTitle}>{t('crear.formato')}</Text>
+            <View style={styles.toggle}>
+              <View style={[styles.toggleBtn, styles.toggleBtnActive]}>
+                <Text style={[styles.toggleText, styles.toggleTextActive]}>{t('partidos.sets3')}</Text>
+              </View>
+            </View>
+            <Text style={styles.formatoNota}>{t('crear.doblesSolo3')}</Text>
+          </>
+        )}
+
+        {/* Formato de sets — solo Amistoso individual */}
+        {esAmistoso && !esDoblesAmistoso && (
           <>
             <Text style={styles.sectionTitle}>{t('crear.formato')}</Text>
             <View style={styles.toggle}>
@@ -777,6 +790,7 @@ export function CrearPartidoScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  formatoNota: { fontSize: 12, color: colors.textSecondary, marginTop: 6 },   // NUEVO (08)
   safe: { flex: 1, backgroundColor: colors.background },
   slotLabel: { fontSize: 11, fontWeight: '800', color: colors.textSecondary, letterSpacing: 0.6, marginBottom: 2 },
 

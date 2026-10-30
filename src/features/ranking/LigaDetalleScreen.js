@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Image, ActivityIndicator, Alert, RefreshControl,
+  SafeAreaView, Image, ActivityIndicator, Alert, RefreshControl, Linking,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +26,11 @@ const PUNTAJE = [
   { resultado: '3-0', gana: '+3', pierde: '-3' },
   { resultado: '3-1', gana: '+2', pierde: '-2' },
   { resultado: '3-2', gana: '+1', pierde: '-1' },
+];
+// NUEVO (08): ligas al mejor de 3 (dobles)
+const PUNTAJE_3 = [
+  { resultado: '2-0', gana: '+3', pierde: '-3' },
+  { resultado: '2-1', gana: '+2', pierde: '-2' },
 ];
 
 // ── Inscripción ─────────────────────────────────────────────────────────────
@@ -344,7 +349,7 @@ function TabReglas({ liga }) {
           <Text style={styles.puntajeTh}>{t('liga.ganador')}</Text>
           <Text style={styles.puntajeTh}>{t('liga.perdedor')}</Text>
         </View>
-        {PUNTAJE.map(r => (
+        {(Number(liga.num_sets) === 3 ? PUNTAJE_3 : PUNTAJE).map(r => (
           <View key={r.resultado} style={styles.puntajeFila}>
             <Text style={styles.puntajeCelda}>{r.resultado}</Text>
             <Text style={[styles.puntajeCelda, styles.pjPuntosMas]}>{r.gana}</Text>
@@ -380,6 +385,7 @@ function TabReglas({ liga }) {
         <Dato icon="people-outline" label={d ? t('liga.equipos') : t('liga.participantes')} valor={liga.cupo_maximo ? t('liga.maximo', { n: liga.cupo_maximo }) : t('liga.sinLimite')} />
         <Dato icon="person-outline" label={t('liga.minimoEmpezar')} valor={t(d ? 'liga.nEquipos' : 'liga.nJugadores', { n: liga.minimo_jugadores })} />
         <Dato icon="ticket-outline" label={t('liga.inscripcion')} valor={`${formatMoneda(liga.cuota_inscripcion, liga.moneda)}${d ? t('liga.porEquipo') : ''}`} />
+        {liga.lugar ? <Dato icon="location-outline" label={t('liga.lugar')} valor={liga.lugar} /> : null}
         <Dato icon="trophy-outline" label={t('liga.premio')} valor={liga.premio ?? t('liga.porAnunciar')} ultimo />
       </View>
     </View>
@@ -529,13 +535,19 @@ export function LigaDetalleScreen({ navigation, route }) {
         </View>
         <Text style={styles.headerTitulo} numberOfLines={2}>{liga.nombre_oficial}</Text>
         <Text style={styles.headerSub}>
-          {Number(liga.es_dobles ?? 0) === 1 ? t('liga.dobles') : t('liga.singles')} · {t('liga.formato')} · {formatRangoFechas(liga.fecha_inicio, liga.fecha_fin)}
+          {Number(liga.es_dobles ?? 0) === 1 ? t('liga.dobles') : t('liga.singles')} · {Number(liga.num_sets) === 3 ? t('detalle.formato3') : t('detalle.formato5')} · {formatRangoFechas(liga.fecha_inicio, liga.fecha_fin)}
         </Text>
         {liga.auspiciador_nombre ? (
-          <View style={styles.headerSponsor}>
+          <TouchableOpacity
+            style={styles.headerSponsor}
+            disabled={!liga.auspiciador_sitio_web}
+            onPress={() => Linking.openURL(liga.auspiciador_sitio_web).catch(() => {})}
+            activeOpacity={0.8}
+          >
             <SponsorLogo nombre={liga.auspiciador_nombre} logoUrl={liga.auspiciador_logo_url} size={30} width={56} dark />
             <Text style={styles.headerSponsorText} numberOfLines={1}>{t('ranking.presentadoPorNombre', { nombre: liga.auspiciador_nombre })}</Text>
-          </View>
+            {liga.auspiciador_sitio_web ? <Ionicons name="open-outline" size={14} color="rgba(255,255,255,0.7)" /> : null}
+          </TouchableOpacity>
         ) : null}
       </View>
 

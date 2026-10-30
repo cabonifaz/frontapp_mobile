@@ -11,6 +11,9 @@ import { partidoService } from '../../services/partidoService';
 import { authService } from '../../services/authService';
 import { doblesService, primerNombre } from '../../services/doblesService';
 import { getAvatarSource } from '../../utils/avatars';
+// NUEVO (08): retiros, sustitutos y estado en vivo
+import { enVivoService } from '../../services/enVivoService';
+import { SelectorAmigoModal } from '../../components/common/SelectorAmigoModal';
 
 const SCREEN_W = Dimensions.get('window').width;
 const COVER_H = 200;
@@ -28,6 +31,26 @@ export function DetallePartidoScreen({ navigation, route }) {
   const [jugadores, setJugadores] = useState([]);          // NUEVO: dobles
 
   const partidoId = itemInicial.id_partido ?? itemInicial.id_encuentro ?? itemInicial.id;
+
+  // NUEVO (08): quién se retiró, sustitutos pendientes y eventos (vienen del detalle en vivo)
+  const [vivoInfo, setVivoInfo] = useState(null);
+  const [accion, setAccion] = useState(false);
+  const [elegirSustituto, setElegirSustituto] = useState(false);
+  const recargarEstado = React.useCallback(async () => {
+    if (!partidoId) return;
+    const [det, info, lista] = await Promise.all([
+      partidoService.obtenerDetalle(partidoId).catch(() => null),
+      enVivoService.detalle(partidoId).catch(() => null),
+      doblesService.participantes(partidoId).catch(() => null),
+    ]);
+    const data = det?.data ?? det;
+    if (data && typeof data === 'object') setItem(prev => ({ ...prev, ...data }));
+    if (info) setVivoInfo(info);
+    if (Array.isArray(lista) && Number((data ?? {}).es_dobles ?? 0) === 1) setJugadores(lista);
+  }, [partidoId]);
+  useEffect(() => {
+    enVivoService.detalle(partidoId).then(setVivoInfo).catch(() => {});
+  }, [partidoId]);
 
   useEffect(() => {
     async function obtenerIdUsuario() {
@@ -145,11 +168,101 @@ export function DetallePartidoScreen({ navigation, route }) {
   const miEquipo    = Number(yoJugador?.equipo ?? item.mi_equipo ?? 0) || null;
   const miPareja    = jugadores.filter(j => Number(j.equipo) === miEquipo);
   const parejaRival = jugadores.filter(j => Number(j.equipo) !== miEquipo);
+  // NUEVO (08): los que juegan de verdad (sin retirados ni sustitutos por aceptar)
+  const activo = (j) => Number(j.retirado ?? 0) !== 1 && Number(j.es_sustituto_pendiente ?? 0) !== 1;
+  const miParejaActiva    = miPareja.filter(activo);
+  const parejaRivalActiva = parejaRival.filter(activo);
   const pendientesDobles = jugadores.filter(j => j.estado_codigo === 'PART_INVITADO');
   const soyInvitadoDobles = esDoblesPartido && yoJugador?.estado_codigo === 'PART_INVITADO';
   const nombresPareja = (lista) => lista.map(j => primerNombre(j.nombre ?? j.nombre_completo)).join(' y ');
   // Orientación del marcador: mi lado primero (sirve para singles y dobles)
   const yoEsLocal = item.soy_equipo_local != null ? Number(item.soy_equipo_local) === 1 : esMiCreacion;
+
+  // ── NUEVO (08): retiros ────────────────────────────────────────────────
+  const esConfirmado = estadoPartido === 30;
+  const jugVivo   = Array.isArray(vivoInfo?.jugadores) ? vivoInfo.jugadores : [];
+  const yoVivo    = jugVivo.find(j => Number(j.id_usuario) === Number(usuarioActualId));
+  const miLado    = Number(yoVivo?.lado ?? 0);
+  const requeridos = esDoblesPartido ? 2 : 1;
+  const activosLado = (l) => jugVivo.filter(j => Number(j.lado) === l && j.estado === 'ACTIVO').length;
+  const faltaEnLado = (l) => jugVivo.length > 0 && activosLado(l) < requeridos;
+  const pendienteLado = (l) => jugVivo.some(j => Number(j.lado) === l && j.estado === 'SUSTITUTO_PENDIENTE');
+  const retiradoIds = jugVivo.filter(j => j.estado === 'RETIRADO').map(j => Number(j.id_usuario));
+  const estaRetirado = (id) => id != null && retiradoIds.includes(Number(id));
+  const soyActivo  = yoVivo?.estado === 'ACTIVO';
+  const yoRetirado = yoVivo?.estado === 'RETIRADO';
+  const soySustitutoPendiente = esConfirmado && (yoVivo?.estado === 'SUSTITUTO_PENDIENTE'
+    || jugadores.some(j => Number(j.es_yo) === 1 && Number(j.es_sustituto_pendiente) === 1));
+  const ladoRival  = miLado === 1 ? 2 : miLado === 2 ? 1 : 0;
+  const rivalIncompleto = esConfirmado && soyActivo && ladoRival > 0 && faltaEnLado(ladoRival);
+  const miLadoIncompleto = esConfirmado && soyActivo && miLado > 0 && faltaEnLado(miLado);
+  const sinResultado = !item.id_resultado;
+  const nombresRetirados = jugVivo.filter(j => j.estado === 'RETIRADO').map(j => primerNombre(j.nombre)).join(' y ');
+  // Cancelar: solo el creador; si ya está confirmado, solo hasta 5 horas antes
+  const inicioPartido = (() => {
+    const f = limpiarFecha(item.fecha_partido ?? item.fecha);
+    const h = limpiarHora(item.hora_partido ?? item.hora);
+    const d = new Date(`${f}T${h.length === 5 ? `${h}:00` : h}`);
+    return isNaN(d.getTime()) ? null : d;
+  })();
+  const horasParaInicio = inicioPartido ? (inicioPartido.getTime() - Date.now()) / 3600000 : null;
+  const puedeCancelar = soyCreador && !esFinalizado && (!esConfirmado || horasParaInicio == null || horasParaInicio >= 5);
+  const puedeRetirarse = esConfirmado && soyActivo && sinResultado;
+
+  function handleRetirarse() {
+    const enVivo = vivoInfo?.estado_vivo === 'EN_JUEGO';
+    Alert.alert(
+      enVivo ? t('retiro.abandonarTitulo') : t('retiro.titulo'),
+      enVivo ? t('retiro.abandonarMensaje') : (esDoblesPartido ? t('retiro.mensajeDobles') : t('retiro.mensaje')),
+      [
+        { text: t('solicitudes.alertas.no'), style: 'cancel' },
+        {
+          text: enVivo ? t('retiro.abandonar') : t('retiro.confirmar'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setAccion(true);
+              const res = await partidoService.retirarse(partido.id);
+              Alert.alert(t('retiro.listo'), res?.mensaje ?? '');
+              await recargarEstado();
+            } catch (e) {
+              Alert.alert(t('comun.error'), e.message);
+            } finally {
+              setAccion(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
+  async function handleInvitarSustituto(amigo) {
+    setElegirSustituto(false);
+    try {
+      setAccion(true);
+      const res = await partidoService.invitarSustituto(partido.id, amigo.id_usuario);
+      Alert.alert(t('retiro.sustitutoTitulo'), res?.mensaje ?? '');
+      await recargarEstado();
+    } catch (e) {
+      Alert.alert(t('comun.error'), e.message);
+    } finally {
+      setAccion(false);
+    }
+  }
+
+  async function handleResponderSustituto(aceptar) {
+    try {
+      setAccion(true);
+      const res = await partidoService.responderSustituto(partido.id, aceptar);
+      Alert.alert(t('retiro.sustitutoTitulo'), res?.mensaje ?? '');
+      if (!aceptar) { navigation.goBack(); return; }
+      await recargarEstado();
+    } catch (e) {
+      Alert.alert(t('comun.error'), e.message);
+    } finally {
+      setAccion(false);
+    }
+  }
 
   async function handleCancelar() {
     Alert.alert(t('solicitudes.alertas.cancelarPartido'), t('solicitudes.alertas.cancelarPartidoMensaje'), [
@@ -293,7 +406,7 @@ export function DetallePartidoScreen({ navigation, route }) {
                   ) : lado.lista.map(j => (
                     <TouchableOpacity
                       key={j.id_usuario}
-                      style={styles.dobleJugador}
+                      style={[styles.dobleJugador, Number(j.retirado) === 1 && styles.retirado]}
                       activeOpacity={0.7}
                       disabled={Number(j.es_yo) === 1}
                       onPress={() => verPerfil(j.id_usuario, j.nombre ?? j.nombre_completo, j.foto_perfil_url)}
@@ -303,8 +416,11 @@ export function DetallePartidoScreen({ navigation, route }) {
                         <Text style={styles.dobleNombre} numberOfLines={1}>
                           {Number(j.es_yo) === 1 ? t('detalle.tu') : primerNombre(j.nombre ?? j.nombre_completo)}
                         </Text>
-                        <Text style={j.estado_codigo === 'PART_INVITADO' ? styles.doblePendiente : styles.playerPts}>
-                          {j.estado_codigo === 'PART_INVITADO' ? t('detalle.porAceptar') : `${Number(j.puntaje_total ?? 0).toFixed(1)} pts`}
+                        <Text style={j.estado_codigo === 'PART_INVITADO' || Number(j.retirado) === 1 ? styles.doblePendiente : styles.playerPts}>
+                          {Number(j.retirado) === 1 ? t('retiro.retirado')
+                            : Number(j.es_sustituto_pendiente) === 1 ? t('retiro.sustitutoPorAceptar')
+                            : j.estado_codigo === 'PART_INVITADO' ? t('detalle.porAceptar')
+                            : `${Number(j.puntaje_total ?? 0).toFixed(1)} pts`}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -315,7 +431,7 @@ export function DetallePartidoScreen({ navigation, route }) {
           </View>
         ) : (
         <View style={styles.playersRow}>
-          <View style={styles.playerCol}>
+          <View style={[styles.playerCol, yoRetirado && styles.retirado]}>
             <View style={styles.avatarWrap}>
               <Image source={getAvatarSource(yo.avatar, yo.name)} style={styles.avatar} />
               <View style={styles.rankBadge}>
@@ -324,7 +440,7 @@ export function DetallePartidoScreen({ navigation, route }) {
               </View>
             </View>
             <Text style={styles.playerName} numberOfLines={1}>{String(yo.name).split(' ')[0]}</Text>
-            <Text style={styles.playerPts}>{yo.pts} pts</Text>
+            <Text style={yoRetirado ? styles.doblePendiente : styles.playerPts}>{yoRetirado ? t('retiro.retirado') : `${yo.pts} pts`}</Text>
           </View>
 
           <Text style={styles.vsLabel}>vs</Text>
@@ -344,7 +460,7 @@ export function DetallePartidoScreen({ navigation, route }) {
               <Text style={styles.playerPts}>{t('detalle.buscando')}</Text>
             </View>
           ) : (
-            <View style={styles.playerCol}>
+            <View style={[styles.playerCol, estaRetirado(rival.id) && styles.retirado]}>
               <TouchableOpacity
                 style={styles.avatarWrap}
                 activeOpacity={0.8}
@@ -357,10 +473,37 @@ export function DetallePartidoScreen({ navigation, route }) {
                 </View>
               </TouchableOpacity>
               <Text style={styles.playerName} numberOfLines={1}>{String(rival.name).split(' ')[0]}</Text>
-              <Text style={styles.playerPts}>{rival.pts} pts</Text>
+              <Text style={estaRetirado(rival.id) ? styles.doblePendiente : styles.playerPts}>
+                {estaRetirado(rival.id) ? t('retiro.retirado') : `${rival.pts} pts`}
+              </Text>
             </View>
           )}
         </View>
+        )}
+
+        {/* NUEVO (08): avisos de retiro / sustituto */}
+        {esConfirmado && sinResultado && rivalIncompleto && (
+          <View style={styles.aviso}>
+            <Ionicons name="flag-outline" size={18} color={colors.primary} />
+            <Text style={styles.avisoTxt}>
+              {pendienteLado(ladoRival) ? t('retiro.avisoRivalSustituto', { nombre: nombresRetirados })
+                : t('retiro.avisoRivalWalkover', { nombre: nombresRetirados })}
+            </Text>
+          </View>
+        )}
+        {esConfirmado && sinResultado && miLadoIncompleto && (
+          <View style={styles.aviso}>
+            <Ionicons name="person-remove-outline" size={18} color={colors.primary} />
+            <Text style={styles.avisoTxt}>
+              {pendienteLado(miLado) ? t('retiro.avisoMiSustitutoPendiente') : t('retiro.avisoMiCompanero', { nombre: nombresRetirados })}
+            </Text>
+          </View>
+        )}
+        {yoRetirado && (
+          <View style={styles.aviso}>
+            <Ionicons name="exit-outline" size={18} color={colors.primary} />
+            <Text style={styles.avisoTxt}>{t('retiro.avisoMeRetire')}</Text>
+          </View>
         )}
 
         {/* Detalles */}
@@ -512,7 +655,7 @@ export function DetallePartidoScreen({ navigation, route }) {
               navigation.navigate('MatchChat', {
                 idPartido: partido.id,
                 rival: esDoblesPartido
-                  ? { name: `${nombresPareja(miPareja)} vs ${nombresPareja(parejaRival)}`, avatar: parejaRival[0]?.foto_perfil_url ?? null }
+                  ? { name: `${nombresPareja(miParejaActiva)} vs ${nombresPareja(parejaRivalActiva)}`, avatar: parejaRivalActiva[0]?.foto_perfil_url ?? null }
                   : { name: rival.name, avatar: rival.avatar },
               });
             }}
@@ -522,7 +665,8 @@ export function DetallePartidoScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        {!esFinalizado && (esDoblesPartido ? soyCreador : (!esPendiente || soyCreador)) && (
+        {/* CORREGIDO (08): cancelar solo el creador y, si está confirmado, hasta 5 horas antes */}
+        {puedeCancelar && (
           <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelar} disabled={cancelando}>
             <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
             <Text style={styles.cancelBtnText}>
@@ -531,8 +675,47 @@ export function DetallePartidoScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
+        {/* NUEVO (08): retirarse (antes de empezar = retiro; en vivo = abandono) */}
+        {puedeRetirarse && (
+          <TouchableOpacity style={styles.cancelBtn} onPress={handleRetirarse} disabled={accion}>
+            <Ionicons name="exit-outline" size={20} color={colors.textPrimary} />
+            <Text style={styles.cancelBtnText}>{t('retiro.boton')}</Text>
+          </TouchableOpacity>
+        )}
+        {soyCreador && esConfirmado && !puedeCancelar && !esFinalizado && sinResultado && (
+          <Text style={styles.mandatoryNote}>{t('retiro.notaCancelar')}</Text>
+        )}
+
         {/* NUEVO (07): seguir / anotar el marcador en vivo */}
-        {!esFinalizado && !esBuscando && !esPendiente && !item.id_resultado && (
+        {/* NUEVO (08): me invitaron a reemplazar a un jugador */}
+        {soySustitutoPendiente && (
+          <View style={styles.aviso}>
+            <Ionicons name="people-outline" size={18} color={colors.primary} />
+            <Text style={styles.avisoTxt}>{t('retiro.teInvitanSustituto')}</Text>
+          </View>
+        )}
+        {soySustitutoPendiente && (
+          <>
+            <TouchableOpacity style={styles.resultadosBtn} onPress={() => handleResponderSustituto(true)} disabled={accion}>
+              <Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />
+              <Text style={styles.resultadosBtnText}>{t('retiro.aceptarSustituto')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => handleResponderSustituto(false)} disabled={accion}>
+              <Ionicons name="close-circle-outline" size={20} color={colors.textPrimary} />
+              <Text style={styles.cancelBtnText}>{t('retiro.rechazarSustituto')}</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {/* NUEVO (08): dobles — invitar a un amigo a reemplazar a mi compañero */}
+        {esDoblesPartido && miLadoIncompleto && sinResultado && !pendienteLado(miLado) && (
+          <TouchableOpacity style={styles.resultadosBtn} onPress={() => setElegirSustituto(true)} disabled={accion}>
+            <Ionicons name="person-add-outline" size={20} color={colors.primary} />
+            <Text style={styles.resultadosBtnText}>{t('retiro.invitarSustituto')}</Text>
+          </TouchableOpacity>
+        )}
+
+        {!esFinalizado && !esBuscando && !esPendiente && !item.id_resultado && !rivalIncompleto && !miLadoIncompleto && !yoRetirado && (
           <TouchableOpacity
             style={styles.vivoBtn}
             onPress={() => navigation.navigate('PartidoEnVivo', { idPartido: partido.id })}
@@ -542,19 +725,19 @@ export function DetallePartidoScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        {!esFinalizado && !esBuscando && !esPendiente && (
+        {!esFinalizado && !esBuscando && !esPendiente && !yoRetirado && !soySustitutoPendiente && (
           <TouchableOpacity
             style={styles.resultadosBtn}
             onPress={() => navigation.navigate('ColocarResultados', {
               partido: esDoblesPartido
                 ? {
                     ...item, ...partido, id_partido: partido.id,
-                    yo:    { name: nombresPareja(miPareja), avatar: yoJugador?.foto_perfil_url ?? null, pts: Number(yoJugador?.puntaje_total ?? 0).toFixed(1) },
+                    yo:    { name: nombresPareja(miParejaActiva), avatar: yoJugador?.foto_perfil_url ?? null, pts: Number(yoJugador?.puntaje_total ?? 0).toFixed(1) },
                     rival: {
-                      id:     parejaRival[0]?.id_usuario ?? null,
-                      name:   nombresPareja(parejaRival),
-                      avatar: parejaRival[0]?.foto_perfil_url ?? null,
-                      pts:    Number(parejaRival[0]?.puntaje_total ?? 0).toFixed(1),
+                      id:     (parejaRivalActiva[0] ?? parejaRival[0])?.id_usuario ?? null,
+                      name:   nombresPareja(parejaRivalActiva.length ? parejaRivalActiva : parejaRival),
+                      avatar: (parejaRivalActiva[0] ?? parejaRival[0])?.foto_perfil_url ?? null,
+                      pts:    Number((parejaRivalActiva[0] ?? parejaRival[0])?.puntaje_total ?? 0).toFixed(1),
                     },
                     esCreador: miEquipo === 1,   // publica la pareja del creador
                     esDobles: true,
@@ -564,13 +747,23 @@ export function DetallePartidoScreen({ navigation, route }) {
           >
             <Ionicons name="trophy-outline" size={20} color={colors.primary} />
             <Text style={styles.resultadosBtnText}>
-              {item.id_resultado ? t('detalle.verResultado') : t('detalle.colocarResultados')}
+              {item.id_resultado ? t('detalle.verResultado') : rivalIncompleto ? t('retiro.reclamarWalkover') : t('detalle.colocarResultados')}
             </Text>
           </TouchableOpacity>
         )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* NUEVO (08): elegir a un amigo como sustituto */}
+      <SelectorAmigoModal
+        visible={elegirSustituto}
+        titulo={t('retiro.elegirSustituto')}
+        excluir={jugadores.map(j => j.id_usuario)}
+        onClose={() => setElegirSustituto(false)}
+        onSelect={handleInvitarSustituto}
+        onSinAmigos={() => { setElegirSustituto(false); Alert.alert(t('retiro.sustitutoTitulo'), t('retiro.sinAmigos')); }}
+      />
     </View>
   );
 }
@@ -705,6 +898,13 @@ const styles = StyleSheet.create({
     width: '100%', marginBottom: 12,
   },
   cancelBtnText: { fontSize: 16, fontWeight: '600', color: colors.textPrimary },
+  // NUEVO (08)
+  retirado: { opacity: 0.4 },
+  aviso: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.accentLight,
+    borderRadius: 14, padding: 12, marginTop: 12, marginBottom: 4, width: '100%',
+  },
+  avisoTxt: { flex: 1, fontSize: 13, fontWeight: '600', color: colors.textPrimary, lineHeight: 18 },
   // NUEVO (07)
   vivoBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,

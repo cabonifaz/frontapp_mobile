@@ -34,8 +34,22 @@ export const adminService = {
     return api.post(`/api/Admin/inscripciones/${idInscripcion}/rechazar`);
   },
 
+  // NUEVO (08): solo lo necesario, agrupado por secciones
   async configuraciones() {
-    return api.get('/api/Maestro/configuraciones');
+    return api.get('/api/Admin/configuracion');
+  },
+
+  // NUEVO (08): ligas y auspiciadores
+  async ligas() {
+    return api.get('/api/Admin/ligas');
+  },
+
+  async guardarLiga(datos) {
+    return api.post('/api/Admin/ligas', datos);
+  },
+
+  async participantesLiga(idLiga) {
+    return api.get(`/api/Admin/ligas/${idLiga}/participantes`);
   },
 
   async guardarConfiguracion({ codigo, valor = null, valorNumerico = null }) {

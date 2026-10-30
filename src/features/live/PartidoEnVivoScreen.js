@@ -16,6 +16,8 @@ import { colors } from '../../constants';
 import { RANKED_LIME } from '../../components/common/RankedLogo';
 import { enVivoService } from '../../services/enVivoService';
 import { authService } from '../../services/authService';
+import { partidoService } from '../../services/partidoService';                         // NUEVO (08)
+import { SelectorAmigoModal } from '../../components/common/SelectorAmigoModal';        // NUEVO (08)
 import { getAvatarSource } from '../../utils/avatars';
 import { validarSet, cargarReglasSet } from '../../utils/reglasSet';
 
@@ -38,20 +40,40 @@ export function PuntoEnVivo({ size = 10 }) {
 const primerNombre = (n) => String(n ?? '').trim().split(' ')[0];
 
 function Lado({ jugadores, sets, ganador, alineado }) {
+  const { t } = useTranslation();
+  // NUEVO (08): los retirados se ven en gris y el sustituto por aceptar con un reloj
+  const visibles = jugadores.filter(j => (j.estado ?? 'ACTIVO') !== 'SUSTITUTO_PENDIENTE');
+  const activos = jugadores.filter(j => (j.estado ?? 'ACTIVO') === 'ACTIVO');
+  const retirados = jugadores.filter(j => j.estado === 'RETIRADO');
+  const pendiente = jugadores.find(j => j.estado === 'SUSTITUTO_PENDIENTE');
   return (
     <View style={[styles.lado, { alignItems: alineado }]}>
       <View style={styles.avatares}>
-        {jugadores.map((j, i) => (
+        {visibles.map((j, i) => (
           <Image
             key={j.id_usuario}
             source={getAvatarSource(j.foto)}
-            style={[styles.avatar, i > 0 && styles.avatarPareja, ganador && styles.avatarGanador]}
+            style={[styles.avatar, i > 0 && styles.avatarPareja, ganador && styles.avatarGanador,
+                    j.estado === 'RETIRADO' && styles.avatarRetirado]}
           />
         ))}
+        {pendiente && (
+          <View style={[styles.avatar, styles.avatarPareja, styles.avatarPendiente]}>
+            <Ionicons name="hourglass-outline" size={22} color="#FFFFFF" />
+          </View>
+        )}
       </View>
       <Text style={[styles.nombre, ganador && styles.nombreGanador]} numberOfLines={2}>
-        {jugadores.map(j => primerNombre(j.nombre)).join(' y ') || '—'}
+        {activos.map(j => primerNombre(j.nombre)).join(' y ') || '—'}
       </Text>
+      {retirados.length > 0 && (
+        <Text style={styles.retiradoTxt} numberOfLines={1}>
+          {t('vivo.retirado', { nombre: retirados.map(j => primerNombre(j.nombre)).join(' y ') })}
+        </Text>
+      )}
+      {pendiente && (
+        <Text style={styles.retiradoTxt} numberOfLines={1}>{t('vivo.esperandoSustituto', { nombre: primerNombre(pendiente.nombre) })}</Text>
+      )}
       <Text style={[styles.setsGanados, ganador && { color: RANKED_LIME }]}>{sets}</Text>
     </View>
   );
@@ -77,6 +99,7 @@ export function PartidoEnVivoScreen({ navigation, route }) {
   const [cargando, setCargando] = useState(true);
   const [iniciando, setIniciando] = useState(false);
   const [editar, setEditar] = useState(null);   // { numero_set, a, b }
+  const [elegirDelegado, setElegirDelegado] = useState(false);   // NUEVO (08)
   const enviando = useRef(0);
   const cola = useRef(Promise.resolve());
   const ultimoCambio = useRef(0);   // hora del último toque: descarta lecturas pedidas antes
@@ -127,11 +150,24 @@ export function PartidoEnVivoScreen({ navigation, route }) {
   const setsNecesarios = Math.ceil(Number(d?.num_sets ?? 5) / 2);
   const s1 = Number(d?.sets_lado1 ?? 0);
   const s2 = Number(d?.sets_lado2 ?? 0);
-  const decidido = s1 >= setsNecesarios || s2 >= setsNecesarios;
+  // NUEVO (08): abandono durante el partido
+  const ladoAbandono = d?.abandono_lado != null ? Number(d.abandono_lado) : null;
+  const decidido = s1 >= setsNecesarios || s2 >= setsNecesarios || ladoAbandono != null;
   // El lado 1 es el del anfitrión (quien creó el partido; en dobles, su pareja). Solo ese lado publica el resultado.
-  const miLado = Number(jugadores.find(j => idUsuario != null && Number(j.id_usuario) === Number(idUsuario))?.lado ?? 0);
-  const soyAnfitrion = miLado === 1;
-  const soyRival = miLado === 2;
+  // Si hubo abandono, publica el lado que se quedó.
+  const yoEnPartido = jugadores.find(j => idUsuario != null && Number(j.id_usuario) === Number(idUsuario));
+  const miLado = Number(yoEnPartido?.lado ?? 0);
+  const soyActivo = (yoEnPartido?.estado ?? 'ACTIVO') === 'ACTIVO' && miLado > 0;
+  const ladoPublica = ladoAbandono != null ? (ladoAbandono === 1 ? 2 : 1) : 1;
+  const soyAnfitrion = soyActivo && miLado === ladoPublica;
+  const soyRival = soyActivo && miLado > 0 && miLado !== ladoPublica;
+  const eventos = (Array.isArray(d?.eventos) ? d.eventos : [])
+    .slice().sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+  const delegados = Array.isArray(d?.delegados) ? d.delegados : [];
+  const requeridos = esDobles ? 2 : 1;
+  const faltaJugador = [1, 2].some(l => jugadores.length > 0
+    && jugadores.filter(j => Number(j.lado) === l && (j.estado ?? 'ACTIVO') === 'ACTIVO').length < requeridos);
+  const soyJugador = Number(d?.soy_jugador ?? 0) === 1;
 
   // Botones + / −: se ve al instante y se envía SOLO el cambio (+1 / −1).
   // El servidor lo aplica al set que está en juego, así dos personas anotando no se pisan.
@@ -206,8 +242,49 @@ export function PartidoEnVivoScreen({ navigation, route }) {
     setEditar(null);
   }
 
-  const gana1 = finalizado && s1 > s2;
-  const gana2 = finalizado && s2 > s1;
+  const gana1 = finalizado && (ladoAbandono === 2 || (ladoAbandono == null && s1 > s2));
+  const gana2 = finalizado && (ladoAbandono === 1 || (ladoAbandono == null && s2 > s1));
+
+  // NUEVO (08): abandonar el partido en juego
+  function abandonar() {
+    Alert.alert(t('retiro.abandonarTitulo'), t('retiro.abandonarMensaje'), [
+      { text: t('comun.cancelar'), style: 'cancel' },
+      {
+        text: t('retiro.abandonar'),
+        style: 'destructive',
+        onPress: async () => {
+          try { await partidoService.retirarse(idPartido); await cargar(); }
+          catch (e) { Alert.alert(t('vivo.titulo'), e.message); }
+        },
+      },
+    ]);
+  }
+
+  // NUEVO (08): dar permiso a un amigo para anotar
+  async function delegarA(amigo) {
+    setElegirDelegado(false);
+    try {
+      const res = await enVivoService.delegar(idPartido, amigo.id_usuario);
+      Alert.alert(t('vivo.delegarTitulo'), res?.mensaje ?? '');
+      await cargar();
+    } catch (e) {
+      Alert.alert(t('vivo.delegarTitulo'), e.message);
+    }
+  }
+
+  function quitarDelegado(dl) {
+    Alert.alert(t('vivo.quitarPermiso'), t('vivo.quitarPermisoMensaje', { nombre: primerNombre(dl.nombre) }), [
+      { text: t('comun.cancelar'), style: 'cancel' },
+      {
+        text: t('vivo.quitar'),
+        style: 'destructive',
+        onPress: async () => {
+          try { await enVivoService.quitarDelegado(idPartido, dl.id_usuario); await cargar(); }
+          catch (e) { Alert.alert(t('vivo.titulo'), e.message); }
+        },
+      },
+    ]);
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -234,6 +311,24 @@ export function PartidoEnVivoScreen({ navigation, route }) {
           </View>
           <Lado jugadores={lado2} sets={s2} ganador={gana2} alineado="flex-end" />
         </View>
+
+        {/* NUEVO (08): lo que está pasando (abandono, retiro, sustituto) */}
+        {ladoAbandono != null && (
+          <View style={styles.banner}>
+            <Ionicons name="flag" size={18} color="#FFFFFF" />
+            <Text style={styles.bannerTxt}>
+              {t('vivo.bannerAbandono', { nombre: (ladoAbandono === 1 ? lado1 : lado2).filter(j => j.estado === 'RETIRADO').map(j => primerNombre(j.nombre)).join(' y ') || '—' })}
+            </Text>
+          </View>
+        )}
+        {ladoAbandono == null && faltaJugador && !finalizado && (
+          <View style={[styles.banner, styles.bannerEspera]}>
+            <Ionicons name="hourglass-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.bannerTxt}>
+              {jugadores.some(j => j.estado === 'SUSTITUTO_PENDIENTE') ? t('vivo.bannerEsperaSustituto') : t('vivo.bannerRetiro')}
+            </Text>
+          </View>
+        )}
 
         {/* Set en juego */}
         {estado !== 'SIN_INICIAR' && !finalizado && (
@@ -338,6 +433,53 @@ export function PartidoEnVivoScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
+        {/* NUEVO (08): abandonar mientras se juega */}
+        {enJuego && soyJugador && (
+          <TouchableOpacity style={styles.btnSecundario} onPress={abandonar}>
+            <Ionicons name="exit-outline" size={20} color={colors.textPrimary} />
+            <Text style={styles.btnSecundarioTxt}>{t('retiro.abandonar')}</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* NUEVO (08): amigos con permiso para anotar el marcador */}
+        {soyJugador && !finalizado && (
+          <View style={styles.tarjeta}>
+            <Text style={styles.tarjetaTitulo}>{t('vivo.permisosTitulo')}</Text>
+            <Text style={[styles.info, styles.infoTarjeta]}>{t('vivo.permisosTexto')}</Text>
+            {delegados.map(dl => (
+              <View key={dl.id_usuario} style={styles.filaDelegado}>
+                <Image source={getAvatarSource(dl.foto)} style={styles.avatarMini} />
+                <Text style={styles.nombreDelegado} numberOfLines={1}>{dl.nombre}</Text>
+                <TouchableOpacity onPress={() => quitarDelegado(dl)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close-circle" size={22} color={colors.textSecondary} />
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity style={styles.btnDelegar} onPress={() => setElegirDelegado(true)}>
+              <Ionicons name="person-add-outline" size={18} color={colors.primary} />
+              <Text style={styles.btnDelegarTxt}>{t('vivo.darPermiso')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* NUEVO (08): lo que pasó en el partido */}
+        {eventos.length > 0 && (
+          <View style={styles.tarjeta}>
+            <Text style={styles.tarjetaTitulo}>{t('vivo.eventosTitulo')}</Text>
+            {eventos.map((e, i) => (
+              <View key={`${e.tipo}-${e.fecha}-${i}`} style={styles.filaEvento}>
+                <View style={[styles.puntoEvento, { backgroundColor: COLOR_EVENTO[e.tipo] ?? colors.textSecondary }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.textoEvento}>
+                    {t(`vivo.eventos.${e.tipo}`, { nombre: primerNombre(e.nombre), otro: primerNombre(e.nombre_afectado), defaultValue: e.tipo })}
+                  </Text>
+                  <Text style={styles.horaEvento}>{String(e.fecha ?? '').substring(11, 16)}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {d?.nombre_cancha ? (
           <View style={styles.cancha}>
             <Ionicons name="location-outline" size={15} color={colors.textSecondary} />
@@ -353,7 +495,7 @@ export function PartidoEnVivoScreen({ navigation, route }) {
             <Text style={styles.modalTitulo}>{t('vivo.corregirSet', { n: editar?.numero_set })}</Text>
             <View style={styles.modalFila}>
               <View style={{ alignItems: 'center' }}>
-                <Text style={styles.modalNombre} numberOfLines={1}>{lado1.map(j => primerNombre(j.nombre)).join(' y ')}</Text>
+                <Text style={styles.modalNombre} numberOfLines={1}>{lado1.filter(j => (j.estado ?? 'ACTIVO') === 'ACTIVO').map(j => primerNombre(j.nombre)).join(' y ')}</Text>
                 <TextInput
                   style={styles.modalInput}
                   keyboardType="number-pad"
@@ -364,7 +506,7 @@ export function PartidoEnVivoScreen({ navigation, route }) {
               </View>
               <Text style={styles.modalSep}>-</Text>
               <View style={{ alignItems: 'center' }}>
-                <Text style={styles.modalNombre} numberOfLines={1}>{lado2.map(j => primerNombre(j.nombre)).join(' y ')}</Text>
+                <Text style={styles.modalNombre} numberOfLines={1}>{lado2.filter(j => (j.estado ?? 'ACTIVO') === 'ACTIVO').map(j => primerNombre(j.nombre)).join(' y ')}</Text>
                 <TextInput
                   style={styles.modalInput}
                   keyboardType="number-pad"
@@ -385,11 +527,44 @@ export function PartidoEnVivoScreen({ navigation, route }) {
           </View>
         </View>
       </Modal>
+      {/* NUEVO (08): elegir amigo para anotar */}
+      <SelectorAmigoModal
+        visible={elegirDelegado}
+        titulo={t('vivo.elegirDelegado')}
+        excluir={[...jugadores.map(j => j.id_usuario), ...delegados.map(dl => dl.id_usuario)]}
+        onClose={() => setElegirDelegado(false)}
+        onSelect={delegarA}
+        onSinAmigos={() => { setElegirDelegado(false); Alert.alert(t('vivo.delegarTitulo'), t('retiro.sinAmigos')); }}
+      />
     </SafeAreaView>
   );
 }
 
+// NUEVO (08): color del punto de cada evento
+const COLOR_EVENTO = {
+  RETIRO: '#F5B800', ABANDONO: '#FF3B30', SUSTITUTO_INVITADO: '#7CC4FF', SUSTITUTO_ACEPTADO: '#2ECC71',
+  SUSTITUTO_RECHAZADO: '#F5B800', VIVO_INICIO: '#2ECC71', VIVO_FIN: '#4A6172', DELEGADO: '#7CC4FF', CANCELADO: '#FF3B30',
+};
+
 const styles = StyleSheet.create({
+  // NUEVO (08)
+  avatarRetirado: { opacity: 0.35 },
+  avatarPendiente: { alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed' },
+  retiradoTxt: { color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 2 },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,59,48,0.25)', borderRadius: 14, padding: 12, marginTop: 6 },
+  bannerEspera: { backgroundColor: 'rgba(245,184,0,0.22)' },
+  bannerTxt: { flex: 1, color: '#FFFFFF', fontSize: 13, fontWeight: '700', lineHeight: 18 },
+  infoTarjeta: { color: colors.textSecondary, textAlign: 'left', marginTop: 0, marginBottom: 8 },
+  filaDelegado: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 6 },
+  avatarMini: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#ccc' },
+  nombreDelegado: { flex: 1, fontSize: 14, color: colors.textPrimary, fontWeight: '600' },
+  btnDelegar: { flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', backgroundColor: colors.accent, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 8, marginTop: 8 },
+  btnDelegarTxt: { fontSize: 13, fontWeight: '800', color: colors.primary },
+  filaEvento: { flexDirection: 'row', gap: 10, paddingVertical: 7 },
+  puntoEvento: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
+  textoEvento: { fontSize: 13, color: colors.textPrimary, lineHeight: 18 },
+  horaEvento: { fontSize: 11, color: colors.textSecondary, marginTop: 1 },
+
   safe: { flex: 1, backgroundColor: colors.dark },
   centro: { alignItems: 'center', justifyContent: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 12 },

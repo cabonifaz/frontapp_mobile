@@ -61,6 +61,12 @@ export function AdminScreen({ navigation }) {
           onPress={() => navigation.navigate('AdminInscripciones')}
         />
         <Opcion
+          icono="trophy-outline"
+          titulo={t('admin.ligasTitulo')}
+          detalle={t('admin.ligasDetalle')}
+          onPress={() => navigation.navigate('AdminLigas')}
+        />
+        <Opcion
           icono="settings-outline"
           titulo={t('admin.configTitulo')}
           detalle={t('admin.configDetalle')}

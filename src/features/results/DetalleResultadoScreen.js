@@ -17,6 +17,7 @@ import { elegirFotos, subirFotosPartido, MAX_FOTOS } from '../../utils/fotosEncu
 import { TarjetaHistoriaResultado } from '../../components/common/TarjetaHistoriaResultado';
 import { compartirTarjeta } from '../../utils/compartirHistoria';
 import { doblesService } from '../../services/doblesService';   // CORREGIDO: saber si jugué en dobles
+import { adminService } from '../../services/adminService';     // NUEVO (08): el admin comparte cualquier resultado
 
 // NUEVO: galería de fotos del encuentro. Los jugadores del partido pueden agregar
 // (hasta 5) y borrar las suyas manteniendo presionada la foto.
@@ -186,6 +187,9 @@ export function DetalleResultadoScreen({ navigation, route }) {
         Number(j.es_yo) === 1 && ['PART_CREADOR', 'PART_ACEPTADO'].includes(j.estado_codigo))))
       .catch(() => setJugueDobles(false));
   }, [esDobles, idPartidoActual]);
+  // NUEVO (08): la cuenta admin (la oficial de Ranked) puede compartir cualquier resultado
+  const [esAdmin, setEsAdmin] = useState(false);
+  useEffect(() => { adminService.esAdmin().then(setEsAdmin).catch(() => {}); }, []);
   const soyJugador = esDobles
     ? jugueDobles
     : idUsuarioActual != null && [d.id_jugador_local, d.id_jugador_visitante]
@@ -345,7 +349,7 @@ export function DetalleResultadoScreen({ navigation, route }) {
                 )}
 
                 {/* NUEVO (043): compartir en historias (solo si jugué este partido) */}
-                {sets.length > 0 && soyJugador && (
+                {sets.length > 0 && (soyJugador || esAdmin) && (
                   <TouchableOpacity
                     style={[styles.historiaBtn, compartiendo && { opacity: 0.6 }]}
                     onPress={compartirHistoria}

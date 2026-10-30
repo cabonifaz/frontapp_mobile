@@ -261,15 +261,32 @@ export function ColocarResultadosScreen({ navigation, route }) {
   // NUEVO (07): si el partido se jugó EN VIVO, los sets terminados se cargan solos
   // (desde mi lado de la cancha) para no volver a escribir el marcador.
   const [desdeVivo, setDesdeVivo] = useState(false);
+  const [setsVivoBase, setSetsVivoBase] = useState([]);   // NUEVO (08): sets jugados antes de un abandono
+  const [retiroDetectado, setRetiroDetectado] = useState(null);   // NUEVO (08): 'walkover' | 'abandono'
   useEffect(() => {
     if (!idPartido || !userIdListo || hayResultado) return;
     let activo = true;
     enVivoService.detalle(idPartido)
       .then(v => {
-        if (!activo || !v || v.estado_vivo === 'SIN_INICIAR') return;
-        const yoEnVivo = (Array.isArray(v.jugadores) ? v.jugadores : [])
-          .find(j => userId != null && Number(j.id_usuario) === userId);
+        if (!activo || !v) return;
+        const jugadoresVivo = Array.isArray(v.jugadores) ? v.jugadores : [];
+        const yoEnVivo = jugadoresVivo.find(j => userId != null && Number(j.id_usuario) === userId);
         const miLado = yoEnVivo ? Number(yoEnVivo.lado) : (esCreador ? 1 : 2);
+
+        // NUEVO (08): si un lado se quedó sin jugador (retiro o abandono), se propone walkover/abandono
+        const requeridos = esDoblesPartido ? 2 : 1;
+        const activos = (l) => jugadoresVivo.filter(j => Number(j.lado) === l && (j.estado ?? 'ACTIVO') === 'ACTIVO').length;
+        const ladoIncompleto = [1, 2].find(l => jugadoresVivo.length > 0 && activos(l) < requeridos);
+        if (ladoIncompleto) {
+          const eventos = Array.isArray(v.eventos) ? v.eventos : [];
+          const fueAbandono = Number(v.abandono_lado) === ladoIncompleto
+            || eventos.some(e => e.tipo === 'ABANDONO' && Number(e.lado) === ladoIncompleto);
+          setTipoResultado(fueAbandono ? 'abandono' : 'walkover');
+          setJugadorEspecial(ladoIncompleto === miLado ? 'yo' : 'rival');
+          setRetiroDetectado(fueAbandono ? 'abandono' : 'walkover');
+        }
+
+        if (v.estado_vivo === 'SIN_INICIAR') return;
         const setsVivo = (Array.isArray(v.sets) ? v.sets : [])
           .filter(s => Number(s.terminado) === 1)
           .sort((a, b) => Number(a.numero_set) - Number(b.numero_set))
@@ -278,6 +295,7 @@ export function ColocarResultadosScreen({ navigation, route }) {
             ? { my: String(s.puntos_lado1), rival: String(s.puntos_lado2) }
             : { my: String(s.puntos_lado2), rival: String(s.puntos_lado1) }));
         if (setsVivo.length) {
+          setSetsVivoBase(setsVivo);
           setConfirmedSets(prev => (prev.length ? prev : setsVivo));
           setDesdeVivo(true);
         }
@@ -329,23 +347,25 @@ export function ColocarResultadosScreen({ navigation, route }) {
     canPublish = matchDone;
   }
 
-  function setsParaEnviar() {
-    if (!modoCorreccion && tipoResultado === 'walkover') {
-      return Array.from({ length: numSets }, () => ({
-        mi_puntaje:    jugadorEspecial === 'yo' ? 0 : puntosWO,
-        puntaje_rival: jugadorEspecial === 'yo' ? puntosWO : 0,
-      }));
+  // CORREGIDO (08): walkover y abandono ya no piden puntajes.
+  //  · Walkover: el que se presentó gana los sets necesarios (2 o 3) por 15-0 / 21-0.
+  //  · Abandono: se respetan los sets jugados en vivo y el que se quedó gana los que faltaban.
+  function setsGenerados() {
+    const ganaYo = jugadorEspecial === 'rival';
+    const base = tipoResultado === 'abandono' ? setsVivoBase : [];
+    const lista = base.map(x => ({ my: String(x.my), rival: String(x.rival) }));
+    let misSets = lista.filter(x => Number(x.my) > Number(x.rival)).length;
+    let susSets = lista.filter(x => Number(x.rival) > Number(x.my)).length;
+    while ((ganaYo ? misSets : susSets) < setsToWin && lista.length < numSets) {
+      lista.push(ganaYo ? { my: String(puntosWO), rival: '0' } : { my: '0', rival: String(puntosWO) });
+      if (ganaYo) misSets += 1; else susSets += 1;
     }
-    if (!modoCorreccion && tipoResultado === 'abandono') {
-      const played = confirmedSets.map(s => ({
-        mi_puntaje:    Number(s.my)    || 0,
-        puntaje_rival: Number(s.rival) || 0,
-      }));
-      const remaining = Array.from({ length: numSets - confirmedSets.length }, () => ({
-        mi_puntaje:    jugadorEspecial === 'yo' ? 0 : puntosWO,
-        puntaje_rival: jugadorEspecial === 'yo' ? puntosWO : 0,
-      }));
-      return [...played, ...remaining];
+    return lista;
+  }
+
+  function setsParaEnviar() {
+    if (!modoCorreccion && (tipoResultado === 'walkover' || tipoResultado === 'abandono')) {
+      return setsGenerados().map(x => ({ mi_puntaje: Number(x.my), puntaje_rival: Number(x.rival) }));
     }
     return confirmedSets.map(s => ({
       mi_puntaje:    Number(s.my)    || 0,
@@ -548,8 +568,8 @@ export function ColocarResultadosScreen({ navigation, route }) {
             </View>
           )}
 
-          {/* Walkover: marcador automático */}
-          {mostrarFormulario && !modoCorreccion && tipoResultado === 'walkover' && (
+          {/* Walkover / abandono: marcador automático, sin puntajes */}
+          {mostrarFormulario && !modoCorreccion && tipoResultado !== 'normal' && (
             <View style={styles.playersBlock}>
               <View style={styles.playerCol}>
                 <Image source={fuenteImagen(yo.avatar)} style={styles.avatar} />
@@ -557,12 +577,10 @@ export function ColocarResultadosScreen({ navigation, route }) {
                 <Text style={styles.playerPts}>{yo.pts} pts</Text>
               </View>
               <View style={styles.scoresCol}>
-                {Array.from({ length: numSets }, () => ({
-                  my:    jugadorEspecial === 'yo' ? '0' : jugadorEspecial === 'rival' ? String(puntosWO) : '',
-                  rival: jugadorEspecial === 'rival' ? '0' : jugadorEspecial === 'yo' ? String(puntosWO) : '',
-                })).map((s, i) => (
-                  <ScoreRow key={i} index={i} myScore={s.my} rivalScore={s.rival} readonly />
-                ))}
+                {(jugadorEspecial ? setsGenerados() : Array.from({ length: setsToWin }, () => ({ my: '', rival: '' })))
+                  .map((s, i) => (
+                    <ScoreRow key={i} index={i} myScore={s.my} rivalScore={s.rival} readonly />
+                  ))}
               </View>
               <View style={styles.playerCol}>
                 <Image source={fuenteImagen(rival.avatar)} style={styles.avatar} />
@@ -572,8 +590,18 @@ export function ColocarResultadosScreen({ navigation, route }) {
             </View>
           )}
 
-          {/* Normal / Abandono / Corrección: set por set */}
-          {mostrarFormulario && (modoCorreccion || tipoResultado !== 'walkover') && (
+          {/* NUEVO (08): explica por qué se propuso walkover / abandono */}
+          {retiroDetectado && !modoCorreccion && tipoResultado !== 'normal' && (
+            <View style={styles.avisoVivo}>
+              <Ionicons name="flag-outline" size={16} color={colors.primary} />
+              <Text style={styles.avisoVivoTxt}>
+                {t(retiroDetectado === 'abandono' ? 'colocar.retiroAbandono' : 'colocar.retiroWalkover')}
+              </Text>
+            </View>
+          )}
+
+          {/* Normal / Corrección: set por set (walkover y abandono ya no piden puntajes) */}
+          {mostrarFormulario && (modoCorreccion || tipoResultado === 'normal') && (
             <>
               {confirmedSets.length > 0 && (
                 <View style={styles.matchResultRow}>

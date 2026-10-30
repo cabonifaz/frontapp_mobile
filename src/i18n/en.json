@@ -420,7 +420,8 @@
     "enviarInvitaciones": "Send invitations",
     "enviarReto": "Send challenge",
     "confirmar": "Confirm",
-    "errorCrear": "The match could not be created."
+    "errorCrear": "The match could not be created.",
+    "doblesSolo3": "Doubles matches are always best of 3 sets."
   },
   "retar": {
     "titulo": "Challenge {{nombre}}",
@@ -560,8 +561,8 @@
     "resultadoFinal": "Final result",
     "set": "Set {{n}}",
     "sinSets": "No sets recorded",
-    "notaLiga": "Best of 5 sets. Adds or subtracts league points: 3-0 ±3, 3-1 ±2, 3-2 ±1. Submit it within 12 hours after the match.",
-    "notaAmistoso": "Players must submit the results within 12 hours after the match.",
+    "notaLiga": "Adds or subtracts league points based on the score (e.g. 3-0 or 2-0 give ±3). Your opponent has 24 h to confirm it; otherwise it's confirmed automatically.",
+    "notaAmistoso": "Post the result after the match. Your opponent has 24 h to confirm it; otherwise it's confirmed automatically.",
     "invitadoLiga": "Your team was challenged in the league. Only one of you needs to accept to confirm the match.",
     "invitadoDobles": "You were invited to this doubles match. Accept to confirm your spot.",
     "convocatoriaPublicada": "Open call published. Pairs that want to challenge you will appear in My requests.",
@@ -636,7 +637,9 @@
     "enviando": "Sending...",
     "enviarCorreccion": "Send correction",
     "confirmarResultados": "Confirm results",
-    "desdeVivo": "Score loaded from the live match. Check it and, if it's right, confirm the results."
+    "desdeVivo": "Score loaded from the live match. Check it and, if it's right, confirm the results.",
+    "retiroWalkover": "The opponent withdrew before the match. A walkover is suggested: confirm who didn't show up and post it.",
+    "retiroAbandono": "There was a retirement during the live match. Played sets are kept and the remaining team wins the rest."
   },
   "chat": {
     "chat": "Chat",
@@ -794,7 +797,8 @@
     "dobles": "Doubles",
     "singles": "Singles",
     "formato": "Best of 5 sets",
-    "conQuienEquipo": "Who will be on your team?"
+    "conQuienEquipo": "Who will be on your team?",
+    "lugar": "Venue"
   },
   "resultados": {
     "titulo": "Results",
@@ -942,7 +946,12 @@
       "RETO_DIRECTO": "{{nombre}} challenged you to a match.",
       "RETO_ACEPTADO": "{{nombre}} confirmed the match. See you on court!",
       "PARTIDO_AMIGO": "{{nombre}} has a confirmed match.",
-      "PARTIDO_EN_VIVO": "{{nombre}} is playing right now. Follow the score live!"
+      "PARTIDO_EN_VIVO": "{{nombre}} is playing right now. Follow the score live!",
+      "JUGADOR_RETIRADO": "{{nombre}} withdrew from your match. Open it to see your options.",
+      "SUSTITUTO_INVITACION": "{{nombre}} invited you to replace their partner in a doubles match.",
+      "SUSTITUTO_ACEPTADO": "{{nombre}} joined your match as a substitute.",
+      "SUSTITUTO_RECHAZADO": "{{nombre}} can't be the substitute. Invite another friend.",
+      "VIVO_DELEGADO": "{{nombre}} gave you permission to keep the live score of their match."
     },
     "tiposSinNombre": {
       "RESULTADO_POR_CONFIRMAR": "You have a result to confirm.",
@@ -955,7 +964,12 @@
       "PARTIDO_AMIGO": "A player you follow has a confirmed match.",
       "PARTIDO_EN_VIVO": "A player you follow is playing live.",
       "INSCRIPCION_ACTIVA": "Your payment was approved. You're now in the league.",
-      "INSCRIPCION_RECHAZADA": "We couldn't validate your league payment. Contact us for help."
+      "INSCRIPCION_RECHAZADA": "We couldn't validate your league payment. Contact us for help.",
+      "JUGADOR_RETIRADO": "A player withdrew from your match.",
+      "SUSTITUTO_INVITACION": "You were invited as a substitute in a doubles match.",
+      "SUSTITUTO_ACEPTADO": "A substitute joined your match.",
+      "SUSTITUTO_RECHAZADO": "The substitute can't play.",
+      "VIVO_DELEGADO": "You were given permission to keep a live score."
     },
     "tiempo": {
       "ahora": "Now",
@@ -991,13 +1005,24 @@
     "actualizaApp": "To share to stories you need to install the latest version of Ranked."
   },
   "elegirDeporte": {
-    "titulo": "What are you playing?",
+    "titulo": "Choose your world",
     "subtitulo": "Each sport has its own ranking, level, matches and results.",
     "miNivel": "Level {{nivel}} · {{pts}} pts",
     "sinPerfil": "You don't have a {{deporte}} profile yet. Soon you'll be able to create one here.",
     "sinPerfilCorto": "You don't have a profile in this sport yet",
     "proximamente": "COMING SOON",
-    "nota": "You can switch sports anytime from Settings."
+    "nota": "You can switch sports anytime from Settings.",
+    "lemas": {
+      "fronton": "The wall is your rival. Who rules it?",
+      "tenis": "Serve, volley and match point.",
+      "padel": "Glass walls, endless rallies."
+    },
+    "nivel": "LEVEL",
+    "puntos": "POINTS",
+    "ranking": "RANKING",
+    "proximamenteTexto": "{{deporte}} is coming to Ranked very soon.",
+    "entrar": "Enter {{deporte}}",
+    "bloqueado": "Coming soon"
   },
   "imagen": {
     "titulo": "Add photo",
@@ -1052,7 +1077,34 @@
     "tocaParaMarcar": "Tap to keep score",
     "reanudar": "Resume live coverage",
     "publicarOficial": "Post official result",
-    "esperaAnfitrion": "The host will post the official result with this score. You'll get a notification to confirm it."
+    "esperaAnfitrion": "The host will post the official result with this score. You'll get a notification to confirm it.",
+    "retirado": "{{nombre}} withdrew",
+    "esperandoSustituto": "Waiting for {{nombre}}",
+    "bannerAbandono": "Retirement: {{nombre}} left the match. The other team wins.",
+    "bannerRetiro": "A player withdrew. The match is waiting for a substitute or will be decided by walkover.",
+    "bannerEsperaSustituto": "A player withdrew and their partner invited a substitute. Waiting for the answer…",
+    "permisosTitulo": "Keep score from another phone",
+    "permisosTexto": "Give a friend who is watching the match permission to keep the score for you.",
+    "darPermiso": "Give permission to a friend",
+    "elegirDelegado": "Who will keep the score?",
+    "delegarTitulo": "Permission to keep score",
+    "quitarPermiso": "Remove permission",
+    "quitarPermisoMensaje": "{{nombre}} will no longer be able to keep the score.",
+    "quitar": "Remove",
+    "eventosTitulo": "What happened in the match",
+    "tagAbandono": "Retired",
+    "tagSustituto": "Waiting for substitute",
+    "eventos": {
+      "RETIRO": "{{nombre}} withdrew from the match",
+      "ABANDONO": "{{nombre}} retired from the match",
+      "SUSTITUTO_INVITADO": "{{nombre}} invited {{otro}} as a substitute",
+      "SUSTITUTO_ACEPTADO": "{{nombre}} joins as a substitute",
+      "SUSTITUTO_RECHAZADO": "{{nombre}} can't be the substitute",
+      "VIVO_INICIO": "The live coverage started!",
+      "VIVO_FIN": "The live coverage ended",
+      "DELEGADO": "{{otro}} will keep the score",
+      "CANCELADO": "The match was cancelled"
+    }
   },
   "admin": {
     "titulo": "Admin",
@@ -1064,7 +1116,7 @@
     "pagosDetalle": "Approve payments and review players registered in ranked leagues.",
     "configTitulo": "Settings",
     "configDetalle": "Points per win, deadlines to confirm results, points per set and more.",
-    "configIntro": "Changes apply immediately for every player.",
+    "configIntro": "Main app values. Changes apply immediately for everyone.",
     "filtros": {
       "PENDIENTES": "Payment pending",
       "ACTIVAS": "Active",
@@ -1092,6 +1144,127 @@
     "confirmar": "Confirm",
     "valorInvalido": "Enter a valid number.",
     "guardado": "Setting saved.",
-    "guardar": "Save"
+    "guardar": "Save",
+    "ligasTitulo": "Leagues and tournaments",
+    "ligasDetalle": "Create and edit singles and doubles leagues: dates, venue, prize, fee and sponsor.",
+    "secciones": {
+      "PUNTOS_INDIVIDUAL": {
+        "titulo": "Points · Singles friendlies",
+        "texto": "How many ranking points the winner earns depending on the match format."
+      },
+      "PUNTOS_DOBLES": {
+        "titulo": "Points · Doubles friendlies",
+        "texto": "Doubles are always best of 3 and award points differently from singles."
+      },
+      "PUNTOS_LIGA": {
+        "titulo": "Points · Leagues (ranked)",
+        "texto": "League table points by score. The loser loses the same amount."
+      },
+      "REGLAS": {
+        "titulo": "Set rules",
+        "texto": "How many points each set is played to."
+      },
+      "PARTIDOS": {
+        "titulo": "Matches and results",
+        "texto": "Deadlines to confirm results and to cancel matches."
+      },
+      "CLASES": {
+        "titulo": "Lessons",
+        "texto": "Rules for lessons with coaches."
+      },
+      "REGISTRO": {
+        "titulo": "Sign up",
+        "texto": "Requirements to create an account."
+      }
+    },
+    "liga": {
+      "nueva": "New league",
+      "editar": "Edit league",
+      "vacio": "There are no leagues yet. Create the first one.",
+      "individual": "Singles",
+      "dobles": "Doubles",
+      "oculta": "HIDDEN",
+      "pagosPendientes": "{{n}} payments to approve",
+      "seccionGeneral": "General",
+      "seccionCuando": "When and where",
+      "seccionParticipantes": "Participants",
+      "seccionPago": "Registration and prize",
+      "seccionAuspiciador": "Sponsor",
+      "nombre": "League name",
+      "nombreEjemplo": "e.g. Spring League",
+      "modalidad": "Format",
+      "ayudaIndividual": "Singles: best-of-5 matches.",
+      "ayudaDobles": "Doubles: teams of 2 and best-of-3 matches.",
+      "estado": "Status",
+      "estados": {
+        "LIGA_PROXIMAMENTE": "Coming soon",
+        "LIGA_INSCRIPCION_ABIERTA": "Registration open",
+        "LIGA_EN_CURSO": "In progress",
+        "LIGA_FINALIZADA": "Finished"
+      },
+      "visible": "Visible in the app",
+      "ayudaVisible": "If you turn it off, players won't see it.",
+      "descripcion": "Description",
+      "inicio": "Start",
+      "fin": "End",
+      "lugar": "Venue",
+      "lugarEjemplo": "e.g. Club Regatas, Chorrillos",
+      "cupo": "Player limit",
+      "cupoEquipos": "Team limit",
+      "ayudaCupo": "Empty = no limit.",
+      "niveles": "Allowed levels",
+      "cuota": "Registration fee (S/)",
+      "ayudaCuota": "Per player. 0 = free.",
+      "ayudaCuotaDobles": "Per team. 0 = free.",
+      "instrucciones": "Payment instructions",
+      "instruccionesEjemplo": "e.g. Yape to 999 999 999 under Ranked",
+      "premio": "Prize",
+      "premioEjemplo": "e.g. Trophy and S/ 500",
+      "imagen": "League image",
+      "subirImagen": "Upload image",
+      "cambiarImagen": "Change image",
+      "auspiciador": "Sponsor name",
+      "ayudaAuspiciador": "Shown as \"presented by\". Leave empty if there is no sponsor.",
+      "auspiciadorEjemplo": "e.g. Gatorade",
+      "logo": "Sponsor logo",
+      "subirLogo": "Upload logo",
+      "cambiarLogo": "Change logo",
+      "web": "Sponsor website",
+      "ayudaWeb": "Tapping the logo opens this link.",
+      "guardar": "Save league",
+      "inscritos": "Participants ({{n}})",
+      "sinInscritos": "No registrations yet.",
+      "irPagos": "Approve pending payments",
+      "errorNombre": "Enter the league name.",
+      "errorFecha": "Check the dates: use the dd/mm/yyyy format.",
+      "errorWeb": "The sponsor link must start with https://"
+    }
+  },
+  "retiro": {
+    "boton": "Withdraw from match",
+    "titulo": "Withdraw from the match",
+    "mensaje": "Your name will be greyed out and your opponent can claim the match by walkover. Are you sure?",
+    "mensajeDobles": "Your name will be greyed out. Your partner can invite a substitute; if nobody replaces you, the opponents can claim a walkover. Are you sure?",
+    "confirmar": "Yes, withdraw",
+    "abandonarTitulo": "Retire from the match",
+    "abandonarMensaje": "The match is in play. If you retire, the other team wins the remaining sets. Are you sure?",
+    "abandonar": "Retire from match",
+    "listo": "Done",
+    "retirado": "Withdrew",
+    "sustitutoPorAceptar": "Substitute · pending",
+    "avisoRivalWalkover": "{{nombre}} withdrew from the match. If nobody shows up, claim it by walkover.",
+    "avisoRivalSustituto": "{{nombre}} withdrew. Their partner invited a substitute; wait for the answer or claim a walkover if they don't show up.",
+    "avisoMiCompanero": "{{nombre}} withdrew. Invite a friend as a substitute to play the match.",
+    "avisoMiSustitutoPendiente": "You invited a substitute. We'll let you know when they answer.",
+    "avisoMeRetire": "You withdrew from this match.",
+    "teInvitanSustituto": "You've been invited to replace a player who withdrew from this doubles match.",
+    "aceptarSustituto": "Accept and play",
+    "rechazarSustituto": "I can't play",
+    "invitarSustituto": "Invite a substitute",
+    "elegirSustituto": "Choose your substitute",
+    "sustitutoTitulo": "Substitute",
+    "sinAmigos": "You don't have friends to invite yet.",
+    "reclamarWalkover": "Claim walkover",
+    "notaCancelar": "You can no longer cancel: the match starts in less than 5 hours. If you can't play, withdraw."
   }
 }

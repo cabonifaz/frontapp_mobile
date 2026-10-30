@@ -1,5 +1,7 @@
-// NUEVO (07): Administración > Configuración de la app (tabla maestra CAT_CONFIGURACION):
-// puntos por victoria, horas para confirmar resultados, puntos para ganar un set, etc.
+// NUEVO (07) / REDISEÑO (08): Administración > Configuración.
+// Solo lo necesario, agrupado por secciones con su explicación:
+// puntos de amistosos (individual 2 de 3 / 3 de 5, dobles 2 de 3), puntos de liga,
+// reglas del set, plazos de partidos, clases y registro.
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert,
@@ -11,6 +13,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { adminService } from '../../services/adminService';
+
+const ICONO_SECCION = {
+  PUNTOS_INDIVIDUAL: 'person-outline',
+  PUNTOS_DOBLES: 'people-outline',
+  PUNTOS_LIGA: 'trophy-outline',
+  REGLAS: 'tennisball-outline',
+  PARTIDOS: 'calendar-outline',
+  CLASES: 'school-outline',
+  REGISTRO: 'id-card-outline',
+};
 
 const limpiarNumero = (v) => (v == null ? '' : String(Number(v)));
 
@@ -26,7 +38,7 @@ export function AdminConfiguracionScreen({ navigation }) {
       const res = await adminService.configuraciones();
       const lista = Array.isArray(res) ? res : [];
       setItems(lista);
-      setValores(Object.fromEntries(lista.map(c => [c.codigo, c.valor_numerico != null ? limpiarNumero(c.valor_numerico) : (c.valor ?? '')])));
+      setValores(Object.fromEntries(lista.map(c => [c.codigo, limpiarNumero(c.valor_numerico)])));
     } catch (e) {
       Alert.alert(t('admin.configTitulo'), e.message);
     } finally {
@@ -37,24 +49,16 @@ export function AdminConfiguracionScreen({ navigation }) {
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
   async function guardar(c) {
-    const texto = String(valores[c.codigo] ?? '').trim();
-    const esNumero = c.valor_numerico != null;
-    const numero = Number(texto.replace(',', '.'));
-    if (esNumero && (texto === '' || isNaN(numero))) {
+    const texto = String(valores[c.codigo] ?? '').trim().replace(',', '.');
+    const numero = Number(texto);
+    if (texto === '' || !Number.isFinite(numero) || numero < 0) {
       Alert.alert(t('admin.configTitulo'), t('admin.valorInvalido'));
       return;
     }
     setGuardando(c.codigo);
     try {
-      await adminService.guardarConfiguracion({
-        codigo: c.codigo,
-        valor: esNumero ? c.valor : texto,
-        valorNumerico: esNumero ? numero : null,
-      });
-      setItems(prev => prev.map(x => (x.codigo === c.codigo
-        ? { ...x, valor_numerico: esNumero ? numero : x.valor_numerico, valor: esNumero ? x.valor : texto }
-        : x)));
-      Alert.alert(t('admin.configTitulo'), t('admin.guardado'));
+      await adminService.guardarConfiguracion({ codigo: c.codigo, valorNumerico: numero });
+      setItems(prev => prev.map(x => (x.codigo === c.codigo ? { ...x, valor_numerico: numero } : x)));
     } catch (e) {
       Alert.alert(t('comun.error'), e.message);
     } finally {
@@ -62,7 +66,13 @@ export function AdminConfiguracionScreen({ navigation }) {
     }
   }
 
-  const original = (c) => (c.valor_numerico != null ? limpiarNumero(c.valor_numerico) : (c.valor ?? ''));
+  // Agrupar por sección (ya vienen ordenadas)
+  const secciones = [];
+  items.forEach(c => {
+    let s = secciones.find(x => x.clave === c.seccion);
+    if (!s) { s = { clave: c.seccion, items: [] }; secciones.push(s); }
+    s.items.push(c);
+  });
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -79,32 +89,47 @@ export function AdminConfiguracionScreen({ navigation }) {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.contenido} keyboardShouldPersistTaps="handled">
             <Text style={styles.intro}>{t('admin.configIntro')}</Text>
-            {items.map(c => {
-              const cambiado = String(valores[c.codigo] ?? '') !== original(c);
-              return (
-                <View key={c.codigo} style={styles.card}>
-                  <Text style={styles.nombre}>{c.nombre}</Text>
-                  {c.descripcion ? <Text style={styles.descripcion}>{c.descripcion}</Text> : null}
-                  <View style={styles.fila}>
-                    <TextInput
-                      style={styles.input}
-                      keyboardType={c.valor_numerico != null ? 'decimal-pad' : 'default'}
-                      value={String(valores[c.codigo] ?? '')}
-                      onChangeText={v => setValores(prev => ({ ...prev, [c.codigo]: v }))}
-                    />
-                    <TouchableOpacity
-                      style={[styles.btn, !cambiado && styles.btnOff]}
-                      disabled={!cambiado || guardando === c.codigo}
-                      onPress={() => guardar(c)}
-                    >
-                      {guardando === c.codigo
-                        ? <ActivityIndicator color={colors.primary} size="small" />
-                        : <Text style={styles.btnTxt}>{t('admin.guardar')}</Text>}
-                    </TouchableOpacity>
+            {secciones.map(s => (
+              <View key={s.clave} style={styles.seccion}>
+                <View style={styles.seccionCabecera}>
+                  <View style={styles.seccionIcono}>
+                    <Ionicons name={ICONO_SECCION[s.clave] ?? 'options-outline'} size={18} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.seccionTitulo}>{t(`admin.secciones.${s.clave}.titulo`, { defaultValue: s.clave })}</Text>
+                    <Text style={styles.seccionTexto}>{t(`admin.secciones.${s.clave}.texto`, { defaultValue: '' })}</Text>
                   </View>
                 </View>
-              );
-            })}
+
+                {s.items.map((c, i) => {
+                  const cambiado = String(valores[c.codigo] ?? '') !== limpiarNumero(c.valor_numerico);
+                  return (
+                    <View key={c.codigo} style={[styles.fila, i > 0 && styles.filaBorde]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.nombre}>{c.nombre}</Text>
+                        {c.descripcion ? <Text style={styles.descripcion}>{c.descripcion}</Text> : null}
+                      </View>
+                      <View style={styles.inputCaja}>
+                        <TextInput
+                          style={styles.input}
+                          keyboardType="decimal-pad"
+                          value={String(valores[c.codigo] ?? '')}
+                          onChangeText={v => setValores(prev => ({ ...prev, [c.codigo]: v }))}
+                        />
+                        {c.unidad ? <Text style={styles.unidad}>{c.unidad}</Text> : null}
+                      </View>
+                      {cambiado && (
+                        <TouchableOpacity style={styles.btn} disabled={guardando === c.codigo} onPress={() => guardar(c)}>
+                          {guardando === c.codigo
+                            ? <ActivityIndicator color={colors.primary} size="small" />
+                            : <Ionicons name="checkmark" size={18} color={colors.primary} />}
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
           </ScrollView>
         </KeyboardAvoidingView>
       )}
@@ -118,12 +143,19 @@ const styles = StyleSheet.create({
   headerTitulo: { fontSize: 18, fontWeight: '800', color: colors.textPrimary },
   contenido: { padding: 16, paddingBottom: 60 },
   intro: { fontSize: 13, color: colors.textSecondary, marginBottom: 14, lineHeight: 19 },
-  card: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 10 },
-  nombre: { fontSize: 15, fontWeight: '700', color: colors.textPrimary },
-  descripcion: { fontSize: 12, color: colors.textSecondary, marginTop: 3, lineHeight: 17 },
-  fila: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
-  input: { flex: 1, backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, color: colors.textPrimary },
-  btn: { backgroundColor: colors.accent, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 10, minWidth: 84, alignItems: 'center' },
-  btnOff: { opacity: 0.4 },
-  btnTxt: { fontSize: 14, fontWeight: '800', color: colors.primary },
+
+  seccion: { backgroundColor: colors.surface, borderRadius: 16, padding: 14, marginBottom: 14 },
+  seccionCabecera: { flexDirection: 'row', gap: 12, marginBottom: 6 },
+  seccionIcono: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  seccionTitulo: { fontSize: 15, fontWeight: '800', color: colors.textPrimary },
+  seccionTexto: { fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 17 },
+
+  fila: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  filaBorde: { borderTopWidth: 1, borderTopColor: colors.border },
+  nombre: { fontSize: 14, fontWeight: '700', color: colors.textPrimary },
+  descripcion: { fontSize: 12, color: colors.textSecondary, marginTop: 2, lineHeight: 16 },
+  inputCaja: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: 10, paddingHorizontal: 10 },
+  input: { minWidth: 46, paddingVertical: 8, fontSize: 15, fontWeight: '700', color: colors.textPrimary, textAlign: 'right' },
+  unidad: { fontSize: 12, color: colors.textSecondary, marginLeft: 4 },
+  btn: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
 });

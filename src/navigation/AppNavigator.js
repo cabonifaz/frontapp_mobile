@@ -47,6 +47,8 @@ import { PartidoEnVivoScreen } from '../features/live/PartidoEnVivoScreen';
 import { AdminScreen } from '../features/admin/AdminScreen';
 import { AdminInscripcionesScreen } from '../features/admin/AdminInscripcionesScreen';
 import { AdminConfiguracionScreen } from '../features/admin/AdminConfiguracionScreen';
+import { AdminLigasScreen } from '../features/admin/AdminLigasScreen';         // NUEVO (08)
+import { AdminLigaFormScreen } from '../features/admin/AdminLigaFormScreen';   // NUEVO (08)
 import { navigationRef } from './navigationRef';
 import { configurarNotificaciones } from '../utils/pushNotifications';
 
@@ -171,6 +173,8 @@ export function AppNavigator() {
         <Stack.Screen name="Admin" component={AdminScreen} />
         <Stack.Screen name="AdminInscripciones" component={AdminInscripcionesScreen} />
         <Stack.Screen name="AdminConfiguracion" component={AdminConfiguracionScreen} />
+        <Stack.Screen name="AdminLigas" component={AdminLigasScreen} />
+        <Stack.Screen name="AdminLigaForm" component={AdminLigaFormScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
