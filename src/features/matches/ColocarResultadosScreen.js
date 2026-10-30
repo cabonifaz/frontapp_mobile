@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   SafeAreaView, Image, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
@@ -181,6 +181,9 @@ function EsperandoView({ sets, rivalName, enRevision, onVolver }) {
 export function ColocarResultadosScreen({ navigation, route }) {
   const { t } = useTranslation();   // NUEVO: idiomas
   const partido = route?.params?.partido ?? {};
+  // NUEVO (09): desde el detalle llega el tipo ya decidido (walkover / abandono) y quién faltó
+  const tipoSugeridoParam    = ['walkover', 'abandono'].includes(route?.params?.tipoSugerido) ? route.params.tipoSugerido : null;
+  const ausenteSugeridoParam = ['yo', 'rival'].includes(route?.params?.ausenteSugerido) ? route.params.ausenteSugerido : null;
   const idPartido = partido.id_partido ?? partido.id ?? null;
   const esCreador = partido.esCreador ?? true;
 
@@ -262,7 +265,9 @@ export function ColocarResultadosScreen({ navigation, route }) {
   // (desde mi lado de la cancha) para no volver a escribir el marcador.
   const [desdeVivo, setDesdeVivo] = useState(false);
   const [setsVivoBase, setSetsVivoBase] = useState([]);   // NUEVO (08): sets jugados antes de un abandono
-  const [retiroDetectado, setRetiroDetectado] = useState(null);   // NUEVO (08): 'walkover' | 'abandono'
+  const [retiroDetectado, setRetiroDetectado] = useState(hayResultado ? null : tipoSugeridoParam);   // NUEVO (08): 'walkover' | 'abandono'
+  const [ausenteSugerido, setAusenteSugerido] = useState(hayResultado ? null : ausenteSugeridoParam); // NUEVO (09): 'yo' | 'rival'
+  const tocoTipo = useRef(false);   // NUEVO (09): si el jugador ya eligió otra pestaña, no se la cambiamos
   useEffect(() => {
     if (!idPartido || !userIdListo || hayResultado) return;
     let activo = true;
@@ -274,16 +279,24 @@ export function ColocarResultadosScreen({ navigation, route }) {
         const miLado = yoEnVivo ? Number(yoEnVivo.lado) : (esCreador ? 1 : 2);
 
         // NUEVO (08): si un lado se quedó sin jugador (retiro o abandono), se propone walkover/abandono
+        // CORREGIDO (09): primero se mira el lado rival; mi lado solo si el rival está completo
         const requeridos = esDoblesPartido ? 2 : 1;
         const activos = (l) => jugadoresVivo.filter(j => Number(j.lado) === l && (j.estado ?? 'ACTIVO') === 'ACTIVO').length;
-        const ladoIncompleto = [1, 2].find(l => jugadoresVivo.length > 0 && activos(l) < requeridos);
+        const incompleto = (l) => jugadoresVivo.length > 0 && activos(l) < requeridos;
+        const ladoRivalVivo = miLado === 1 ? 2 : 1;
+        const ladoIncompleto = incompleto(ladoRivalVivo) ? ladoRivalVivo : incompleto(miLado) ? miLado : null;
         if (ladoIncompleto) {
           const eventos = Array.isArray(v.eventos) ? v.eventos : [];
           const fueAbandono = Number(v.abandono_lado) === ladoIncompleto
             || eventos.some(e => e.tipo === 'ABANDONO' && Number(e.lado) === ladoIncompleto);
-          setTipoResultado(fueAbandono ? 'abandono' : 'walkover');
-          setJugadorEspecial(ladoIncompleto === miLado ? 'yo' : 'rival');
-          setRetiroDetectado(fueAbandono ? 'abandono' : 'walkover');
+          const tipo = fueAbandono ? 'abandono' : 'walkover';
+          const ausente = ladoIncompleto === miLado ? 'yo' : 'rival';
+          setRetiroDetectado(tipo);
+          setAusenteSugerido(ausente);
+          if (!tocoTipo.current) {
+            setTipoResultado(tipo);
+            setJugadorEspecial(ausente);
+          }
         }
 
         if (v.estado_vivo === 'SIN_INICIAR') return;
@@ -314,8 +327,8 @@ export function ColocarResultadosScreen({ navigation, route }) {
   }
   const [confirmando, setConfirmando] = useState(false);
 
-  const [tipoResultado,  setTipoResultado]  = useState('normal');
-  const [jugadorEspecial, setJugadorEspecial] = useState(null);
+  const [tipoResultado,  setTipoResultado]  = useState(!hayResultado && tipoSugeridoParam ? tipoSugeridoParam : 'normal');
+  const [jugadorEspecial, setJugadorEspecial] = useState(!hayResultado && tipoSugeridoParam ? ausenteSugeridoParam : null);
 
   const myWins    = confirmedSets.filter(s => Number(s.my) > Number(s.rival)).length;
   const rivalWins = confirmedSets.filter(s => Number(s.rival) > Number(s.my)).length;
@@ -515,8 +528,10 @@ export function ColocarResultadosScreen({ navigation, route }) {
                     key={op.key}
                     style={[styles.tipoBtn, tipoResultado === op.key && styles.tipoBtnActive]}
                     onPress={() => {
+                      tocoTipo.current = true;
                       setTipoResultado(op.key);
-                      setJugadorEspecial(null);
+                      // NUEVO (09): en walkover / abandono queda marcado quien se retiró (se puede cambiar)
+                      setJugadorEspecial(op.key !== 'normal' ? ausenteSugerido : null);
                       setConfirmedSets([]);
                       setCurMy('');
                       setCurRival('');

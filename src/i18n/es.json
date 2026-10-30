@@ -1265,6 +1265,8 @@
     "sustitutoTitulo": "Sustituto",
     "sinAmigos": "Aún no tienes amigos para invitar.",
     "reclamarWalkover": "Reclamar walkover",
-    "notaCancelar": "Ya no puedes cancelar: faltan menos de 5 horas para el partido. Si no podrás jugar, retírate."
+    "notaCancelar": "Ya no puedes cancelar: faltan menos de 5 horas para el partido. Si no podrás jugar, retírate.",
+    "reclamarAbandono": "Reclamar abandono",
+    "avisoRivalAbandono": "{{nombre}} abandonó el partido en pleno juego. Reclama el abandono para publicar el resultado."
   }
 }

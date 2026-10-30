@@ -1265,6 +1265,8 @@
     "sustitutoTitulo": "Substitute",
     "sinAmigos": "You don't have friends to invite yet.",
     "reclamarWalkover": "Claim walkover",
-    "notaCancelar": "You can no longer cancel: the match starts in less than 5 hours. If you can't play, withdraw."
+    "notaCancelar": "You can no longer cancel: the match starts in less than 5 hours. If you can't play, withdraw.",
+    "reclamarAbandono": "Claim retirement",
+    "avisoRivalAbandono": "{{nombre}} retired during the match. Claim the retirement to post the result."
   }
 }

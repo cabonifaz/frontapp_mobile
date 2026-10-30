@@ -196,6 +196,13 @@ export function DetallePartidoScreen({ navigation, route }) {
   const ladoRival  = miLado === 1 ? 2 : miLado === 2 ? 1 : 0;
   const rivalIncompleto = esConfirmado && soyActivo && ladoRival > 0 && faltaEnLado(ladoRival);
   const miLadoIncompleto = esConfirmado && soyActivo && miLado > 0 && faltaEnLado(miLado);
+  // NUEVO (09): el lado rival se quedó sin nadie (retiro o abandono) → yo no puedo retirarme;
+  // reclamo walkover / abandono o cancelo el partido.
+  const rivalSinJugadores = esConfirmado && soyActivo && ladoRival > 0 && jugVivo.length > 0 && activosLado(ladoRival) === 0;
+  const eventosVivo = Array.isArray(vivoInfo?.eventos) ? vivoInfo.eventos : [];
+  const rivalAbandono = ladoRival > 0 && (Number(vivoInfo?.abandono_lado) === ladoRival
+    || eventosVivo.some(e => e.tipo === 'ABANDONO' && Number(e.lado) === ladoRival));
+  const tipoReclamo = rivalAbandono ? 'abandono' : 'walkover';
   const sinResultado = !item.id_resultado;
   const nombresRetirados = jugVivo.filter(j => j.estado === 'RETIRADO').map(j => primerNombre(j.nombre)).join(' y ');
   // Cancelar: solo el creador; si ya está confirmado, solo hasta 5 horas antes
@@ -206,8 +213,12 @@ export function DetallePartidoScreen({ navigation, route }) {
     return isNaN(d.getTime()) ? null : d;
   })();
   const horasParaInicio = inicioPartido ? (inicioPartido.getTime() - Date.now()) / 3600000 : null;
-  const puedeCancelar = soyCreador && !esFinalizado && (!esConfirmado || horasParaInicio == null || horasParaInicio >= 5);
-  const puedeRetirarse = esConfirmado && soyActivo && sinResultado;
+  // CORREGIDO (09): si el rival se quedó sin jugadores, cualquiera del lado que queda puede cancelar
+  const puedeCancelar = !esFinalizado && sinResultado && (
+    rivalSinJugadores
+    || (soyCreador && !yoRetirado && (!esConfirmado || horasParaInicio == null || horasParaInicio >= 5)));
+  const puedeRetirarse = esConfirmado && soyActivo && sinResultado && !rivalSinJugadores
+    && vivoInfo?.estado_vivo !== 'FINALIZADO';
 
   function handleRetirarse() {
     const enVivo = vivoInfo?.estado_vivo === 'EN_JUEGO';
@@ -487,11 +498,12 @@ export function DetallePartidoScreen({ navigation, route }) {
             <Ionicons name="flag-outline" size={18} color={colors.primary} />
             <Text style={styles.avisoTxt}>
               {pendienteLado(ladoRival) ? t('retiro.avisoRivalSustituto', { nombre: nombresRetirados })
+                : rivalAbandono ? t('retiro.avisoRivalAbandono', { nombre: nombresRetirados })
                 : t('retiro.avisoRivalWalkover', { nombre: nombresRetirados })}
             </Text>
           </View>
         )}
-        {esConfirmado && sinResultado && miLadoIncompleto && (
+        {esConfirmado && sinResultado && miLadoIncompleto && !rivalSinJugadores && (
           <View style={styles.aviso}>
             <Ionicons name="person-remove-outline" size={18} color={colors.primary} />
             <Text style={styles.avisoTxt}>
@@ -682,7 +694,7 @@ export function DetallePartidoScreen({ navigation, route }) {
             <Text style={styles.cancelBtnText}>{t('retiro.boton')}</Text>
           </TouchableOpacity>
         )}
-        {soyCreador && esConfirmado && !puedeCancelar && !esFinalizado && sinResultado && (
+        {soyCreador && esConfirmado && !puedeCancelar && !esFinalizado && sinResultado && !yoRetirado && (
           <Text style={styles.mandatoryNote}>{t('retiro.notaCancelar')}</Text>
         )}
 
@@ -708,7 +720,9 @@ export function DetallePartidoScreen({ navigation, route }) {
         )}
 
         {/* NUEVO (08): dobles — invitar a un amigo a reemplazar a mi compañero */}
-        {esDoblesPartido && miLadoIncompleto && sinResultado && !pendienteLado(miLado) && (
+        {/* CORREGIDO (09): si el equipo rival ya no tiene a nadie, no hay sustituto: solo reclamar o cancelar */}
+        {esDoblesPartido && miLadoIncompleto && sinResultado && !pendienteLado(miLado) && !rivalSinJugadores
+          && vivoInfo?.estado_vivo !== 'FINALIZADO' && (
           <TouchableOpacity style={styles.resultadosBtn} onPress={() => setElegirSustituto(true)} disabled={accion}>
             <Ionicons name="person-add-outline" size={20} color={colors.primary} />
             <Text style={styles.resultadosBtnText}>{t('retiro.invitarSustituto')}</Text>
@@ -743,11 +757,15 @@ export function DetallePartidoScreen({ navigation, route }) {
                     esDobles: true,
                   }
                 : { ...item, ...partido, id_partido: partido.id, yo, rival, esCreador: esMiCreacion },
+              // NUEVO (09): abre directo en walkover / abandono con el rival marcado
+              ...(rivalIncompleto && !item.id_resultado ? { tipoSugerido: tipoReclamo, ausenteSugerido: 'rival' } : {}),
             })}
           >
             <Ionicons name="trophy-outline" size={20} color={colors.primary} />
             <Text style={styles.resultadosBtnText}>
-              {item.id_resultado ? t('detalle.verResultado') : rivalIncompleto ? t('retiro.reclamarWalkover') : t('detalle.colocarResultados')}
+              {item.id_resultado ? t('detalle.verResultado')
+                : rivalIncompleto ? t(rivalAbandono ? 'retiro.reclamarAbandono' : 'retiro.reclamarWalkover')
+                : t('detalle.colocarResultados')}
             </Text>
           </TouchableOpacity>
         )}
