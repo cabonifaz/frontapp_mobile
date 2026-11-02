@@ -5,6 +5,7 @@ import { RankedLogo, RANKED_LIME } from '../../../components/common/RankedLogo';
 import { authService } from '../../../services/authService';
 import { cargarIdiomaGuardado } from '../../../i18n';
 import { cargarDeporteActivo } from '../../../utils/deporteActivo';   // NUEVO (07)
+import { usuarioService } from '../../../services/usuarioService';
 
 const BG = '#0D1C27';
 
@@ -17,6 +18,11 @@ export function SplashScreen({ navigation }) {
       await cargarIdiomaGuardado();
       const loggedIn = await authService.isLoggedIn();
       if (!loggedIn) { navigation.replace('Login'); return; }
+      // NUEVO: cuenta sin cuestionario (Google / Facebook) → completar el registro
+      if (await usuarioService.necesitaCuestionario()) {
+        navigation.replace('Register', { completar: true });
+        return;
+      }
       // NUEVO (07): con sesión abierta entra al deporte que eligió; si no eligió, se le pregunta
       const deporte = await cargarDeporteActivo();
       navigation.replace(deporte ? 'MainTabs' : 'ElegirDeporte');

@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import * as SecureStore from 'expo-secure-store';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';   // CORREGIDO: respeta barra de estado y botones de Android
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -258,7 +259,7 @@ export function PartidosScreen({ navigation }) {
   const tituloTab = (tab) => (CLAVE_TAB[tab] ? t(CLAVE_TAB[tab]) : tab);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <SharedHeader
         nombre={usuario?.nombre}
         deporte={usuario?.deporte}

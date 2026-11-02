@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, Image, Modal, TextInput, ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Modal, TextInput, ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';   // CORREGIDO: respeta barra de estado y botones de Android
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../constants';
 import { amistadService } from '../../services/amistadService';

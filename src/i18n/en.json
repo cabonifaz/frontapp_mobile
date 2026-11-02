@@ -137,7 +137,9 @@
       "cuestionario": "Questionnaire error",
       "cuestionarioMensaje": "The questionnaire could not be completed."
     },
-    "preguntaMano": "What is your dominant hand?"
+    "preguntaMano": "What is your dominant hand?",
+    "completarTitulo": "Complete your profile",
+    "completarTexto": "Before you play we need a few more details: your sport, your level and your photo."
   },
   "fechas": {
     "mesesCortos": [

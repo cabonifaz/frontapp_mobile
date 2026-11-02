@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, ImageBackground, Dimensions, SafeAreaView, ActivityIndicator, Alert,
+  Image, ImageBackground, Dimensions, ActivityIndicator, Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';   // CORREGIDO: respeta barra de estado y botones de Android
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -422,7 +423,7 @@ export function PlayerProfileScreen({ navigation, route }) {
       <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
 
         <ImageBackground source={{ uri: p.coverUri ?? COVER_DEFAULT }} style={styles.cover}>
-          <SafeAreaView>
+          <SafeAreaView edges={['top']}>
             <TouchableOpacity
               style={styles.backBtn}
               onPress={() => navigation.goBack()}

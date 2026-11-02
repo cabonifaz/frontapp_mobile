@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, ActivityIndicator, Linking, RefreshControl,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Linking, RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';   // CORREGIDO: respeta barra de estado y botones de Android
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -180,7 +180,7 @@ export function RankingScreen({ navigation }) {
   const proximas = ligas.filter(l => l.estado_liga === 'LIGA_PROXIMAMENTE');
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <SharedHeader
         nombre={usuario?.nombre}
         deporte={usuario?.deporte}

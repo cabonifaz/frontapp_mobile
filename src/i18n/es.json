@@ -137,7 +137,9 @@
       "cuestionario": "Error en cuestionario",
       "cuestionarioMensaje": "No se pudo completar el cuestionario."
     },
-    "preguntaMano": "¿Cuál es tu mano dominante?"
+    "preguntaMano": "¿Cuál es tu mano dominante?",
+    "completarTitulo": "Completa tu perfil",
+    "completarTexto": "Antes de jugar necesitamos unos datos más: tu deporte, tu nivel y tu foto."
   },
   "fechas": {
     "mesesCortos": [

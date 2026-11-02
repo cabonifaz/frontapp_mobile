@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Image, TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';   // CORREGIDO: respeta barra de estado y botones de Android
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n';
@@ -197,7 +198,7 @@ export function ResultadosScreen({ navigation }) {
   const grouped = React.useMemo(() => groupByDate(data), [data, i18nHook.language]);
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <SharedHeader
         nombre={usuario?.nombre}
         deporte={usuario?.deporte}

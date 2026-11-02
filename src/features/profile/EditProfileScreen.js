@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Image, SafeAreaView, KeyboardAvoidingView,
+  TextInput, Image, KeyboardAvoidingView,
   Platform, Alert, ImageBackground, ActivityIndicator,
+  Modal, FlatList,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';   // CORREGIDO: respeta barra de estado y botones de Android
 import { elegirUnaImagen } from '../../utils/elegirImagen';   // NUEVO (07): cámara o galería
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -49,37 +51,54 @@ function UnderlineField({ label, value, onChangeText, placeholder, keyboardType 
   );
 }
 
-// ─── Dropdown field ───────────────────────────────────────────────────────────
+// ─── Selector (día / mes / año) ───────────────────────────────────────────────
+// CORREGIDO: antes la lista se abría flotando sobre el formulario y en Android no
+// recibía los toques ni el desplazamiento. Ahora se abre en una ventana desde abajo.
+const ALTO_OPCION = 48;
+
 function DropdownField({ label, value, options, onSelect, flex }) {
   const [open, setOpen] = useState(false);
+  const insets = useSafeAreaInsets();
+  const idx = Math.max(options.indexOf(value), 0);
   return (
-    <View style={[styles.fieldGroup, { flex, overflow: 'visible' }, open && { zIndex: 100 }]}>
+    <View style={[styles.fieldGroup, { flex }]}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setOpen(!open)} activeOpacity={0.7}>
-        <Text style={[styles.dropdownValue, !value && { color: colors.textSecondary }]}>
+      <TouchableOpacity style={styles.dropdownTrigger} onPress={() => setOpen(true)} activeOpacity={0.7}>
+        <Text style={[styles.dropdownValue, !value && { color: colors.textSecondary }]} numberOfLines={1}>
           {value || label}
         </Text>
-        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textSecondary} />
+        <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
       </TouchableOpacity>
-      {open && (
-        <View style={styles.dropdownList}>
-          <ScrollView nestedScrollEnabled style={{ maxHeight: 180 }}>
-            {options.map((opt) => (
+      <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
+        <TouchableOpacity style={styles.selectorFondo} activeOpacity={1} onPress={() => setOpen(false)} />
+        <View style={[styles.selectorHoja, { paddingBottom: insets.bottom + 12 }]}>
+          <View style={styles.selectorCabecera}>
+            <Text style={styles.selectorTitulo}>{label}</Text>
+            <TouchableOpacity onPress={() => setOpen(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={options}
+            keyExtractor={(opt) => String(opt)}
+            initialScrollIndex={idx > 2 ? idx - 2 : 0}
+            getItemLayout={(_, i) => ({ length: ALTO_OPCION, offset: ALTO_OPCION * i, index: i })}
+            style={{ maxHeight: ALTO_OPCION * 6 }}
+            renderItem={({ item: opt }) => (
               <TouchableOpacity
-                key={opt}
-                style={styles.dropdownItem}
+                style={[styles.selectorItem, value === opt && styles.selectorItemSel]}
                 onPress={() => { onSelect(opt); setOpen(false); }}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.dropdownItemText, value === opt && { color: colors.accent, fontWeight: '600' }]}>
+                <Text style={[styles.dropdownItemText, value === opt && { color: colors.accent, fontWeight: '700' }]}>
                   {opt}
                 </Text>
-                {value === opt && <Ionicons name="checkmark" size={16} color={colors.accent} />}
+                {value === opt && <Ionicons name="checkmark" size={18} color={colors.accent} />}
               </TouchableOpacity>
-            ))}
-          </ScrollView>
+            )}
+          />
         </View>
-      )}
+      </Modal>
     </View>
   );
 }
@@ -262,14 +281,26 @@ export function EditProfileScreen({ navigation, route }) {
                 </View>
               </View>
               <View style={{ flex: 1 }}>
-                <TextInput
-                  style={styles.fieldInput}
-                  value={telefono}
-                  onChangeText={setTelefono}
-                  placeholder="967753444"
-                  placeholderTextColor={colors.textSecondary}
-                  keyboardType="phone-pad"
-                />
+                {/* CORREGIDO: sin autocompletado de Google, para poder borrar o cambiar el número */}
+                <View style={styles.telefonoFila}>
+                  <TextInput
+                    style={[styles.fieldInput, { flex: 1, borderBottomWidth: 0 }]}
+                    value={telefono}
+                    onChangeText={(v) => setTelefono(v.replace(/[^0-9+ ]/g, ''))}
+                    placeholder="967753444"
+                    placeholderTextColor={colors.textSecondary}
+                    keyboardType="phone-pad"
+                    autoComplete="off"
+                    importantForAutofill="no"
+                    textContentType="none"
+                    maxLength={15}
+                  />
+                  {telefono ? (
+                    <TouchableOpacity onPress={() => setTelefono('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
               </View>
             </View>
           </View>
@@ -311,7 +342,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
-    paddingTop: Platform.OS === 'android' ? 32 : 0,
   },
 
   header: {
@@ -458,6 +488,22 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.surface,
   },
+  telefonoFila: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderBottomWidth: 1, borderBottomColor: '#1C1C1C',
+  },
+  selectorFondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)' },
+  selectorHoja: {
+    backgroundColor: colors.background, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    paddingHorizontal: 20, paddingTop: 16,
+  },
+  selectorCabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  selectorTitulo: { fontSize: 17, fontWeight: '800', color: colors.textPrimary },
+  selectorItem: {
+    height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 12, borderRadius: 12,
+  },
+  selectorItemSel: { backgroundColor: colors.surface },
   dropdownItemText: {
     fontSize: 15,
     color: colors.textPrimary,

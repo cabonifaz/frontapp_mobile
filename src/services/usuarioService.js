@@ -30,6 +30,19 @@ export const usuarioService = {
     return api.get('/api/Usuario/deportes');
   },
 
+  // NUEVO: true si la cuenta todavía no completó el cuestionario de registro (no tiene
+  // perfil en ningún deporte). Pasa con las cuentas creadas con Google o Facebook.
+  // Si no se puede consultar, devuelve false para no bloquear la entrada.
+  async necesitaCuestionario() {
+    try {
+      const deportes = await api.get('/api/Usuario/deportes-disponibles');
+      return Array.isArray(deportes) && deportes.length > 0
+        && !deportes.some(d => Number(d.tengo_perfil) === 1);
+    } catch (_) {
+      return false;
+    }
+  },
+
   async misResultados({ pagina = 1, tamanoPagina = 10 } = {}) {
     return api.get(`/api/Usuario/mis-resultados?pagina=${pagina}&tamano_pagina=${tamanoPagina}`);
   },

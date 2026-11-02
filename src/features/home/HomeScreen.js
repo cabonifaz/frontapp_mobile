@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  SafeAreaView, ImageBackground, ActivityIndicator, RefreshControl, Dimensions, Image,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ImageBackground, ActivityIndicator, RefreshControl, Dimensions, Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';   // CORREGIDO: respeta barra de estado y botones de Android
 import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle } from 'react-native-svg';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -187,7 +187,7 @@ export function HomeScreen({ navigation }) {
   const pctNivel = usuario?.porcentaje_nivel ?? 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top']}>
       <SharedHeader
         nombre={usuario?.nombre} deporte={usuario?.deporte} ranking={usuario?.ranking}
         calificacion={usuario?.calificacion} nivel={usuario?.nivel} puntos={usuario?.puntos}

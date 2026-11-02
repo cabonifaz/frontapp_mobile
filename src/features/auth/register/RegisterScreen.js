@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
   ImageBackground, Image,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';   // CORREGIDO: barra de estado y botones de Android
 import { Ionicons } from '@expo/vector-icons';
 import { elegirUnaImagen } from '../../../utils/elegirImagen';   // NUEVO (07): cámara o galería
 import { useTranslation } from 'react-i18next';
@@ -194,11 +195,13 @@ function CheckboxRow({ label, checked, onToggle }) {
 }
 
 // --- Step 1: Información básica ---
-function Step1({ data, setData, onNext, loading }) {
+function Step1({ data, setData, onNext, loading, completar }) {
   const { t } = useTranslation();
   // NUEVO: solo mayores de edad (18 a 90 años)
   const edades = Array.from({ length: EDAD_MAX - EDAD_MIN + 1 }, (_, i) => String(i + EDAD_MIN));
-  const canContinue = data.terminos && data.nombre && data.apellido && data.correo && data.contrasena && data.genero && data.edad;
+  // NUEVO: al completar el registro de una cuenta de Google / Facebook no se piden correo ni contraseña
+  const canContinue = data.terminos && data.nombre && data.apellido && data.genero && data.edad
+    && (completar || (data.correo && data.contrasena));
 
   return (
     <ScrollView
@@ -207,7 +210,8 @@ function Step1({ data, setData, onNext, loading }) {
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
     >
-      <Text style={styles.stepTitle}>{t('registro.infoBasica')}</Text>
+      <Text style={styles.stepTitle}>{completar ? t('registro.completarTitulo') : t('registro.infoBasica')}</Text>
+      {completar && <Text style={styles.stepSubtitle}>{t('registro.completarTexto')}</Text>}
 
       <UnderlineField
         label={t('registro.nombre')}
@@ -242,14 +246,23 @@ function Step1({ data, setData, onNext, loading }) {
       </View>
       <Text style={styles.edadHint}>{t('registro.edadHint', { edad: EDAD_MIN })}</Text>
 
-      <UnderlineField
-        label={t('registro.correo')}
-        value={data.correo}
-        onChangeText={(v) => setData({ ...data, correo: v })}
-        placeholder="jvarillas@icloud.com"
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
+      {completar ? (
+        data.correo ? (
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>{t('registro.correo')}</Text>
+            <Text style={[styles.fieldInput, { color: colors.textSecondary }]}>{data.correo}</Text>
+          </View>
+        ) : null
+      ) : (
+        <UnderlineField
+          label={t('registro.correo')}
+          value={data.correo}
+          onChangeText={(v) => setData({ ...data, correo: v })}
+          placeholder="jvarillas@icloud.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+      )}
 
       <View style={styles.fieldGroup}>
         <Text style={styles.fieldLabel}>{t('registro.celular')}</Text>
@@ -268,19 +281,24 @@ function Step1({ data, setData, onNext, loading }) {
               placeholder="967753444"
               placeholderTextColor={colors.textSecondary}
               keyboardType="phone-pad"
+              autoComplete="off"
+              importantForAutofill="no"
+              maxLength={15}
             />
           </View>
         </View>
       </View>
 
-      <UnderlineField
-        label={t('registro.contrasena')}
-        value={data.contrasena}
-        onChangeText={(v) => setData({ ...data, contrasena: v })}
-        placeholder={t('registro.contrasenaPlaceholder')}
-        secureTextEntry
-        autoCapitalize="none"
-      />
+      {!completar && (
+        <UnderlineField
+          label={t('registro.contrasena')}
+          value={data.contrasena}
+          onChangeText={(v) => setData({ ...data, contrasena: v })}
+          placeholder={t('registro.contrasenaPlaceholder')}
+          secureTextEntry
+          autoCapitalize="none"
+        />
+      )}
 
       <CheckboxRow
         label={t('registro.terminos')}
@@ -549,8 +567,13 @@ function StepNivel({ nivel, puntaje, onStart }) {
 
 const STEP_TITLES = ['registro.pasos.registro', 'registro.pasos.deporte', 'registro.pasos.nivel', 'registro.pasos.foto'];
 
-export function RegisterScreen({ navigation }) {
+export function RegisterScreen({ navigation, route }) {
   const { t } = useTranslation();   // NUEVO: idiomas
+  const insets = useSafeAreaInsets();
+  // NUEVO: cuenta creada con Google / Facebook que aún no hizo el cuestionario.
+  // Ya tiene sesión: se piden sus datos, deporte, nivel, mano y foto, sin correo ni contraseña.
+  const completar = !!route?.params?.completar;
+  const [misDatos, setMisDatos] = useState(null);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [nivelObtenido, setNivelObtenido] = useState(null);
@@ -566,8 +589,32 @@ export function RegisterScreen({ navigation }) {
     es_profesor: false, logros: '',
   });
 
+  // NUEVO: al completar, se precargan nombre, apellidos, correo y celular de la cuenta
+  useEffect(() => {
+    if (!completar) return;
+    usuarioService.misDatos()
+      .then(d => {
+        if (!d) return;
+        setMisDatos(d);
+        setData(prev => ({
+          ...prev,
+          nombre:   prev.nombre   || d.nombre    || '',
+          apellido: prev.apellido || d.apellidos || '',
+          correo:   d.correo || prev.correo,
+          celular:  prev.celular  || d.telefono  || '',
+        }));
+      })
+      .catch(() => {});
+  }, [completar]);
+
+  async function salirDelRegistro() {
+    // Sin el cuestionario no se puede entrar: vuelve al inicio de sesión
+    await authService.logout();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+  }
+
   async function handleNextStep1() {
-    if (!data.nombre || !data.apellido || !data.correo || !data.contrasena) {
+    if (!data.nombre || !data.apellido || (!completar && (!data.correo || !data.contrasena))) {
       Alert.alert(t('registro.errores.camposRequeridos'), t('registro.errores.completaCampos'));
       return;
     }
@@ -585,6 +632,8 @@ export function RegisterScreen({ navigation }) {
       Alert.alert(t('registro.errores.terminosTitulo'), t('registro.errores.terminosMensaje'));
       return;
     }
+
+    if (completar) { setStep(2); return; }   // NUEVO: la cuenta ya existe, no se valida el correo
 
     // Limpiamos espacios y pasamos a minúsculas para evitar duplicados "invisibles"
     const correoLimpio = data.correo.trim().toLowerCase();
@@ -612,25 +661,43 @@ export function RegisterScreen({ navigation }) {
       setLoading(true);
       const idGenero = GENERO_MAP[data.genero] ?? null;   // null = "Prefiero no decirlo"
 
-      // 1. Crear cuenta
-      try {
-        await authService.registrar({
-          ...data,
-          apellidos: data.apellido,
-          telefono:  data.celular || null,
-          id_genero: idGenero,
-        });
-      } catch (e) {
-        Alert.alert(t('registro.errores.registrarse'), e.message);
-        return;
+      // NUEVO: cuenta de Google / Facebook → solo se actualizan sus datos (ya tiene sesión)
+      if (completar) {
+        try {
+          await usuarioService.actualizarPerfil({
+            nombre:          data.nombre.trim(),
+            apellidos:       data.apellido.trim(),
+            telefono:        data.celular,
+            fechaNacimiento: misDatos?.fecha_nacimiento ?? null,
+            sobreMi:         misDatos?.sobre_mi ?? null,
+          });
+        } catch (e) {
+          Alert.alert(t('comun.error'), e.message);
+          return;
+        }
       }
 
-      // 2. Login automático para obtener el token JWT
-      try {
-        await authService.login(data.correo, data.contrasena);
-      } catch (e) {
-        Alert.alert(t('registro.errores.iniciarSesion'), e.message);
-        return;
+      if (!completar) {
+        // 1. Crear cuenta
+        try {
+          await authService.registrar({
+            ...data,
+            apellidos: data.apellido,
+            telefono:  data.celular || null,
+            id_genero: idGenero,
+          });
+        } catch (e) {
+          Alert.alert(t('registro.errores.registrarse'), e.message);
+          return;
+        }
+
+        // 2. Login automático para obtener el token JWT
+        try {
+          await authService.login(data.correo, data.contrasena);
+        } catch (e) {
+          Alert.alert(t('registro.errores.iniciarSesion'), e.message);
+          return;
+        }
       }
 
       // 3. Subir foto de perfil a Cloudinary si existe una seleccionada
@@ -660,6 +727,7 @@ export function RegisterScreen({ navigation }) {
         setPuntajeObtenido(resultado.puntajeInicial ?? null);
       } catch (e) {
         Alert.alert(t('registro.errores.cuestionario'), e.message ?? t('registro.errores.cuestionarioMensaje'));
+        if (completar) return;   // NUEVO: sin cuestionario no se puede entrar; puede volver a intentarlo
       }
 
       // NUEVO (036): guardar mano dominante (si falla no detiene el registro)
@@ -701,10 +769,10 @@ export function RegisterScreen({ navigation }) {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: insets.top + 16, paddingBottom: insets.bottom }]}>
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => step === 1 ? navigation.goBack() : setStep(step - 1)}
+          onPress={() => (step === 1 ? (completar ? salirDelRegistro() : navigation.goBack()) : setStep(step - 1))}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
@@ -723,6 +791,7 @@ export function RegisterScreen({ navigation }) {
               setData={setData}
               onNext={handleNextStep1}
               loading={loading}
+              completar={completar}
             />
           )}
           {step === 2 && (

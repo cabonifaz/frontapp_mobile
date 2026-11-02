@@ -53,7 +53,15 @@ export function ElegirDeporteScreen({ navigation, route }) {
 
   useEffect(() => {
     api.get('/api/Usuario/deportes-disponibles')
-      .then(res => setDeportes(Array.isArray(res) && res.length ? res : RESPALDO))
+      .then(res => {
+        // NUEVO: si la cuenta no tiene perfil en ningún deporte (entró con Google o Facebook),
+        // primero completa el cuestionario de registro (deporte, nivel, mano, foto…)
+        if (Array.isArray(res) && res.length && !res.some(x => Number(x.tengo_perfil) === 1)) {
+          navigation.replace('Register', { completar: true });
+          return;
+        }
+        setDeportes(Array.isArray(res) && res.length ? res : RESPALDO);
+      })
       .catch(() => setDeportes(RESPALDO))
       .finally(() => setCargando(false));
   }, []);

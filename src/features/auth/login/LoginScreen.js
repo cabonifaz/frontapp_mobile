@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { colors } from '../../../constants';
 import { RankedLogo } from '../../../components/common';
 import { authService } from '../../../services/authService';
+import { usuarioService } from '../../../services/usuarioService';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 // Configurar Google Sign-In con tus credenciales
@@ -75,6 +76,12 @@ export function LoginScreen({ navigation }) {
   const [contrasena, setContrasena] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // NUEVO: si la cuenta aún no hizo el cuestionario (Google / Facebook), primero lo completa
+  async function entrar() {
+    const falta = await usuarioService.necesitaCuestionario();
+    navigation.replace(falta ? 'Register' : 'ElegirDeporte', falta ? { completar: true } : undefined);
+  }
+
   async function handleLogin() {
     if (!correo || !contrasena) {
       Alert.alert(t('login.camposRequeridos'), t('login.ingresaCorreoContrasena'));
@@ -83,7 +90,7 @@ export function LoginScreen({ navigation }) {
     try {
       setLoading(true);
       await authService.login(correo, contrasena);
-      navigation.replace('ElegirDeporte');   // NUEVO (07): primero elige el deporte
+      await entrar();   // NUEVO (07): primero elige el deporte
     } catch (error) {
       Alert.alert(t('comun.error'), error.message);
     } finally {
@@ -96,7 +103,7 @@ export function LoginScreen({ navigation }) {
       setLoading(true);
       const data = await authService.iniciarSesionFacebook();
       if (data) {
-        navigation.replace('ElegirDeporte');   // NUEVO (07)
+        await entrar();   // NUEVO (07)
       }
     } catch (error) {
       Alert.alert(t('login.errorFacebook'), error.message || t('login.noSePudoIniciar'));
@@ -113,7 +120,7 @@ export function LoginScreen({ navigation }) {
       const idToken = userInfo.data?.idToken ?? userInfo.idToken;
       if (!idToken) throw new Error(t('login.noTokenGoogle'));
       await authService.loginGoogle(idToken);
-      navigation.replace('ElegirDeporte');   // NUEVO (07)
+      await entrar();   // NUEVO (07)
     } catch (error) {
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         // Usuario canceló, no hacemos nada
