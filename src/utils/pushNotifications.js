@@ -34,8 +34,10 @@ export function configurarNotificaciones() {
       }),
     });
 
-    // Al tocar un aviso se abre la bandeja de notificaciones
-    Notifications.addNotificationResponseReceivedListener(() => {
+    // Al tocar un aviso se abre la bandeja de notificaciones (y se marca como atendido)
+    Notifications.addNotificationResponseReceivedListener((resp) => {
+      const id = resp?.notification?.request?.identifier;
+      if (id) SecureStore.setItemAsync(CLAVE_ULTIMO_AVISO, id).catch(() => {});
       navegar('Notificaciones');
     });
   } catch (e) {
@@ -43,12 +45,24 @@ export function configurarNotificaciones() {
   }
 }
 
-// Si la app estaba cerrada y se abrió tocando un aviso
+// Si la app estaba cerrada y se abrió tocando un aviso.
+// CORREGIDO: Android devuelve SIEMPRE el último aviso que se tocó (aunque sea de hace días),
+// así que la app abría Notificaciones cada vez. Ahora cada aviso se atiende una sola vez.
+const CLAVE_ULTIMO_AVISO = 'push_ultimo_aviso_abierto';
+let revisadoAlAbrir = false;
+
 export async function abrirSiVinoDeNotificacion() {
-  if (!Notifications) return;
+  if (!Notifications || revisadoAlAbrir) return;
+  revisadoAlAbrir = true;
   try {
     const resp = await Notifications.getLastNotificationResponseAsync();
-    if (resp) navegar('Notificaciones');
+    if (!resp) return;
+    const id = resp.notification?.request?.identifier ?? null;
+    const yaAbierto = await SecureStore.getItemAsync(CLAVE_ULTIMO_AVISO);
+    if (!id || id === yaAbierto) return;
+    await SecureStore.setItemAsync(CLAVE_ULTIMO_AVISO, id);
+    try { await Notifications.clearLastNotificationResponseAsync?.(); } catch {}
+    navegar('Notificaciones');
   } catch {}
 }
 

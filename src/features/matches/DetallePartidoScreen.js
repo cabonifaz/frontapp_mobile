@@ -770,7 +770,7 @@ export function DetallePartidoScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: 32 + insets.bottom }} />
       </ScrollView>
 
       {/* NUEVO (08): elegir a un amigo como sustituto */}

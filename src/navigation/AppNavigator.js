@@ -50,6 +50,19 @@ import { AdminConfiguracionScreen } from '../features/admin/AdminConfiguracionSc
 import { AdminLigasScreen } from '../features/admin/AdminLigasScreen';         // NUEVO (08)
 import { AdminLigaFormScreen } from '../features/admin/AdminLigaFormScreen';   // NUEVO (08)
 import { navigationRef } from './navigationRef';
+import { setStatusBarStyle } from 'expo-status-bar';
+
+// CORREGIDO: color de la hora / batería / señal según el fondo de cada pantalla.
+// Antes eran siempre blancos y en las pantallas de fondo blanco no se veían.
+const PANTALLAS_OSCURAS = new Set([
+  'Splash', 'Login', 'ForgotPassword', 'ElegirDeporte',
+  'Home', 'Ranking', 'Resultados', 'Partidos', 'Perfil',
+  'PlayerProfile', 'DetallePartido', 'DetalleResultado', 'LigaDetalle', 'PartidoEnVivo',
+]);
+function actualizarBarraEstado() {
+  const ruta = navigationRef.getCurrentRoute?.()?.name;
+  if (ruta) setStatusBarStyle(PANTALLAS_OSCURAS.has(ruta) ? 'light' : 'dark');
+}
 import { configurarNotificaciones } from '../utils/pushNotifications';
 
 configurarNotificaciones();
@@ -127,7 +140,7 @@ function MainTabs() {
 
 export function AppNavigator() {
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} onReady={actualizarBarraEstado} onStateChange={actualizarBarraEstado}>
       <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="Login" component={LoginScreen} />
