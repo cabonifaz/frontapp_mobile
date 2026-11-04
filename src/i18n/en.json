@@ -299,7 +299,8 @@
     "solicitada": "Requested",
     "aceptada": "Accepted",
     "completada": "Completed",
-    "rechazada": "Declined"
+    "rechazada": "Declined",
+    "noJugado": "Not played"
   },
   "partidos": {
     "tabs": {
@@ -587,7 +588,10 @@
     "colocarResultados": "Submit results",
     "retoAceptado": "Challenge accepted",
     "retoAceptadoMensaje": "Your match with {{nombre}} is confirmed. Coordinate the details in the chat.",
-    "rechazarRetoMensaje": "Are you sure you want to decline this challenge?"
+    "rechazarRetoMensaje": "Are you sure you want to decline this challenge?",
+    "noJugadoAviso": "This match was marked as Not played: nobody posted a result (not even a walkover or retirement) within 6 hours of the start time.",
+    "canceladoAviso": "This match was cancelled.",
+    "invitacionNoDisponible": "This invitation is no longer available: the match was cancelled, already finished or was not played."
   },
   "colocar": {
     "set": "Set {{n}}",
@@ -953,7 +957,8 @@
       "SUSTITUTO_INVITACION": "{{nombre}} invited you to replace their partner in a doubles match.",
       "SUSTITUTO_ACEPTADO": "{{nombre}} joined your match as a substitute.",
       "SUSTITUTO_RECHAZADO": "{{nombre}} can't be the substitute. Invite another friend.",
-      "VIVO_DELEGADO": "{{nombre}} gave you permission to keep the live score of their match."
+      "VIVO_DELEGADO": "{{nombre}} gave you permission to keep the live score of their match.",
+      "PARTIDO_NO_JUGADO": "No result was posted in time: your match was marked as Not played."
     },
     "tiposSinNombre": {
       "RESULTADO_POR_CONFIRMAR": "You have a result to confirm.",
@@ -971,13 +976,20 @@
       "SUSTITUTO_INVITACION": "You were invited as a substitute in a doubles match.",
       "SUSTITUTO_ACEPTADO": "A substitute joined your match.",
       "SUSTITUTO_RECHAZADO": "The substitute can't play.",
-      "VIVO_DELEGADO": "You were given permission to keep a live score."
+      "VIVO_DELEGADO": "You were given permission to keep a live score.",
+      "PARTIDO_NO_JUGADO": "No result was posted in time: your match was marked as Not played."
     },
     "tiempo": {
       "ahora": "Now",
       "minutos": "{{n}} min ago",
       "horas": "{{n}} h ago",
       "dias": "{{n}} d ago"
+    },
+    "noDisponibleTitulo": "Match not available",
+    "noDisponible": {
+      "ESTADO_CANCELADO": "This match was cancelled, so the invitation is no longer available.",
+      "ESTADO_FINALIZADO": "This match already finished, so the invitation is no longer available.",
+      "ESTADO_NO_JUGADO": "This match was not played, so the invitation is no longer available."
     }
   },
   "fotos": {

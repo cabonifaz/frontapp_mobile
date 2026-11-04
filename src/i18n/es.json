@@ -299,7 +299,8 @@
     "solicitada": "Solicitada",
     "aceptada": "Aceptada",
     "completada": "Completada",
-    "rechazada": "Rechazada"
+    "rechazada": "Rechazada",
+    "noJugado": "No jugado"
   },
   "partidos": {
     "tabs": {
@@ -587,7 +588,10 @@
     "colocarResultados": "Colocar resultados",
     "retoAceptado": "Reto aceptado",
     "retoAceptadoMensaje": "El partido con {{nombre}} está confirmado. Coordinen los detalles por el chat.",
-    "rechazarRetoMensaje": "¿Seguro que quieres rechazar este reto?"
+    "rechazarRetoMensaje": "¿Seguro que quieres rechazar este reto?",
+    "noJugadoAviso": "Este partido quedó como No jugado: nadie colocó el resultado (ni walkover ni abandono) dentro de las 6 horas siguientes al horario del partido.",
+    "canceladoAviso": "Este partido fue cancelado.",
+    "invitacionNoDisponible": "Esta invitación ya no está disponible: el partido fue cancelado, ya terminó o no se jugó."
   },
   "colocar": {
     "set": "Set {{n}}",
@@ -953,7 +957,8 @@
       "SUSTITUTO_INVITACION": "{{nombre}} te invitó a reemplazar a su pareja en un partido de dobles.",
       "SUSTITUTO_ACEPTADO": "{{nombre}} se unió a tu partido como sustituto.",
       "SUSTITUTO_RECHAZADO": "{{nombre}} no puede ser sustituto. Invita a otro amigo.",
-      "VIVO_DELEGADO": "{{nombre}} te dio permiso para anotar en vivo el marcador de su partido."
+      "VIVO_DELEGADO": "{{nombre}} te dio permiso para anotar en vivo el marcador de su partido.",
+      "PARTIDO_NO_JUGADO": "Nadie colocó el resultado a tiempo: tu partido quedó como No jugado."
     },
     "tiposSinNombre": {
       "RESULTADO_POR_CONFIRMAR": "Tienes un resultado por confirmar.",
@@ -971,13 +976,20 @@
       "SUSTITUTO_INVITACION": "Te invitaron como sustituto en un partido de dobles.",
       "SUSTITUTO_ACEPTADO": "Un sustituto se unió a tu partido.",
       "SUSTITUTO_RECHAZADO": "El sustituto no puede jugar.",
-      "VIVO_DELEGADO": "Te dieron permiso para anotar un partido en vivo."
+      "VIVO_DELEGADO": "Te dieron permiso para anotar un partido en vivo.",
+      "PARTIDO_NO_JUGADO": "Nadie colocó el resultado a tiempo: tu partido quedó como No jugado."
     },
     "tiempo": {
       "ahora": "Ahora",
       "minutos": "Hace {{n}} min",
       "horas": "Hace {{n}} h",
       "dias": "Hace {{n}} d"
+    },
+    "noDisponibleTitulo": "Partido no disponible",
+    "noDisponible": {
+      "ESTADO_CANCELADO": "Este partido fue cancelado, así que la invitación ya no está disponible.",
+      "ESTADO_FINALIZADO": "Este partido ya terminó, así que la invitación ya no está disponible.",
+      "ESTADO_NO_JUGADO": "Este partido no se jugó, así que la invitación ya no está disponible."
     }
   },
   "fotos": {

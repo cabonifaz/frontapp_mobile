@@ -147,7 +147,11 @@ export function DetallePartidoScreen({ navigation, route }) {
 
   const estadoPartido = Number(item.estado_partido ?? 0);
   const esBuscando    = estadoPartido === 28; // BUSCANDO: sin rival confirmado
-  const esFinalizado  = estadoPartido === 31 || estadoPartido === 32; // 31=Finalizado, 32=Cancelado
+  // NUEVO (10): "No jugado" = confirmado sin resultado 6 h después del inicio
+  const estadoCodigo  = item.estado_partido_codigo ?? null;
+  const esNoJugado    = estadoCodigo === 'ESTADO_NO_JUGADO' || String(item.estado ?? '').trim().toLowerCase() === 'no jugado';
+  const esCancelado   = estadoPartido === 32 || estadoCodigo === 'ESTADO_CANCELADO';
+  const esFinalizado  = estadoPartido === 31 || esCancelado || esNoJugado; // ya no se juega ni se edita
 
   // NUEVO: reto directo a un amigo esperando respuesta
   const esPendiente = estadoPartido === 29;
@@ -173,7 +177,11 @@ export function DetallePartidoScreen({ navigation, route }) {
   const miParejaActiva    = miPareja.filter(activo);
   const parejaRivalActiva = parejaRival.filter(activo);
   const pendientesDobles = jugadores.filter(j => j.estado_codigo === 'PART_INVITADO');
-  const soyInvitadoDobles = esDoblesPartido && yoJugador?.estado_codigo === 'PART_INVITADO';
+  // CORREGIDO (10): el sustituto también figura como invitado; sus botones son "Aceptar y jugar / No puedo jugar",
+  // así que aquí no se repiten. Y en un partido cancelado, finalizado o no jugado ya no hay invitación que responder.
+  const yoSoySustituto = Number(yoJugador?.es_sustituto_pendiente ?? 0) === 1;
+  const invitacionCaducada = esFinalizado && yoJugador?.estado_codigo === 'PART_INVITADO';
+  const soyInvitadoDobles = esDoblesPartido && yoJugador?.estado_codigo === 'PART_INVITADO' && !yoSoySustituto && !esFinalizado;
   const nombresPareja = (lista) => lista.map(j => primerNombre(j.nombre ?? j.nombre_completo)).join(' y ');
   // Orientación del marcador: mi lado primero (sirve para singles y dobles)
   const yoEsLocal = item.soy_equipo_local != null ? Number(item.soy_equipo_local) === 1 : esMiCreacion;
@@ -544,8 +552,19 @@ export function DetallePartidoScreen({ navigation, route }) {
           </View>
         </View>
 
+        {/* NUEVO (10): partido que ya no se juega */}
+        {(esCancelado || esNoJugado || invitacionCaducada) && (
+          <View style={styles.aviso}>
+            <Ionicons name={esNoJugado ? 'time-outline' : 'close-circle-outline'} size={18} color={colors.primary} />
+            <Text style={styles.avisoTxt}>
+              {invitacionCaducada ? t('detalle.invitacionNoDisponible')
+                : esNoJugado ? t('detalle.noJugadoAviso') : t('detalle.canceladoAviso')}
+            </Text>
+          </View>
+        )}
+
         {/* Resultado final (solo cuando está Finalizado) */}
-        {esFinalizado && (() => {
+        {estadoPartido === 31 && !esNoJugado && (() => {
           const numSetsPartido = item.num_sets ?? 5;
           const setsData = Array.from({ length: numSetsPartido }, (_, i) => {
             const local = item[`set${i + 1}_puntos_local`];
@@ -729,7 +748,8 @@ export function DetallePartidoScreen({ navigation, route }) {
           </TouchableOpacity>
         )}
 
-        {!esFinalizado && !esBuscando && !esPendiente && !item.id_resultado && !rivalIncompleto && !miLadoIncompleto && !yoRetirado && (
+        {!esFinalizado && !esBuscando && !esPendiente && !item.id_resultado && !rivalIncompleto && !miLadoIncompleto && !yoRetirado
+          && !soySustitutoPendiente && !yoSoySustituto && !soyInvitadoDobles && (
           <TouchableOpacity
             style={styles.vivoBtn}
             onPress={() => navigation.navigate('PartidoEnVivo', { idPartido: partido.id })}
@@ -935,7 +955,7 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: colors.accent,
     borderRadius: 30, paddingVertical: 18,
-    width: '100%',
+    width: '100%', marginBottom: 12,   // CORREGIDO (10): los botones ya no quedan pegados
   },
   resultadosBtnText: { fontSize: 16, fontWeight: '700', color: colors.primary },
 

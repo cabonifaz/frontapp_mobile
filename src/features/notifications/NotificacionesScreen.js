@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  ActivityIndicator, Image, RefreshControl,
+  ActivityIndicator, Image, RefreshControl, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';   // CORREGIDO: respeta barra de estado y botones de Android
 import { useFocusEffect } from '@react-navigation/native';
@@ -33,6 +33,7 @@ const ICONO = {
   SUSTITUTO_ACEPTADO:      'people',
   SUSTITUTO_RECHAZADO:     'person-remove',
   VIVO_DELEGADO:           'radio',
+  PARTIDO_NO_JUGADO:       'time-outline',
 };
 
 function tiempoRelativo(fecha, t) {
@@ -105,6 +106,15 @@ export function NotificacionesScreen({ navigation }) {
       notificacionService.marcarLeidas(item.id_notificacion).catch(() => {});
     }
 
+    // NUEVO (10): invitaciones de un partido que ya no se juega → se avisa sin abrirlo
+    const cerrado = ['ESTADO_CANCELADO', 'ESTADO_FINALIZADO', 'ESTADO_NO_JUGADO'].includes(item.estado_partido_codigo);
+    const esInvitacion = ['SUSTITUTO_INVITACION', 'RETO_RECIBIDO', 'RETO_DIRECTO'].includes(item.tipo);
+    const retoJugado = item.tipo !== 'SUSTITUTO_INVITACION' && item.estado_partido_codigo === 'ESTADO_FINALIZADO';
+    if (esInvitacion && cerrado && !retoJugado) {
+      Alert.alert(t('notif.noDisponibleTitulo'), t(`notif.noDisponible.${item.estado_partido_codigo}`));
+      return;
+    }
+
     switch (item.tipo) {
       case 'RESULTADO_POR_CONFIRMAR':
         // Se confirma desde el partido, en la pestaña Partidos
@@ -139,6 +149,9 @@ export function NotificacionesScreen({ navigation }) {
         break;
       case 'VIVO_DELEGADO':
         if (item.id_partido) navigation.navigate('PartidoEnVivo', { idPartido: item.id_partido });
+        break;
+      case 'PARTIDO_NO_JUGADO':
+        if (item.id_partido) navigation.navigate('DetallePartido', { partido: { id_partido: item.id_partido } });
         break;
       case 'INSCRIPCION_ACTIVA':
       case 'INSCRIPCION_RECHAZADA':

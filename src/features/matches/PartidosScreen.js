@@ -33,6 +33,7 @@ const CLAVE_TAB = { 'Partidos': 'partidos.tabs.partidos', 'Clases': 'partidos.ta
 const CLAVE_ESTADO = {
   'pendiente': 'estados.pendiente', 'confirmado': 'estados.confirmado', 'finalizado': 'estados.finalizado',
   'cancelado': 'estados.cancelado', 'buscando oponente': 'estados.buscandoOponente',
+  'no jugado': 'estados.noJugado',   // NUEVO (10)
   'solicitada': 'estados.solicitada', 'aceptada': 'estados.aceptada',
   'completada': 'estados.completada', 'rechazada': 'estados.rechazada',
 };
@@ -122,6 +123,8 @@ function AppointmentCard({ item, onPress }) {
     statusBg = '#E3F2FD'; statusTxt = '#1565C0'; // Azul
   } else if (st.includes('finalizad') || st.includes('completad') || st === '3') {
     statusBg = '#E8F5E9'; statusTxt = '#2E7D32'; // Verde
+  } else if (st.includes('no jugado')) {
+    statusBg = '#ECEFF1'; statusTxt = '#546E7A'; // Gris: nadie jugó ni colocó resultado
   } else if (st.includes('cancelad') || st.includes('rechazad') || st === '4') {
     statusBg = '#FFEBEE'; statusTxt = '#C62828'; // Rojo
   }
