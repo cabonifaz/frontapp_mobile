@@ -1118,7 +1118,15 @@
       "VIVO_FIN": "The live coverage ended",
       "DELEGADO": "{{otro}} will keep the score",
       "CANCELADO": "The match was cancelled"
-    }
+    },
+    "porConfirmar": "To confirm",
+    "confirmarSet": "Confirm set",
+    "confirmarFinal": "Confirm and end match",
+    "porConfirmarTexto": "Set {{n}} finished {{marcador}}. Is the score correct?",
+    "porConfirmarAyuda": "If something is wrong, fix it with − before confirming.",
+    "porConfirmarEspectador": "Set to confirm: the scorekeeper is checking the score.",
+    "confirmarFinalTitulo": "End the match",
+    "confirmarFinalMensaje": "Set {{n}} ({{marcador}}) decides the match and closes the live score. Confirm?"
   },
   "admin": {
     "titulo": "Admin",

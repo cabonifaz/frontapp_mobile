@@ -1118,7 +1118,15 @@
       "VIVO_FIN": "Terminó la transmisión",
       "DELEGADO": "{{otro}} anotará el marcador",
       "CANCELADO": "El partido fue cancelado"
-    }
+    },
+    "porConfirmar": "Por confirmar",
+    "confirmarSet": "Confirmar set",
+    "confirmarFinal": "Confirmar y terminar partido",
+    "porConfirmarTexto": "Set {{n}} terminado {{marcador}}. ¿El marcador es correcto?",
+    "porConfirmarAyuda": "Si hay un error, corrígelo con − antes de confirmar.",
+    "porConfirmarEspectador": "Set por confirmar: quien anota está revisando el marcador.",
+    "confirmarFinalTitulo": "Terminar el partido",
+    "confirmarFinalMensaje": "Con el set {{n}} ({{marcador}}) se define el partido y se cierra el marcador en vivo. ¿Confirmas?"
   },
   "admin": {
     "titulo": "Administración",

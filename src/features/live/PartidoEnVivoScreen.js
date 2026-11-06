@@ -79,10 +79,12 @@ function Lado({ jugadores, sets, ganador, alineado }) {
   );
 }
 
-function BotonesPuntos({ onMas, onMenos, deshabilitado }) {
+function BotonesPuntos({ onMas, onMenos, deshabilitado, sinMas }) {
+  // NUEVO (11): con el set por confirmar solo se puede restar (para corregir)
+  const masOff = deshabilitado || sinMas;
   return (
     <View style={styles.botones}>
-      <TouchableOpacity style={[styles.btnMas, deshabilitado && styles.btnOff]} onPress={onMas} disabled={deshabilitado} activeOpacity={0.7}>
+      <TouchableOpacity style={[styles.btnMas, masOff && styles.btnOff]} onPress={onMas} disabled={masOff} activeOpacity={0.7}>
         <Ionicons name="add" size={34} color={colors.primary} />
       </TouchableOpacity>
       <TouchableOpacity style={[styles.btnMenos, deshabilitado && styles.btnOff]} onPress={onMenos} disabled={deshabilitado} activeOpacity={0.7}>
@@ -100,6 +102,7 @@ export function PartidoEnVivoScreen({ navigation, route }) {
   const [iniciando, setIniciando] = useState(false);
   const [editar, setEditar] = useState(null);   // { numero_set, a, b }
   const [elegirDelegado, setElegirDelegado] = useState(false);   // NUEVO (08)
+  const [confirmandoSet, setConfirmandoSet] = useState(false);   // NUEVO (11)
   const enviando = useRef(0);
   const cola = useRef(Promise.resolve());
   const ultimoCambio = useRef(0);   // hora del último toque: descarta lecturas pedidas antes
@@ -168,6 +171,13 @@ export function PartidoEnVivoScreen({ navigation, route }) {
   const faltaJugador = [1, 2].some(l => jugadores.length > 0
     && jugadores.filter(j => Number(j.lado) === l && (j.estado ?? 'ACTIVO') === 'ACTIVO').length < requeridos);
   const soyJugador = Number(d?.soy_jugador ?? 0) === 1;
+  // NUEVO (11): el set llegó a un marcador ganador pero falta confirmarlo
+  const porConfirmar = enJuego && validarSet(actual.puntos_lado1, actual.puntos_lado2, esDobles) === null
+    && Number(actual.confirmado ?? 0) !== 1;
+  const ganaSet1 = Number(actual.puntos_lado1) > Number(actual.puntos_lado2);
+  const cierraPartido = porConfirmar && ((ganaSet1 ? s1 : s2) + 1 >= setsNecesarios);
+  const confirmando = confirmandoSet;
+  const setConfirmando = setConfirmandoSet;
 
   // Botones + / −: se ve al instante y se envía SOLO el cambio (+1 / −1).
   // El servidor lo aplica al set que está en juego, así dos personas anotando no se pisan.
@@ -181,6 +191,22 @@ export function PartidoEnVivoScreen({ navigation, route }) {
              { numero_set: setActual, puntos_lado1: a, puntos_lado2: b, terminado: 0 }],
     }));
     encolar(() => enVivoService.sumar(idPartido, lado, delta));
+  }
+
+  // NUEVO (11): confirmar el set en juego; si con él se gana el partido, se pregunta antes
+  function confirmarSet() {
+    const marcador = `${actual.puntos_lado1} - ${actual.puntos_lado2}`;
+    const hacer = () => {
+      setConfirmando(true);
+      encolar(() => enVivoService.confirmarSet(idPartido, setActual)
+        .then(r => { if (r && r.exito === false) throw new Error(r.mensaje); })
+        .finally(() => setConfirmando(false)));
+    };
+    if (!cierraPartido) { hacer(); return; }
+    Alert.alert(t('vivo.confirmarFinalTitulo'), t('vivo.confirmarFinalMensaje', { n: setActual, marcador }), [
+      { text: t('comun.cancelar'), style: 'cancel' },
+      { text: t('vivo.confirmarFinal'), onPress: hacer },
+    ]);
   }
 
   // Corrección de un set (marcador completo)
@@ -337,12 +363,33 @@ export function PartidoEnVivoScreen({ navigation, route }) {
               {t('vivo.setDe', { n: setActual, total: d?.num_sets ?? '-' })}  ·  {t('vivo.aPuntos', { n: meta })}
             </Text>
             <View style={styles.puntosFila}>
-              {puedoMarcar && <BotonesPuntos onMas={() => cambiar(1, 1)} onMenos={() => cambiar(1, -1)} deshabilitado={!enJuego} />}
+              {puedoMarcar && <BotonesPuntos onMas={() => cambiar(1, 1)} onMenos={() => cambiar(1, -1)} deshabilitado={!enJuego} sinMas={porConfirmar} />}
               <Text style={styles.puntos}>{actual.puntos_lado1}</Text>
               <Text style={styles.puntosSep}>-</Text>
               <Text style={styles.puntos}>{actual.puntos_lado2}</Text>
-              {puedoMarcar && <BotonesPuntos onMas={() => cambiar(2, 1)} onMenos={() => cambiar(2, -1)} deshabilitado={!enJuego} />}
+              {puedoMarcar && <BotonesPuntos onMas={() => cambiar(2, 1)} onMenos={() => cambiar(2, -1)} deshabilitado={!enJuego} sinMas={porConfirmar} />}
             </View>
+            {/* NUEVO (11): el set no se cierra solo; quien anota confirma el marcador */}
+            {porConfirmar && (
+              puedoMarcar ? (
+                <View style={styles.confirmarCaja}>
+                  <Text style={styles.confirmarTxt}>
+                    {t('vivo.porConfirmarTexto', { n: setActual, marcador: `${actual.puntos_lado1} - ${actual.puntos_lado2}` })}
+                  </Text>
+                  <TouchableOpacity style={styles.confirmarBtn} onPress={confirmarSet} disabled={confirmando} activeOpacity={0.8}>
+                    {confirmando
+                      ? <ActivityIndicator color={colors.primary} />
+                      : <>
+                          <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                          <Text style={styles.confirmarBtnTxt}>{cierraPartido ? t('vivo.confirmarFinal') : t('vivo.confirmarSet')}</Text>
+                        </>}
+                  </TouchableOpacity>
+                  <Text style={styles.confirmarAyuda}>{t('vivo.porConfirmarAyuda')}</Text>
+                </View>
+              ) : (
+                <Text style={styles.aviso}>{t('vivo.porConfirmarEspectador')}</Text>
+              )
+            )}
             {Number(actual.puntos_lado1) === meta - 1 && Number(actual.puntos_lado2) === meta - 1 && (
               <Text style={styles.aviso}>{t('vivo.desempate', { n: meta - 1 })}</Text>
             )}
@@ -372,7 +419,9 @@ export function PartidoEnVivoScreen({ navigation, route }) {
                   <View style={{ flex: 1 }} />
                   {terminado
                     ? <Ionicons name="checkmark-circle" size={18} color={colors.positive} />
-                    : <Text style={styles.enJuegoTxt}>{t('vivo.enJuego')}</Text>}
+                    : <Text style={styles.enJuegoTxt}>
+                        {enJuego && Number(s.numero_set) === setActual && porConfirmar ? t('vivo.porConfirmar') : t('vivo.enJuego')}
+                      </Text>}
                   {puedoMarcar && <Ionicons name="create-outline" size={16} color={colors.textSecondary} style={{ marginLeft: 8 }} />}
                 </TouchableOpacity>
               );
@@ -547,6 +596,15 @@ const COLOR_EVENTO = {
 };
 
 const styles = StyleSheet.create({
+  // NUEVO (11): confirmar set
+  confirmarCaja: { marginTop: 14, alignItems: 'center', gap: 8, width: '100%' },
+  confirmarTxt: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  confirmarBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: RANKED_LIME, borderRadius: 26, paddingVertical: 12, paddingHorizontal: 22, minWidth: 200,
+  },
+  confirmarBtnTxt: { color: colors.primary, fontSize: 15, fontWeight: '800' },
+  confirmarAyuda: { color: 'rgba(255,255,255,0.7)', fontSize: 12, textAlign: 'center' },
   // NUEVO (08)
   avatarRetirado: { opacity: 0.35 },
   avatarPendiente: { alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed' },

@@ -80,19 +80,29 @@ function Stepper({ step }) {
 }
 
 function UnderlineField({ label, value, onChangeText, placeholder, keyboardType = 'default', secureTextEntry, autoCapitalize = 'sentences' }) {
+  // NUEVO: en la contraseña, el ojito muestra u oculta lo escrito
+  const [ver, setVer] = useState(false);
   return (
     <View style={styles.fieldGroup}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={styles.fieldInput}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textSecondary}
-        keyboardType={keyboardType}
-        secureTextEntry={secureTextEntry}
-        autoCapitalize={autoCapitalize}
-      />
+      <View style={secureTextEntry ? styles.fieldFilaClave : null}>
+        <TextInput
+          style={[styles.fieldInput, secureTextEntry && { flex: 1, borderBottomWidth: 0 }]}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textSecondary}
+          keyboardType={keyboardType}
+          secureTextEntry={secureTextEntry && !ver}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={secureTextEntry ? false : undefined}
+        />
+        {secureTextEntry && (
+          <TouchableOpacity onPress={() => setVer(v => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 4 }}>
+            <Ionicons name={ver ? 'eye-off-outline' : 'eye-outline'} size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -896,6 +906,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: 8,
   },
+  fieldFilaClave: { flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: 1, borderBottomColor: '#1C1C1C' },
   fieldInput: {
     fontSize: 15,
     color: colors.textPrimary,

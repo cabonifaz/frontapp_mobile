@@ -35,6 +35,11 @@ export const enVivoService = {
     return api.post(`/api/EnVivo/${idPartido}/sumar`, { lado, delta });
   },
 
+  // NUEVO (11): confirma el set en juego (el set se cierra recién al confirmarlo)
+  async confirmarSet(idPartido, numeroSet) {
+    return api.post(`/api/EnVivo/${idPartido}/confirmar-set`, { numero_set: numeroSet });
+  },
+
   // NUEVO (08): dar / quitar permiso a un amigo para anotar el marcador
   async delegar(idPartido, idAmigo) {
     return api.post(`/api/EnVivo/${idPartido}/delegar`, { id_amigo: idAmigo });
