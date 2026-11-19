@@ -18,6 +18,11 @@ export const usuarioService = {
     });
   },
 
+  // Elimina la cuenta de quien está conectado (anonimiza y desactiva en el servidor)
+  async eliminarCuenta() {
+    return api.post('/api/Usuario/eliminar-cuenta');
+  },
+
   async actualizarFoto(fotoPerfliUrl) {
     return api.put('/api/Usuario/foto-perfil', { foto_perfil_url: fotoPerfliUrl });
   },

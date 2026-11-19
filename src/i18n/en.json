@@ -24,7 +24,17 @@
     "cambiarCuenta": "Switch account",
     "cambiarCuentaMensaje": "Your Google/Facebook session on this device will be closed so you can choose another account.",
     "cambiarCuentaBoton": "Switch account",
-    "cambiarDeporte": "Switch sport"
+    "cambiarDeporte": "Switch sport",
+    "eliminarCuenta": "Delete my account",
+    "eliminarCuentaInfo": "More information about data deletion",
+    "eliminarCuentaMensaje": "Your profile, photo, friends and messages will be deleted, and your pending matches and classes will be cancelled. Results of matches with other players are kept without your name.",
+    "eliminarContinuar": "Continue",
+    "eliminarConfirmarTitulo": "Delete your account permanently?",
+    "eliminarConfirmarMensaje": "This action cannot be undone.",
+    "eliminarDefinitivo": "Delete permanently",
+    "eliminadaTitulo": "Account deleted",
+    "eliminadaMensaje": "Your account and personal data have been deleted.",
+    "eliminarError": "Could not delete the account. Please try again."
   },
   "tabs": {
     "home": "Home",
@@ -82,6 +92,7 @@
     "contrasena": "Password",
     "contrasenaPlaceholder": "At least 8 characters",
     "terminos": "I accept Ranked's terms and conditions",
+    "verPrivacidad": "Read the privacy policy",
     "siguiente": "Next",
     "atras": "Back",
     "confirmar": "Confirm",

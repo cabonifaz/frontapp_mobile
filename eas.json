@@ -27,10 +27,18 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://frontappbackend-production.up.railway.app"
+      },
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }

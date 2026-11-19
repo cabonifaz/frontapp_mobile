@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';   // CORREGIDO: respeta barra de estado y botones de Android
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../../constants';
 import { authService } from '../../services/authService';
+import { usuarioService } from '../../services/usuarioService';
+import { URL_PRIVACIDAD, URL_ELIMINAR_DATOS } from '../../constants/legal';
 import { SelectorIdioma } from '../../components/common/SelectorIdioma';
 import { desregistrarPush } from '../../utils/pushNotifications';   // NUEVO (041)
 import { adminService } from '../../services/adminService';          // NUEVO (07)
@@ -13,6 +15,7 @@ import { nombreDeporteActivo } from '../../utils/deporteActivo';     // NUEVO (0
 export function SettingsScreen({ navigation }) {
   const { t } = useTranslation();
   const [esAdmin, setEsAdmin] = useState(false);   // NUEVO (07)
+  const [eliminando, setEliminando] = useState(false);
 
   useEffect(() => {
     adminService.esAdmin({ refrescar: true }).then(setEsAdmin);
@@ -55,6 +58,46 @@ export function SettingsScreen({ navigation }) {
         },
       ]
     );
+  }
+
+  // Eliminar cuenta: dos confirmaciones y, al terminar, se cierra todo en este dispositivo
+  function handleDeleteAccount() {
+    Alert.alert(
+      t('ajustes.eliminarCuenta'),
+      t('ajustes.eliminarCuentaMensaje'),
+      [
+        { text: t('comun.cancelar'), style: 'cancel' },
+        {
+          text: t('ajustes.eliminarContinuar'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              t('ajustes.eliminarConfirmarTitulo'),
+              t('ajustes.eliminarConfirmarMensaje'),
+              [
+                { text: t('comun.cancelar'), style: 'cancel' },
+                { text: t('ajustes.eliminarDefinitivo'), style: 'destructive', onPress: eliminarCuenta },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  }
+
+  async function eliminarCuenta() {
+    setEliminando(true);
+    try {
+      await desregistrarPush();                 // antes de borrar: aún hay sesión para avisar al servidor
+      await usuarioService.eliminarCuenta();
+      await authService.logoutAndSwitch();      // limpia sesión local y la de Google/Facebook
+      Alert.alert(t('ajustes.eliminadaTitulo'), t('ajustes.eliminadaMensaje'));
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    } catch (error) {
+      Alert.alert(t('ajustes.eliminarCuenta'), error.message || t('ajustes.eliminarError'));
+    } finally {
+      setEliminando(false);
+    }
   }
 
   return (
@@ -102,12 +145,12 @@ export function SettingsScreen({ navigation }) {
           <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.optionRow} onPress={() => {}}>
+        <TouchableOpacity style={styles.optionRow} onPress={() => Linking.openURL(URL_PRIVACIDAD)}>
           <View style={styles.optionLeft}>
             <Ionicons name="lock-closed-outline" size={22} color={colors.textPrimary} />
             <Text style={styles.optionText}>{t('ajustes.privacidad')}</Text>
           </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+          <Ionicons name="open-outline" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
 
         <View style={styles.divider} />
@@ -122,6 +165,15 @@ export function SettingsScreen({ navigation }) {
         <TouchableOpacity style={styles.switchBtn} onPress={handleSwitchAccount} activeOpacity={0.8}>
           <Ionicons name="swap-horizontal-outline" size={20} color="#E53935" />
           <Text style={styles.switchText}>{t('ajustes.cambiarCuenta')}</Text>
+        </TouchableOpacity>
+
+        {/* Eliminar cuenta (requisito de Google Play / App Store) */}
+        <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteAccount} disabled={eliminando} activeOpacity={0.8}>
+          <Ionicons name="trash-outline" size={18} color="#B71C1C" />
+          <Text style={styles.deleteText}>{t('ajustes.eliminarCuenta')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => Linking.openURL(URL_ELIMINAR_DATOS)} activeOpacity={0.7}>
+          <Text style={styles.deleteInfo}>{t('ajustes.eliminarCuentaInfo')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -160,4 +212,13 @@ const styles = StyleSheet.create({
     borderRadius: 14, paddingVertical: 16,
   },
   switchText: { fontSize: 15, fontWeight: '600', color: '#E53935' },
+
+  deleteBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 10, marginTop: 28, width: '100%',
+    borderRadius: 14, paddingVertical: 14,
+    borderWidth: 1, borderColor: '#B71C1C',
+  },
+  deleteText: { fontSize: 14, fontWeight: '600', color: '#B71C1C' },
+  deleteInfo: { fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginTop: 10, textDecorationLine: 'underline' },
 });

@@ -158,10 +158,6 @@ export function LoginScreen({ navigation }) {
             <Text style={styles.btnOutlineText}>{t('login.registrarme')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.btnDemo} onPress={() => navigation.replace('MainTabs')} activeOpacity={0.7}>
-            <Text style={styles.btnDemoText}>{t('login.demo')}</Text>
-          </TouchableOpacity>
-
           <Text style={styles.socialLabel}>{t('login.continuaCon')}</Text>
           <View style={styles.socialRow}>
             <TouchableOpacity
@@ -172,9 +168,7 @@ export function LoginScreen({ navigation }) {
             >
               <GoogleIcon size={30} />
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.socialBox, { backgroundColor: '#000000' }]} activeOpacity={0.8} onPress={() => {}}>
-              <Ionicons name="logo-apple" size={32} color="#FFFFFF" />
-            </TouchableOpacity>
+            {/* El botón de Apple se añadirá junto con "Iniciar sesión con Apple" (versión iOS) */}
             <TouchableOpacity style={[styles.socialBox, { backgroundColor: '#1877F2' }, loading && { opacity: 0.5 }]} activeOpacity={0.8} onPress={handleFacebookLogin} disabled={loading}>
               <FontAwesome5 name="facebook-f" size={28} color="#FFFFFF" />
             </TouchableOpacity>

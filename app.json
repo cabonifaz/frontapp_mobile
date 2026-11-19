@@ -1,14 +1,14 @@
 {
   "expo": {
     "name": "Ranked",
-    "slug": "avo-sports",
+    "slug": "ranked",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.chris_13.avosports",
+      "bundleIdentifier": "es.geekytech.ranked",
       "infoPlist": {
         "SKAdNetworkItems": [
           {
@@ -30,10 +30,11 @@
       },
       "permissions": [
         "android.permission.INTERNET",
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.chris_13.avosports",
-      "usesCleartextTraffic": true
+      "package": "es.geekytech.ranked",
+      "usesCleartextTraffic": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -68,8 +69,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "d0285ebc-d602-44dc-9243-1789c64a3d01"
+        "projectId": "f0c07041-27b6-4ddf-b8bf-477e3344d66c"
       }
-    }
+    },
+    "owner": "geeky-tech"
   }
 }

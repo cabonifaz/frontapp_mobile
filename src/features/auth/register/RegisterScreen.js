@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Linking,
   ImageBackground, Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';   // CORREGIDO: barra de estado y botones de Android
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { elegirUnaImagen } from '../../../utils/elegirImagen';   // NUEVO (07): cámara o galería
 import { useTranslation } from 'react-i18next';
 import { colors } from '../../../constants';
+import { URL_PRIVACIDAD } from '../../../constants/legal';
 import { PrimaryButton } from '../../../components/common';
 import { CircularCropModal } from '../../../components/CircularCropModal';
 import { authService } from '../../../services/authService';
@@ -315,6 +316,11 @@ function Step1({ data, setData, onNext, loading, completar }) {
         checked={data.terminos}
         onToggle={() => setData({ ...data, terminos: !data.terminos })}
       />
+      <TouchableOpacity onPress={() => Linking.openURL(URL_PRIVACIDAD)} activeOpacity={0.7} style={{ marginTop: 8 }}>
+        <Text style={{ fontSize: 13, color: colors.textSecondary, textDecorationLine: 'underline' }}>
+          {t('registro.verPrivacidad')}
+        </Text>
+      </TouchableOpacity>
 
       <View style={{ marginTop: 28 }}>
         <PrimaryButton title={t('registro.siguiente')} onPress={onNext} disabled={!canContinue || loading} loading={loading} />

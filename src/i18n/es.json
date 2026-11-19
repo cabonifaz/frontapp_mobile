@@ -24,7 +24,17 @@
     "cambiarCuenta": "Cambiar de cuenta",
     "cambiarCuentaMensaje": "Se cerrará la sesión de Google/Facebook en este dispositivo para que puedas elegir otra cuenta.",
     "cambiarCuentaBoton": "Cambiar cuenta",
-    "cambiarDeporte": "Cambiar deporte"
+    "cambiarDeporte": "Cambiar deporte",
+    "eliminarCuenta": "Eliminar mi cuenta",
+    "eliminarCuentaInfo": "Más información sobre la eliminación de datos",
+    "eliminarCuentaMensaje": "Se eliminarán tu perfil, tu foto, tus amigos y tus mensajes, y cancelaremos tus partidos y clases pendientes. Los resultados de partidos con otros jugadores se conservan sin tu nombre.",
+    "eliminarContinuar": "Continuar",
+    "eliminarConfirmarTitulo": "¿Eliminar tu cuenta definitivamente?",
+    "eliminarConfirmarMensaje": "Esta acción no se puede deshacer.",
+    "eliminarDefinitivo": "Eliminar definitivamente",
+    "eliminadaTitulo": "Cuenta eliminada",
+    "eliminadaMensaje": "Tu cuenta y tus datos personales fueron eliminados.",
+    "eliminarError": "No se pudo eliminar la cuenta. Intenta nuevamente."
   },
   "tabs": {
     "home": "Home",
@@ -82,6 +92,7 @@
     "contrasena": "Contraseña",
     "contrasenaPlaceholder": "Mínimo 8 caracteres",
     "terminos": "Acepto los términos y condiciones de Ranked",
+    "verPrivacidad": "Leer la política de privacidad",
     "siguiente": "Siguiente",
     "atras": "Atrás",
     "confirmar": "Confirmar",
