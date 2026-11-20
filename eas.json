@@ -23,6 +23,15 @@
         "EXPO_PUBLIC_API_URL": "https://frontappbackend-staging.up.railway.app"
       }
     },
+    "preview-prod": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://frontappbackend-production.up.railway.app"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "env": {
